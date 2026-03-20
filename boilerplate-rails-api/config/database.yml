@@ -1,0 +1,20 @@
+default: &default
+  adapter: mysql2
+  encoding: utf8mb4
+  pool: <%= ENV.fetch('RAILS_MAX_THREADS', 5) %>
+  host: <%= ENV.fetch('DATABASE_HOST', '127.0.0.1') %>
+  port: <%= ENV.fetch('DATABASE_PORT', 3306) %>
+  database: <%= ENV.fetch('DATABASE_NAME', 'boilerplate_rails_api_' + Rails.env) %>
+  username: <%= ENV.fetch('DATABASE_USERNAME', 'root') %>
+  password: <%= ENV.fetch('DATABASE_PASSWORD', '') %>
+  socket: <%= ENV['DATABASE_SOCKET'] if ENV['DATABASE_SOCKET'].present? %>
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+  database: <%= ENV.fetch('DATABASE_NAME_TEST', 'boilerplate_rails_api_test') %>
+
+production:
+  <<: *default
