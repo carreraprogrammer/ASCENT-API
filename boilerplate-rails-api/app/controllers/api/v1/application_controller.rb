@@ -14,7 +14,7 @@ module Api
       rescue JwtService::ExpiredToken, JwtService::InvalidToken, ActiveRecord::RecordNotFound
         render json: {
           errors: [ { status: "401", code: "unauthorized", detail: "Token inválido o expirado" } ]
-        }, status: :unauthorized
+        }, status: :unauthorized and return
       end
 
       def current_user

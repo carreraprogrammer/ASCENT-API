@@ -4,6 +4,9 @@ module Authorizable
   included do
     include Pundit::Authorization
 
+    after_action :verify_authorized
+    after_action :verify_policy_scoped, only: :index
+
     rescue_from Pundit::NotAuthorizedError do
       render json: {
         errors: [ { status: "403", code: "forbidden", detail: "No tienes permisos para realizar esta acción" } ]
