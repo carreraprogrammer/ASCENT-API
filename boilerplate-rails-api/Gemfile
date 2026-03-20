@@ -11,6 +11,8 @@ gem "rswag-api"
 gem "rswag-ui"
 gem "rswag-specs"
 gem "bootsnap", require: false
+gem "omniauth-google-oauth2"
+gem "omniauth-rails_csrf_protection"
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
