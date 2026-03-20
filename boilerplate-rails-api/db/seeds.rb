@@ -1,4 +1,4 @@
-resources = %w[users roles permissions forms]
+resources = %w[users roles permissions form_schemas]
 actions = %w[read create update destroy manage]
 
 resources.each do |resource|
@@ -24,7 +24,7 @@ viewer_role = Role.find_or_create_by!(slug: 'viewer') do |r|
 end
 
 admin_role.permissions = Permission.all
-editor_role.permissions = Permission.where(resource: 'forms')
+editor_role.permissions = Permission.where(resource: 'form_schemas')
 viewer_role.permissions = Permission.where(action: 'read')
 
 super_admin = User.find_or_create_by!(email: 'superadmin@boilerplate.dev') do |u|
@@ -71,7 +71,7 @@ forms.each do |attrs|
     f.submit_label = attrs[:submit_label]
     f.submit_endpoint = attrs[:submit_endpoint]
     f.submit_method = attrs[:submit_method]
-    f.fields = attrs[:fields].to_json
+    f.fields = attrs[:fields]
     f.active = true
   end
 end

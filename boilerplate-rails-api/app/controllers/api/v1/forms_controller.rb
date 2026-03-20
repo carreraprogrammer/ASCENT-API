@@ -1,5 +1,7 @@
 class Api::V1::FormsController < Api::V1::BaseController
   skip_before_action :authenticate_request!, only: %i[index show]
+  skip_after_action :verify_authorized, only: %i[index show]
+  skip_after_action :verify_policy_scoped, only: %i[index show]
 
   def index
     schemas = Forms::Interactors::FetchAllFormSchemas.new.call

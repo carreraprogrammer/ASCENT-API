@@ -1,5 +1,7 @@
 class Api::V1::AuthController < Api::V1::BaseController
   skip_before_action :authenticate_request!, only: %i[register login refresh]
+  skip_after_action :verify_authorized
+  skip_after_action :verify_policy_scoped
 
   def register
     result = Auth::Interactors::RegisterUser.new.call(email: params.require(:email), password: params.require(:password), name: params.require(:name))
