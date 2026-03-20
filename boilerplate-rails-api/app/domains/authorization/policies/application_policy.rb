@@ -2,9 +2,15 @@ module Authorization
   module Policies
     class ApplicationPolicy
       attr_reader :user, :record
-      def initialize(user, record)
-        raise Pundit::NotAuthorizedError, "Usuario no autenticado" unless user
-        @user = user
+      def initialize(context, record)
+        raise Pundit::NotAuthorizedError, "Usuario no autenticado" unless context
+        if context.is_a?(Authorization::UserContext)
+          @user = context.user
+          @permissions = context.permissions
+        else
+          @user = context
+          @permissions = nil
+        end
         @record = record
       end
       def index? = false
@@ -16,7 +22,11 @@ module Authorization
       def super_admin? = user.super_admin?
       def has_permission?(slug)
         return true if super_admin?
-        Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id).include?(slug)
+        if @permissions
+          @permissions.include?(slug)
+        else
+          Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id).include?(slug)
+        end
       end
     end
   end

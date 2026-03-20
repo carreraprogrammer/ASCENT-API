@@ -9,7 +9,7 @@ module Forms
         record && map_to_entity(record)
       end
       def create(attrs)
-        record = ::FormSchema.create!(slug: attrs[:slug], title: attrs[:title], submit_label: attrs[:submit_label] || "Submit", submit_endpoint: attrs[:submit_endpoint], submit_method: attrs[:submit_method] || "POST", fields: attrs[:fields].to_json, active: attrs.fetch(:active, true))
+        record = ::FormSchema.create!(slug: attrs[:slug], title: attrs[:title], submit_label: attrs[:submit_label] || "Submit", submit_endpoint: attrs[:submit_endpoint], submit_method: attrs[:submit_method] || "POST", fields: attrs[:fields], active: attrs.fetch(:active, true))
         map_to_entity(record)
       end
       def update(slug, attrs)
@@ -22,7 +22,7 @@ module Forms
       end
       private
       def map_to_entity(record)
-        Forms::Entities::FormSchema.new(id: record.id, slug: record.slug, title: record.title, submit_label: record.submit_label, submit_endpoint: record.submit_endpoint, submit_method: record.submit_method, fields: record.fields.is_a?(String) ? JSON.parse(record.fields) : record.fields, active: record.active, created_at: record.created_at, updated_at: record.updated_at)
+        Forms::Entities::FormSchema.new(id: record.id, slug: record.slug, title: record.title, submit_label: record.submit_label, submit_endpoint: record.submit_endpoint, submit_method: record.submit_method, fields: record.fields, active: record.active, created_at: record.created_at, updated_at: record.updated_at)
       end
     end
   end

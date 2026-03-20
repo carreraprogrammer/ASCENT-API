@@ -5,6 +5,9 @@ on:
   push:
     branches: [ main ]
 
+defaults:
+  run:
+    working-directory: boilerplate-rails-api
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
@@ -37,3 +40,19 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run RSpec test suite
+        run: |
+          bundle exec rails db:prepare
+          bundle exec rspec
