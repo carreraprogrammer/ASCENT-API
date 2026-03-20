@@ -5,7 +5,8 @@ RSpec.describe Authorization::Policies::UserPolicy do
 
   it 'super_admin can do everything' do
     user = create(:user, super_admin: true)
-    policy = described_class.new(user, record)
+    context = Authorization::UserContext.new(user: user, permissions: [])
+    policy = described_class.new(context, record)
     expect(policy.index?).to be(true)
     expect(policy.show?).to be(true)
     expect(policy.update?).to be(true)
@@ -14,18 +15,16 @@ RSpec.describe Authorization::Policies::UserPolicy do
 
   it 'user with users:read can index and show' do
     user = create(:user)
-    role = create(:role)
-    permission = create(:permission, resource: 'users', action: 'read')
-    RolePermission.create!(role: role, permission: permission)
-    UserRole.create!(user: user, role: role)
-    policy = described_class.new(user, record)
+    context = Authorization::UserContext.new(user: user, permissions: ['users:read'])
+    policy = described_class.new(context, record)
     expect(policy.index?).to be(true)
     expect(policy.show?).to be(true)
   end
 
   it 'user without permissions cannot do anything' do
     user = create(:user)
-    policy = described_class.new(user, record)
+    context = Authorization::UserContext.new(user: user, permissions: [])
+    policy = described_class.new(context, record)
     expect(policy.index?).to be(false)
     expect(policy.show?).to be(false)
     expect(policy.create?).to be(false)
