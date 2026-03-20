@@ -7,7 +7,7 @@ FactoryBot.define do
     submit_method { 'POST' }
     active { true }
     fields do
-      [ { 'name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true, 'order' => 1 } ]
+      JSON.generate([ { 'name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true, 'order' => 1 } ])
     end
   end
 end

@@ -15,7 +15,7 @@ RSpec.describe Authorization::Policies::UserPolicy do
 
   it 'user with users:read can index and show' do
     user = create(:user)
-    context = Authorization::UserContext.new(user: user, permissions: ['users:read'])
+    context = Authorization::UserContext.new(user: user, permissions: [ 'users:read' ])
     policy = described_class.new(context, record)
     expect(policy.index?).to be(true)
     expect(policy.show?).to be(true)

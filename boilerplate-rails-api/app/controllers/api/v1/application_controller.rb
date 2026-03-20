@@ -10,8 +10,8 @@ module Api
       def authenticate_request!
         token = request.headers["Authorization"]&.split(" ")&.last
         @jwt_payload = JwtService.decode(token)
-        @current_user = ::User.find(@jwt_payload[:user_id])
-      rescue JwtService::ExpiredToken, JwtService::InvalidToken, ActiveRecord::RecordNotFound
+        @current_user = Auth::Interactors::FetchUser.new.call(id: @jwt_payload[:user_id])
+      rescue JwtService::ExpiredToken, JwtService::InvalidToken, Auth::Errors::InvalidToken
         render json: {
           errors: [ { status: "401", code: "unauthorized", detail: "Token inválido o expirado" } ]
         }, status: :unauthorized and return

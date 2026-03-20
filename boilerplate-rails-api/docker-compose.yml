@@ -20,5 +20,6 @@ services:
       DATABASE_USERNAME: root
       DATABASE_PASSWORD: password
       DATABASE_NAME: boilerplate_rails_api_development
+      JWT_SECRET: changeme_in_production
     depends_on:
       - db

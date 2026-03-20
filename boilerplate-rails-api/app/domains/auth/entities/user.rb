@@ -17,6 +17,7 @@ module Auth
         @super_admin = attrs[:super_admin] || false
       end
       def confirmed? = !confirmed_at.nil?
+      def super_admin? = @super_admin == true
       def refresh_token_valid?(raw_token)
         return false if refresh_token_hash.nil?
         return false if refresh_token_expires_at.nil? || refresh_token_expires_at < Time.current

@@ -21,8 +21,7 @@ module Auth
         expires_at = Time.current + ENV.fetch("JWT_REFRESH_EXPIRY", 2_592_000).to_i.seconds
         @repo.save_refresh_token(user_id: user.id, token_hash: refresh_hash, expires_at: expires_at)
         refreshed_user = @repo.find_by_id(user.id)
-        permissions = Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id)
-        { access_token: JwtService.encode_access_token(user_id: user.id, email: user.email, super_admin: refreshed_user.super_admin, permissions: permissions), refresh_token: raw_refresh }
+        { access_token: JwtService.encode_access_token(user_id: user.id, email: user.email, super_admin: refreshed_user.super_admin), refresh_token: raw_refresh }
       end
     end
   end

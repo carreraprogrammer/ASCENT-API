@@ -6,8 +6,4 @@ class User < ApplicationRecord
   validates :email, presence: true, uniqueness: true
   validates :encrypted_password, presence: true
   validates :name, presence: true
-
-  def password=(raw_password)
-    self.encrypted_password = BCrypt::Password.create(raw_password)
-  end
 end

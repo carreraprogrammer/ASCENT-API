@@ -28,20 +28,20 @@ editor_role.permissions = Permission.where(resource: 'form_schemas')
 viewer_role.permissions = Permission.where(action: 'read')
 
 super_admin = User.find_or_create_by!(email: 'superadmin@boilerplate.dev') do |u|
-  u.password = 'Admin1234!'
+  u.encrypted_password = BCrypt::Password.create('Admin1234!')
   u.name = 'Super Admin'
   u.super_admin = true
 end
 
 admin_user = User.find_or_create_by!(email: 'admin@boilerplate.dev') do |u|
-  u.password = 'Admin1234!'
+  u.encrypted_password = BCrypt::Password.create('Admin1234!')
   u.name = 'Admin User'
   u.super_admin = false
 end
 UserRole.find_or_create_by!(user: admin_user, role: admin_role)
 
 viewer_user = User.find_or_create_by!(email: 'viewer@boilerplate.dev') do |u|
-  u.password = 'Viewer1234!'
+  u.encrypted_password = BCrypt::Password.create('Viewer1234!')
   u.name = 'Viewer User'
   u.super_admin = false
 end
@@ -71,7 +71,7 @@ forms.each do |attrs|
     f.submit_label = attrs[:submit_label]
     f.submit_endpoint = attrs[:submit_endpoint]
     f.submit_method = attrs[:submit_method]
-    f.fields = attrs[:fields]
+    f.fields = JSON.generate(attrs[:fields])
     f.active = true
   end
 end

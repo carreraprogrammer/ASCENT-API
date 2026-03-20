@@ -11,6 +11,8 @@ class Api::V1::FormsController < Api::V1::BaseController
   def show
     schema = Forms::Interactors::FetchFormSchema.new.call(slug: params[:slug])
     render json: Forms::Presenters::FormSchemaPresenter.single(schema)
+  rescue Forms::Errors::SchemaNotFound => e
+    render json: { errors: [ { status: "404", title: "Not Found", detail: e.message } ] }, status: :not_found
   end
 
   def create
@@ -29,7 +31,7 @@ class Api::V1::FormsController < Api::V1::BaseController
 
   def destroy
     authorize :form_schema, :destroy?, policy_class: Authorization::Policies::FormSchemaPolicy
-    Forms::Repositories::FormSchemaRepository.new.deactivate(params[:slug])
+    Forms::Interactors::DestroyFormSchema.new.call(slug: params[:slug])
     head :no_content
   end
 

@@ -25,12 +25,11 @@ class Api::V1::AuthController < Api::V1::BaseController
   end
 
   def logout
-    Auth::Repositories::UserRepository.new.invalidate_refresh_token(user_id: current_user.id)
+    Auth::Interactors::LogoutUser.new.call(user_id: current_user.id)
     head :no_content
   end
 
   def me
-    entity = Auth::Repositories::UserRepository.new.find_by_id(current_user.id)
-    render json: Auth::Presenters::AuthPresenter.user(entity)
+    render json: Auth::Presenters::AuthPresenter.user(current_user)
   end
 end

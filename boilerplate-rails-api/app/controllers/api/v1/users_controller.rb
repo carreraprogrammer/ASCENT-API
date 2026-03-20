@@ -2,20 +2,20 @@ class Api::V1::UsersController < Api::V1::BaseController
   def index
     authorize ::User, policy_class: Authorization::Policies::UserPolicy
     users = Users::Interactors::ListUsers.new.call
-    render json: { data: users.map { |user| serialize_user(user) }, meta: { total: users.count } }
+    render json: Authorization::Presenters::UserPresenter.collection(users)
   end
 
   def show
     user = Users::Interactors::FindUser.new.call(id: params[:id])
     authorize user, policy_class: Authorization::Policies::UserPolicy
-    render json: { data: serialize_user(user) }
+    render json: Authorization::Presenters::UserPresenter.single(user)
   end
 
   def update
     user = Users::Interactors::FindUser.new.call(id: params[:id])
     authorize user, policy_class: Authorization::Policies::UserPolicy
-    Users::Interactors::UpdateUser.new.call(user: user, attributes: params.permit(:name).to_h)
-    render json: { data: serialize_user(user) }
+    updated_user = Users::Interactors::UpdateUser.new.call(user: user, attributes: params.permit(:name).to_h)
+    render json: Authorization::Presenters::UserPresenter.single(updated_user)
   end
 
   def destroy
@@ -44,11 +44,5 @@ class Api::V1::UsersController < Api::V1::BaseController
       role_slug: params.require(:role_slug)
     )
     head :no_content
-  end
-
-  private
-
-  def serialize_user(user)
-    { id: user.id.to_s, type: "users", attributes: { email: user.email, name: user.name, super_admin: user.super_admin } }
   end
 end

@@ -1,4 +1,6 @@
 class Api::V1::RolesController < Api::V1::BaseController
+  skip_after_action :verify_policy_scoped, only: :index
+
   def index
     authorize ::Role, policy_class: Authorization::Policies::RolePolicy
     roles = Authorization::Interactors::FetchAllRoles.new.call

@@ -4,12 +4,12 @@ class JwtService
   class InvalidToken < StandardError; end
   class ExpiredToken < StandardError; end
 
-  def self.encode_access_token(user_id:, email:, super_admin: false, permissions: [])
+  def self.encode_access_token(user_id:, email:, super_admin: false, permissions: nil)
     payload = {
       user_id: user_id,
       email: email,
       super_admin: super_admin,
-      permissions: permissions,
+      permissions: permissions || Authorization::Interactors::FetchUserPermissions.new.call(user_id: user_id),
       jti: SecureRandom.uuid,
       exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", 900).to_i,
       type: "access"

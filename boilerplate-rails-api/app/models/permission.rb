@@ -6,8 +6,4 @@ class Permission < ApplicationRecord
   validates :action, presence: true
 
   scope :for_resource, ->(resource) { where(resource: resource) }
-
-  def slug
-    "#{resource}:#{action}"
-  end
 end
