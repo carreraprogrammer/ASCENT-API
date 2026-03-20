@@ -1,6 +1,6 @@
 module Api
   module V1
-    class BaseController < ApplicationController
+    class BaseController < Api::V1::ApplicationController
       private
 
       def render_unprocessable(detail)
