@@ -20,6 +20,13 @@ module Api
       def current_user
         @current_user
       end
+
+      def pundit_user
+        Authorization::UserContext.new(
+          user: current_user,
+          permissions: Array(@jwt_payload&.dig(:permissions))
+        )
+      end
     end
   end
 end
