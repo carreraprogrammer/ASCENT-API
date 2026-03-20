@@ -36,6 +36,6 @@ class Api::V1::FormsController < Api::V1::BaseController
   def schema_params
     params.permit(:slug, :title, :submit_label, :submit_endpoint, :submit_method, :active,
       fields: [ :name, :label, :type, :placeholder, :required, :order, :rows, :default_value,
-        { validations: [ :format, :min_length, :max_length, :pattern ] }, { options: [ :label, :value ] } ]).to_h.deep_symbolize_keys
+        { validations: [ :format, :min_length, :max_length, :pattern ] }, { options: [ :label, :value ] } ]).to_h
   end
 end
