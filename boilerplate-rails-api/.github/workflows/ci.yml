@@ -63,6 +63,7 @@ jobs:
       DATABASE_USERNAME: root
       DATABASE_PASSWORD: password
       RAILS_ENV: test
+      JWT_SECRET: test_jwt_secret
 
     steps:
       - name: Checkout code
