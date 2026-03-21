@@ -4,6 +4,10 @@ class User < ApplicationRecord
   has_many :permissions, through: :roles
 
   validates :email, presence: true, uniqueness: true
-  validates :encrypted_password, presence: true
+  validates :encrypted_password, presence: true, unless: :oauth_user?
   validates :name, presence: true
+
+  def oauth_user?
+    auth_provider.present?
+  end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 7) do
+ActiveRecord::Schema[8.0].define(version: 8) do
   create_table "form_schemas", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.string "slug", null: false
     t.string "title", null: false
@@ -76,7 +76,11 @@ ActiveRecord::Schema[8.0].define(version: 7) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "super_admin", default: false, null: false
+    t.string "google_uid"
+    t.string "avatar_url"
+    t.string "auth_provider"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["google_uid"], name: "index_users_on_google_uid", unique: true
     t.index ["refresh_token_hash"], name: "index_users_on_refresh_token_hash"
   end
 

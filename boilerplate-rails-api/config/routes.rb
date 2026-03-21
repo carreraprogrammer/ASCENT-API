@@ -1,4 +1,8 @@
 Rails.application.routes.draw do
+  # OAuth — fuera del namespace api/v1 porque OmniAuth maneja sus propias rutas
+  get "/auth/google_oauth2/callback", to: "api/v1/oauth#google_callback"
+  get "/auth/failure", to: "api/v1/oauth#failure"
+
   mount Rswag::Api::Engine => "/api-docs"
   mount Rswag::Ui::Engine => "/api-docs"
 
