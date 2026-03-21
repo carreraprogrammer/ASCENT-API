@@ -8,11 +8,13 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      get "auth/google", to: redirect("/auth/google_oauth2")
       post "auth/register", to: "auth#register"
       post "auth/login", to: "auth#login"
       post "auth/refresh", to: "auth#refresh"
       delete "auth/logout", to: "auth#logout"
       get "auth/me", to: "auth#me"
+      get "forms/:slug", to: "forms#show"
 
       resources :form_schemas, controller: "forms", param: :slug, only: [ :index, :show, :create, :update, :destroy ]
       resources :roles, only: [ :index, :show, :create, :update, :destroy ] do

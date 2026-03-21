@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 8) do
+ActiveRecord::Schema[8.0].define(version: 9) do
   create_table "form_schemas", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.string "slug", null: false
     t.string "title", null: false
@@ -68,7 +68,7 @@ ActiveRecord::Schema[8.0].define(version: 8) do
 
   create_table "users", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.string "email", null: false
-    t.string "encrypted_password", null: false
+    t.string "encrypted_password"
     t.string "name", null: false
     t.string "refresh_token_hash"
     t.datetime "refresh_token_expires_at"
