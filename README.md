@@ -1,227 +1,336 @@
-# boilerplate-rails-api
+# DANIEL 15K — API
 
-API base en Rails 8 para autenticacion con JWT, autorizacion RBAC con Pundit y formularios dinamicos guiados por esquema.
+> Un coach personal autónomo. No solo registra lo que gastás — razona sobre tu comportamiento, te alerta antes de que te pases del presupuesto, y te dice qué hacer con cada peso que te sobre.
 
-El proyecto esta pensado como backend reutilizable para iniciar productos con:
-- login, register, refresh token y `me`
-- roles dinamicos y permisos granulares en formato `resource:action`
-- formularios configurables desde base de datos
-- arquitectura por dominios con interactors, repositories, entities y presenters
+API REST construida en Rails 8 con arquitectura DDD, diseñada para ser el backend de un sistema de coaching personal multi-módulo. Hoy activo: **Finanzas**. En construcción: Cuerpo, Mente, Social.
+
+La meta no es ganar $15.000 USD/mes. Es convertirse en la persona que se los merece.
+
+---
+
+## Módulos
+
+| Módulo | Estado | Descripción |
+|--------|--------|-------------|
+| **Finanzas** | 🟡 En construcción | Registro de gastos, presupuestos, deudas, metas de ahorro, coaching nocturno |
+| **Cuerpo** | 🔲 Planificado | Suplementos, calorías por foto, ejercicio, sueño |
+| **Mente** | 🔲 Planificado | Ritual matutino, journaling, Consejo de Sabios semanal |
+| **Social** | 🔲 Planificado | Fragmento diario, debrief nocturno, evidencia acumulada |
+
+---
 
 ## Stack
 
-- Ruby 3.3
-- Rails 8 API-only
-- MariaDB 11
-- JWT
-- Pundit
-- RSpec + FactoryBot
-- Docker + Docker Compose
+| Capa | Tecnología |
+|------|-----------|
+| Framework | Ruby on Rails 8 (API-only) |
+| Lenguaje | Ruby 3.3 |
+| Base de datos | PostgreSQL |
+| Auth | JWT + Refresh Token Rotation |
+| Autorización | Pundit + Roles/Permisos |
+| API | REST — JSON:API spec |
+| Tests | RSpec + FactoryBot |
+| Docs | Swagger (rswag) — `/api-docs` |
+| Deploy | Railway |
+| Contenedor | Docker + docker-compose |
 
-## Arquitectura
+---
 
-La regla principal del proyecto es:
-
-```text
-request
-  -> controller
-  -> interactor
-  -> repository
-  -> entity
-  -> presenter
-  -> render json
-```
-
-Reglas importantes:
-- Los controllers solo orquestan.
-- Los interactors contienen logica de aplicacion.
-- Solo los repositories tocan ActiveRecord.
-- Las entities son POROs.
-- Los modelos ActiveRecord solo contienen associations, scopes y validaciones.
-
-La referencia completa esta en [specs/architecture.md](/Users/danielcarrera/Desktop/carrera/BOILER-PLATE-BACK/boilerplate-rails-api/specs/architecture.md).
-
-## Estructura
-
-```text
-app/
-  controllers/api/v1/
-  domains/
-    auth/
-    authorization/
-    forms/
-  models/
-  services/
-db/
-  migrate/
-  seeds.rb
-spec/
-specs/
-swagger/
-```
-
-## Variables de entorno
-
-Usa [.env.example](/Users/danielcarrera/Desktop/carrera/BOILER-PLATE-BACK/boilerplate-rails-api/.env.example) como base.
-
-Variables requeridas:
-
-```env
-DATABASE_HOST
-DATABASE_PORT
-DATABASE_NAME
-DATABASE_USERNAME
-DATABASE_PASSWORD
-JWT_SECRET
-JWT_ACCESS_EXPIRY
-JWT_REFRESH_EXPIRY
-RAILS_ENV
-FRONTEND_URL
-ALLOWED_ORIGINS
-```
-
-## Arranque local con Docker
-
-Levantar servicios:
+## Setup local
 
 ```bash
+git clone https://github.com/carreraprogrammer/daniel15k-api.git
+cd daniel15k-api
+
+cp .env.example .env
+# Completar .env con credenciales locales
+
 docker compose up -d
-```
-
-Ver estado:
-
-```bash
-docker compose ps
-```
-
-Ver logs:
-
-```bash
-docker compose logs -f web
-docker compose logs -f db
-```
-
-La API queda disponible en:
-
-- `http://localhost:3000`
-- Swagger: `http://localhost:3000/api-docs`
-
-## Comandos utiles
-
-Migraciones:
-
-```bash
 docker compose exec web bundle exec rails db:migrate
-```
-
-Seeds:
-
-```bash
 docker compose exec web bundle exec rails db:seed
 ```
 
-RSpec:
+API disponible en `http://localhost:3000`
+Swagger en `http://localhost:3000/api-docs`
+
+### Comandos útiles
 
 ```bash
+# Tests
 docker compose run --rm --entrypoint /bin/bash web -lc 'bundle exec rspec'
-```
 
-RuboCop:
-
-```bash
+# Linter
 docker compose run --rm --entrypoint /bin/bash web -lc 'bundle exec rubocop'
+
+# Consola Rails
+docker compose exec web bundle exec rails console
+
+# Migraciones
+docker compose exec web bundle exec rails db:migrate
 ```
 
-Consola Rails:
+---
+
+## Arquitectura
+
+El flujo obligatorio en cada request:
+
+```
+Request HTTP
+  → Controller          (orquesta, cero lógica de negocio)
+  → Interactor          (lógica de aplicación)
+  → Repository          (única capa que toca ActiveRecord)
+  → Entity              (PORO — Plain Old Ruby Object)
+  → Presenter           (transforma a JSON:API)
+  → render json
+```
+
+Ver [specs/architecture.md](specs/architecture.md) para reglas completas.
+
+---
+
+## Módulo Finanzas — Consumo de la API
+
+### Autenticación
+
+Todos los endpoints requieren JWT en el header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+Obtener token:
+
+```http
+POST /api/v1/auth/login
+
+{ "email": "daniel@example.com", "password": "..." }
+```
+
+```json
+{
+  "data": {
+    "access_token": "eyJ...",
+    "refresh_token": "eyJ...",
+    "expires_in": 900
+  }
+}
+```
+
+---
+
+### Transacciones
+
+#### Crear
+```http
+POST /api/v1/transactions
+
+{
+  "date": "11/04",
+  "concept": "Almuerzo D1",
+  "product": "nequi",
+  "amount": 15000,
+  "category_id": 3,
+  "subcategory_id": 12,
+  "source": "telegram",
+  "status": "confirmed"
+}
+```
+
+| Campo | Tipo | Req | Descripción |
+|-------|------|-----|-------------|
+| `date` | string DD/MM | ✅ | Fecha en hora Colombia |
+| `concept` | string | ✅ | Descripción libre |
+| `product` | string | ✅ | `nequi` · `tc7248` · `tc1322` · `debito` · `bre-b` |
+| `amount` | integer | ✅ | Pesos colombianos, siempre positivo |
+| `category_id` | integer | ✅ | |
+| `subcategory_id` | integer | — | |
+| `source` | string | — | `telegram` · `gmail` · `manual` |
+| `status` | string | — | `confirmed` · `pending` · `projected` |
+| `metadata` | object | — | Datos crudos del mensaje original |
+
+#### Listar por mes
+```http
+GET /api/v1/transactions?month=04&year=2026
+```
+
+#### Pendientes de aclaración
+```http
+GET /api/v1/transactions/pending
+```
+
+#### Actualizar (resolver ⚠️ pendiente)
+```http
+PATCH /api/v1/transactions/:id
+
+{ "status": "confirmed", "category_id": 5, "subcategory_id": 18 }
+```
+
+---
+
+### Categorías
+
+Las categorías están organizadas por **agencia** (no por tipo contable). Esto permite coaching conductual real: no es lo mismo que te hayas pasado en "alimentación" que en "discrecional".
+
+| Categoría | Código | Descripción |
+|-----------|--------|-------------|
+| Comprometido | `committed` | No negociable (arriendo, créditos, servicios fijos) |
+| Necesario | `necessary` | Puedo optimizar pero no eliminar (mercado, gasolina) |
+| Discrecional | `discretionary` | Decisión activa mía (restaurantes, ropa, ocio) |
+| Inversión | `investment` | Retorno futuro (cursos, suplementos, herramientas) |
+| Social | `social` | Relaciones (regalos, salidas con amigos) |
+| Ingreso | `income` | Entradas de dinero |
+| Desconocido | `unknown` | IA no clasificó — requiere aclaración |
+
+```http
+GET  /api/v1/categories
+POST /api/v1/categories        # el agente puede crear categorías nuevas
+```
+
+---
+
+### Presupuestos
+
+```http
+GET  /api/v1/budgets?month=04&year=2026
+POST /api/v1/budgets
+
+{ "category_id": 3, "month": 4, "year": 2026, "amount_limit": 500000 }
+```
+
+---
+
+### Deudas
+
+```http
+GET  /api/v1/debts
+POST /api/v1/debts
+
+{
+  "name": "CrediExpress #290742",
+  "current_balance": 5196000,
+  "monthly_payment": 866000,
+  "interest_rate": 2.1,
+  "debt_type": "personal_loan",
+  "payoff_date": "2026-12-01"
+}
+```
+
+---
+
+### Metas de ahorro (sinking funds)
+
+```http
+GET  /api/v1/savings_goals
+POST /api/v1/savings_goals
+
+{
+  "name": "Matrícula moto 2027",
+  "goal_type": "sinking_fund",
+  "target_amount": 800000,
+  "target_date": "2027-01-15",
+  "priority": 1
+}
+```
+
+El campo `monthly_contribution_needed` se calcula automáticamente.
+
+---
+
+### Resumen mensual
+
+El endpoint más importante. Lo consume el agente nocturno para generar el coaching.
+
+```http
+GET /api/v1/summary?month=04&year=2026
+```
+
+```json
+{
+  "data": {
+    "period": "abril 2026",
+    "income": 6435146,
+    "categories": {
+      "committed":     { "budget": 4000000, "spent": 3200000, "pct": 80 },
+      "necessary":     { "budget": 800000,  "spent": 650000,  "pct": 81 },
+      "discretionary": {
+        "budget": 500000, "spent": 480000, "pct": 96,
+        "burn_rate_alert": "A este ritmo gastarás $640.000 — 28% sobre presupuesto"
+      }
+    },
+    "savings_goals": [
+      { "name": "Matrícula moto 2027", "monthly_target": 88888, "contributed": 0, "on_track": false }
+    ],
+    "financial_phase": "debt_payoff",
+    "financial_score": 72,
+    "insights": [
+      "Llevas 11 días sin delivery. Tu mejor racha este año.",
+      "Discrecional al 96% — quedan 19 días de mes."
+    ]
+  }
+}
+```
+
+---
+
+### Contexto financiero
+
+Define la fase actual y la estrategia del usuario. El agente lee esto para razonar.
+
+```http
+GET   /api/v1/financial_context
+PATCH /api/v1/financial_context
+
+{
+  "phase": "debt_payoff",
+  "strategy": "snowball",
+  "notes": "Prioridad: liquidar CrediExpress antes de diciembre"
+}
+```
+
+Fases disponibles: `debt_payoff` · `emergency_fund` · `investing` · `wealth_building`
+
+---
+
+## Endpoints Auth y Roles (heredados del boilerplate)
+
+```
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+DELETE /api/v1/auth/logout
+GET    /api/v1/auth/me
+
+GET    /api/v1/roles
+POST   /api/v1/roles
+PATCH  /api/v1/roles/:id
+POST   /api/v1/roles/:id/assign_permission
+
+GET    /api/v1/users
+PATCH  /api/v1/users/:id
+POST   /api/v1/users/:id/assign_role
+```
+
+---
+
+## Variables de entorno
 
 ```bash
-docker compose exec web bundle exec rails console
+DATABASE_URL=postgresql://...
+JWT_SECRET=
+JWT_ACCESS_EXPIRY=900        # 15 minutos
+JWT_REFRESH_EXPIRY=2592000   # 30 días
+RAILS_ENV=development
+FRONTEND_URL=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-## Seeds iniciales
+---
 
-El proyecto crea datos base para poder probar autenticacion y permisos:
+## Documentación adicional
 
-- Roles: `admin`, `editor`, `viewer`
-- Usuarios:
-  - `superadmin@boilerplate.dev`
-  - `admin@boilerplate.dev`
-  - `viewer@boilerplate.dev`
-
-Credenciales de seed:
-
-- `superadmin@boilerplate.dev` / `Admin1234!`
-- `admin@boilerplate.dev` / `Admin1234!`
-- `viewer@boilerplate.dev` / `Viewer1234!`
-
-## Endpoints principales
-
-Auth:
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `DELETE /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-
-Roles:
-- `GET /api/v1/roles`
-- `GET /api/v1/roles/:id`
-- `POST /api/v1/roles`
-- `PATCH /api/v1/roles/:id`
-- `DELETE /api/v1/roles/:id`
-- `POST /api/v1/roles/:id/assign_permission`
-- `DELETE /api/v1/roles/:id/revoke_permission`
-
-Users:
-- `GET /api/v1/users`
-- `GET /api/v1/users/:id`
-- `PATCH /api/v1/users/:id`
-- `DELETE /api/v1/users/:id`
-- `POST /api/v1/users/:id/assign_role`
-- `DELETE /api/v1/users/:id/revoke_role`
-
-Form schemas:
-- `GET /api/v1/form_schemas`
-- `GET /api/v1/form_schemas/:slug`
-- `POST /api/v1/form_schemas`
-- `PATCH /api/v1/form_schemas/:slug`
-- `DELETE /api/v1/form_schemas/:slug`
-
-## Autenticacion y permisos
-
-- Los access tokens incluyen el arreglo `permissions`.
-- Los permisos usan formato `resource:action`.
-- `super_admin` bypassa politicas.
-- La autorizacion se resuelve con Pundit sobre `Authorization::UserContext`.
-
-## Formularios dinamicos
-
-El dominio `forms` expone esquemas consumibles por frontend. Cada schema define:
-
-- `slug`
-- `title`
-- `submit_label`
-- `submit_endpoint`
-- `submit_method`
-- `fields`
-
-Esto permite construir formularios desde frontend sin hardcodear toda la estructura.
-
-## Estado actual de calidad
-
-Actualmente el proyecto cumple con la base operativa esperada:
-
-- `docker compose up -d` levanta correctamente
-- `bundle exec rspec` pasa
-- `bundle exec rubocop` pasa sin offenses
-
-## Documentacion adicional
-
-- [specs/architecture.md](/Users/danielcarrera/Desktop/carrera/BOILER-PLATE-BACK/boilerplate-rails-api/specs/architecture.md)
-- [specs/auth.md](/Users/danielcarrera/Desktop/carrera/BOILER-PLATE-BACK/boilerplate-rails-api/specs/auth.md)
-- [specs/roles-permissions.md](/Users/danielcarrera/Desktop/carrera/BOILER-PLATE-BACK/boilerplate-rails-api/specs/roles-permissions.md)
-- [specs/forms.md](/Users/danielcarrera/Desktop/carrera/BOILER-PLATE-BACK/boilerplate-rails-api/specs/forms.md)
-
-## Permissions cache
-
-Los permisos se embeben en el JWT access token al momento de emitirlo. En esta version no hay una capa extra de cache distribuido. Si despues necesitas invalidacion mas agresiva, ese trabajo deberia vivir dentro del dominio de authorization.
+- [specs/architecture.md](specs/architecture.md) — reglas de arquitectura DDD
+- [specs/auth.md](specs/auth.md) — flujo de autenticación
+- [specs/roles-permissions.md](specs/roles-permissions.md) — RBAC
+- [specs/finanzas/plan.md](specs/finanzas/plan.md) — plan completo del módulo Finanzas
+- [specs/finanzas/fases.md](specs/finanzas/fases.md) — fases de ejecución con criterios de aceptación
