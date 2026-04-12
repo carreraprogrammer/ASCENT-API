@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
   web:
     build: .
-    command: bundle exec rails server -b 0.0.0.0
+    command: bundle exec puma -C config/puma.rb
     volumes:
       - .:/app
     ports:
@@ -21,10 +21,11 @@ services:
       DATABASE_URL: postgresql://postgres:password@db:5432/daniel15k_development
       DATABASE_URL_TEST: postgresql://postgres:password@db:5432/daniel15k_test
       JWT_SECRET: changeme_in_production
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      RAILS_MASTER_KEY: 017881aeb805df68f7ef63343bc1a811
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
     depends_on:
       - db
 
