@@ -4,6 +4,6 @@ builder = "nixpacks"
 [deploy]
 startCommand = "bundle exec rails db:migrate && bundle exec rails db:seed && bundle exec puma -C config/puma.rb"
 healthcheckPath = "/up"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
