@@ -75,7 +75,7 @@ SYSTEM_CATEGORIES = [
 ].freeze
 
 SYSTEM_CATEGORIES.each do |cat_data|
-  subcats = cat_data.delete(:subcategories)
+  subcats = cat_data[:subcategories]
   category = Category.find_or_create_by!(code: cat_data[:code], user_id: nil) do |c|
     c.name          = cat_data[:name]
     c.category_type = cat_data[:category_type]
