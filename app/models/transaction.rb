@@ -1,0 +1,18 @@
+class Transaction < ApplicationRecord
+  belongs_to :user
+  belongs_to :category, optional: true
+  belongs_to :subcategory, optional: true
+
+  TYPES = %w[expense income].freeze
+  SOURCES = %w[telegram gmail manual].freeze
+  STATUSES = %w[confirmed pending projected].freeze
+
+  validates :date, presence: true
+  validates :concept, presence: true
+  validates :amount, presence: true, numericality: { greater_than: 0 }
+  validates :transaction_type, inclusion: { in: TYPES }
+  validates :source, inclusion: { in: SOURCES }
+  validates :status, inclusion: { in: STATUSES }
+  validates :year, presence: true
+  validates :month, presence: true
+end
