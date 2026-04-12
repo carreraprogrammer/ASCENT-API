@@ -148,8 +148,6 @@ GEM
     msgpack (1.8.0)
     multi_xml (0.8.1)
       bigdecimal (>= 3.1, < 5)
-    mysql2 (0.5.7)
-      bigdecimal
     net-http (0.9.1)
       uri (>= 0.11.1)
     net-imap (0.6.3)
@@ -169,6 +167,8 @@ GEM
     nokogiri (1.19.2-arm-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.19.2-arm-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.19.2-x86_64-darwin)
       racc (~> 1.4)
     nokogiri (1.19.2-x86_64-linux-gnu)
       racc (~> 1.4)
@@ -202,6 +202,12 @@ GEM
     parser (3.3.10.2)
       ast (~> 2.4.1)
       racc
+    pg (1.6.3)
+    pg (1.6.3-aarch64-linux)
+    pg (1.6.3-aarch64-linux-musl)
+    pg (1.6.3-x86_64-darwin)
+    pg (1.6.3-x86_64-linux)
+    pg (1.6.3-x86_64-linux-musl)
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
@@ -355,6 +361,7 @@ PLATFORMS
   aarch64-linux-musl
   arm-linux-gnu
   arm-linux-musl
+  x86_64-darwin-24
   x86_64-linux-gnu
   x86_64-linux-musl
 
@@ -366,9 +373,9 @@ DEPENDENCIES
   factory_bot_rails
   faker
   jwt
-  mysql2 (~> 0.5)
   omniauth-google-oauth2
   omniauth-rails_csrf_protection
+  pg (~> 1.5)
   puma (>= 5.0)
   pundit
   rack-cors

@@ -5,9 +5,6 @@ on:
   push:
     branches: [ main ]
 
-defaults:
-  run:
-    working-directory: boilerplate-rails-api
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
@@ -22,11 +19,12 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Scan for common Rails security vulnerabilities using static analysis
+      - name: Scan for security vulnerabilities (brakeman)
         run: bin/brakeman --no-pager
 
   lint:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,7 +35,7 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Lint code for consistent style
+      - name: Lint code for consistent style (rubocop)
         run: bin/rubocop -f github
 
   test:
@@ -45,23 +43,22 @@ jobs:
 
     services:
       db:
-        image: mariadb:11
+        image: postgres:16
         env:
-          MARIADB_ROOT_PASSWORD: password
-          MARIADB_DATABASE: boilerplate_rails_api_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: daniel15k_test
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-cmd="pg_isready -U postgres"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
 
     env:
-      DATABASE_HOST: 127.0.0.1
-      DATABASE_PORT: 3306
-      DATABASE_USERNAME: root
-      DATABASE_PASSWORD: password
+      DATABASE_URL: postgresql://postgres:password@localhost:5432/daniel15k_development
+      DATABASE_URL_TEST: postgresql://postgres:password@localhost:5432/daniel15k_test
       RAILS_ENV: test
       JWT_SECRET: test_jwt_secret
 
@@ -75,7 +72,8 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
+      - name: Set up database
+        run: bundle exec rails db:prepare
+
       - name: Run RSpec test suite
-        run: |
-          bundle exec rails db:prepare
-          bundle exec rspec
+        run: bundle exec rspec
