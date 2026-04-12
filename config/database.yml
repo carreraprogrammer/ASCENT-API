@@ -1,20 +1,17 @@
 default: &default
-  adapter: mysql2
-  encoding: utf8mb4
+  adapter: postgresql
+  encoding: unicode
   pool: <%= ENV.fetch('RAILS_MAX_THREADS', 5) %>
-  host: <%= ENV.fetch('DATABASE_HOST', '127.0.0.1') %>
-  port: <%= ENV.fetch('DATABASE_PORT', 3306) %>
-  database: <%= ENV.fetch('DATABASE_NAME', 'boilerplate_rails_api_' + Rails.env) %>
-  username: <%= ENV.fetch('DATABASE_USERNAME', 'root') %>
-  password: <%= ENV.fetch('DATABASE_PASSWORD', '') %>
-  socket: <%= ENV['DATABASE_SOCKET'] if ENV['DATABASE_SOCKET'].present? %>
+  url: <%= ENV['DATABASE_URL'] %>
 
 development:
   <<: *default
+  url: <%= ENV.fetch('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/daniel15k_development') %>
 
 test:
   <<: *default
-  database: <%= ENV.fetch('DATABASE_NAME_TEST', 'boilerplate_rails_api_test') %>
+  url: <%= ENV.fetch('DATABASE_URL_TEST', 'postgresql://postgres:password@localhost:5432/daniel15k_test') %>
 
 production:
   <<: *default
+  url: <%= ENV['DATABASE_URL'] %>

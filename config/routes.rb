@@ -29,6 +29,14 @@ Rails.application.routes.draw do
           delete :revoke_role
         end
       end
+
+      # Finanzas
+      resources :categories, only: [ :index, :create, :destroy ]
+      resources :transactions, only: [ :index, :create, :update, :destroy ] do
+        collection do
+          get :pending
+        end
+      end
     end
   end
 end

@@ -1,12 +1,15 @@
 version: '3.9'
 services:
   db:
-    image: mariadb:11
+    image: postgres:16
     environment:
-      MARIADB_ROOT_PASSWORD: password
-      MARIADB_DATABASE: boilerplate_rails_api_development
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: daniel15k_development
     ports:
-      - '3306:3306'
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
   web:
     build: .
     command: bundle exec rails server -b 0.0.0.0
@@ -15,11 +18,8 @@ services:
     ports:
       - '3000:3000'
     environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 3306
-      DATABASE_USERNAME: root
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: boilerplate_rails_api_development
+      DATABASE_URL: postgresql://postgres:password@db:5432/daniel15k_development
+      DATABASE_URL_TEST: postgresql://postgres:password@db:5432/daniel15k_test
       JWT_SECRET: changeme_in_production
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -27,3 +27,6 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
       - db
+
+volumes:
+  postgres_data:
