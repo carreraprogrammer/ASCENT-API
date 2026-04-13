@@ -38,8 +38,12 @@ Rails.application.routes.draw do
       resources :transactions, only: [ :index, :create, :update, :destroy ] do
         collection do
           get :pending
+          get :balance
         end
       end
+
+      # Telegram webhook (sin autenticación — Telegram llama directamente)
+      post "telegram/webhook", to: "telegram#webhook"
     end
   end
 end

@@ -18,6 +18,15 @@ module Api
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
+      def balance
+        month = params[:month] || Time.now.month
+        year  = params[:year]  || Time.now.year
+        result = Finanzas::Repositories::TransactionRepository.new.balance(
+          user_id: current_user.id, month: month, year: year
+        )
+        render json: { data: result }
+      end
+
       def create
         transaction = Finanzas::Interactors::CreateTransaction.new.call(
           user_id: current_user.id,
