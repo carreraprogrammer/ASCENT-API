@@ -12,6 +12,33 @@ module Finanzas
         records.map { |r| map_to_entity(r) }
       end
 
+      def balance(user_id:, month:, year:)
+        rows = ::Transaction.where(user_id: user_id, month: month.to_i, year: year.to_i)
+                            .select(:amount, :transaction_type, :status)
+
+        totals = Hash.new(0)
+        rows.each do |r|
+          key = "#{r.transaction_type}_#{r.status}"
+          totals[key] += r.amount
+        end
+
+        income_confirmed  = totals["income_confirmed"]
+        income_projected  = totals["income_projected"]
+        expense_confirmed = totals["expense_confirmed"]
+        expense_pending   = totals["expense_pending"]
+        expense_projected = totals["expense_projected"]
+
+        {
+          income_confirmed:  income_confirmed,
+          income_projected:  income_projected,
+          expense_confirmed: expense_confirmed,
+          expense_pending:   expense_pending,
+          expense_projected: expense_projected,
+          balance_confirmed: income_confirmed - expense_confirmed,
+          balance_total:     (income_confirmed + income_projected) - (expense_confirmed + expense_pending + expense_projected)
+        }
+      end
+
       def find(id)
         record = ::Transaction.find_by(id: id)
         record && map_to_entity(record)
