@@ -12,7 +12,8 @@ module Api
           head :unauthorized and return
         end
 
-        update = params.permit!.to_h
+        body = request.body.read
+        update = JSON.parse(body) rescue {}
 
         if (cq = update.dig("callback_query"))
           handle_callback_query(cq)
@@ -30,11 +31,11 @@ module Api
         data  = cq["data"].to_s
 
         text = case data.split(":").first
-               when "cat"     then "✅ Categoría registrada"
-               when "confirm" then "✅ Confirmado"
-               when "skip"    then "⏭ Pospuesto"
-               else                "✅ Ok"
-               end
+        when "cat"     then "✅ Categoría registrada"
+        when "confirm" then "✅ Confirmado"
+        when "skip"    then "⏭ Pospuesto"
+        else                "✅ Ok"
+        end
 
         answer_callback_query(cq_id, text)
       end
