@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:password@db:5432/daniel15k_development
       DATABASE_URL_TEST: postgresql://postgres:password@db:5432/daniel15k_test
+      RAILS_ENV: production
       JWT_SECRET: changeme_in_production
       RAILS_MASTER_KEY: 017881aeb805df68f7ef63343bc1a811
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
