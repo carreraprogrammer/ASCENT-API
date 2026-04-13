@@ -35,6 +35,28 @@ module Finanzas
         record.destroy!
       end
 
+      # Resuelve category_code / subcategory_code a IDs cuando el llamador
+      # pasa códigos en lugar de IDs. Devuelve attrs limpio (sin los _code).
+      def resolve_codes(attrs, user_id:)
+        if attrs[:category_code] && !attrs[:category_id]
+          record = ::Category.find_by(code: attrs[:category_code], user_id: [ user_id, nil ])
+          attrs[:category_id] = record&.id
+        end
+
+        if attrs[:subcategory_code] && !attrs[:subcategory_id]
+          category_id = attrs[:category_id]
+          subcat = if category_id
+            ::Subcategory.find_by(code: attrs[:subcategory_code], category_id: category_id)
+          else
+            ::Subcategory.find_by(code: attrs[:subcategory_code])
+          end
+          attrs[:subcategory_id] = subcat&.id
+          attrs[:category_id] ||= subcat&.category_id
+        end
+
+        attrs.except(:category_code, :subcategory_code)
+      end
+
       private
 
       def map_to_entity(record)

@@ -1,4 +1,4 @@
-# architecture.md — boilerplate-rails-api
+# architecture.md — daniel15k-api
 
 Este documento es el mapa global del repositorio. Léelo completo antes de leer cualquier spec de dominio.
 Ante cualquier ambigüedad, este archivo tiene precedencia sobre los specs de dominio.
@@ -11,7 +11,7 @@ Ante cualquier ambigüedad, este archivo tiene precedencia sobre los specs de do
 |------|-----------|---------|
 | Framework | Ruby on Rails (API-only) | 8.x |
 | Lenguaje | Ruby | 3.3 |
-| Base de datos | MariaDB | 11.x |
+| Base de datos | PostgreSQL | 16.x |
 | Auth | JWT + Refresh Token Rotation | — |
 | API | REST — JSON:API spec | — |
 | Tests | RSpec + FactoryBot | — |
@@ -23,14 +23,17 @@ Ante cualquier ambigüedad, este archivo tiene precedencia sobre los specs de do
 ## Estructura de directorios
 
 ```
-boilerplate-rails-api/
+daniel15k-api/
 ├── app/
 │   ├── controllers/
 │   │   └── api/
 │   │       └── v1/
 │   │           ├── application_controller.rb
 │   │           ├── auth_controller.rb
+│   │           ├── base_controller.rb
+│   │           ├── categories_controller.rb
 │   │           ├── forms_controller.rb
+│   │           ├── transactions_controller.rb
 │   │           └── users_controller.rb
 │   ├── domains/
 │   │   ├── auth/
@@ -46,6 +49,11 @@ boilerplate-rails-api/
 │   │   │   ├── interactors/
 │   │   │   ├── presenters/
 │   │   │   └── policies/
+│   │   ├── finanzas/
+│   │   │   ├── entities/
+│   │   │   ├── repositories/
+│   │   │   ├── interactors/
+│   │   │   └── presenters/
 │   │   └── forms/
 │   │       ├── entities/
 │   │       ├── repositories/
@@ -57,7 +65,10 @@ boilerplate-rails-api/
 │   │   ├── permission.rb
 │   │   ├── user_role.rb
 │   │   ├── role_permission.rb
-│   │   └── form_schema.rb
+│   │   ├── form_schema.rb
+│   │   ├── category.rb
+│   │   ├── subcategory.rb
+│   │   └── transaction.rb
 │   └── services/
 │       ├── jwt_service.rb
 │       └── event_bus.rb
@@ -197,24 +208,14 @@ ALLOWED_ORIGINS
 
 ---
 
-## Orden de ejecución para el agente
+## Dominios implementados
 
-1. `rails new boilerplate-rails-api --api --database=mysql --skip-test`
-2. Agregar gems al Gemfile (ver lista en cada spec de dominio)
-3. Crear estructura de carpetas `app/domains/` completa con `.gitkeep`
-4. Migraciones en orden: `users` → `roles` → `permissions` → `user_roles` → `role_permissions` → `form_schemas`
-5. Implementar dominio `auth` (leer `auth.md`)
-6. Implementar dominio `authorization` (leer `roles-permissions.md`)
-7. Implementar dominio `forms` (leer `forms.md`)
-8. Implementar `JwtService` y `EventBus`
-9. Crear controladores y rutas
-10. Configurar CORS
-11. Crear factories de RSpec
-12. Escribir specs
-13. Crear seeds
-14. Crear `Dockerfile` y `docker-compose.yml`
-15. Generar Swagger con rswag
-16. Escribir READMEs
+| Dominio | Estado | Spec |
+|---------|--------|------|
+| auth | ✅ completo | auth.md |
+| authorization | ✅ completo | roles-permissions.md |
+| forms | ✅ completo | forms.md |
+| finanzas | ✅ MVP completo | finanzas/plan.md |
 
 ---
 
