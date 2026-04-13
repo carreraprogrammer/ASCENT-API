@@ -25,48 +25,6 @@ module Api
         head :ok
       end
 
-      # GET /api/v1/telegram/debug?data=cat:89:suscripciones
-      # Endpoint temporal de debug — ejecuta el flujo completo y retorna resultado
-      def debug
-        data  = params[:data] || "cat:89:suscripciones"
-        email = ENV["DANIEL15K_EMAIL"].presence || ENV["API_EMAIL"].presence
-        user  = email ? ::User.find_by(email: email) : ::User.order(:id).first
-        token = ENV["TELEGRAM_BOT_TOKEN"]
-        chat  = ENV["TELEGRAM_CHAT_ID"]
-
-        result = { env: { email: email, user_id: user&.id, has_token: token.present?, chat_id: chat } }
-
-        # Probar update_transaction
-        parts = data.split(":")
-        if parts[0] == "cat" && parts.length == 3
-          begin
-            txn = Finanzas::Interactors::UpdateTransaction.new.call(
-              id: parts[1], user_id: user&.id, subcategory_code: parts[2], status: "confirmed"
-            )
-            result[:transaction] = { ok: true, concept: txn.concept }
-          rescue => e
-            result[:transaction] = { ok: false, error: e.message }
-          end
-        end
-
-        # Probar sendMessage
-        if token.present? && chat.present?
-          begin
-            uri  = URI("https://api.telegram.org/bot#{token}/sendMessage")
-            http = Net::HTTP.new(uri.host, uri.port)
-            http.use_ssl = true; http.open_timeout = 5; http.read_timeout = 5
-            req  = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-            req.body = { chat_id: chat.to_i, text: "🔧 Debug OK", parse_mode: "HTML" }.to_json
-            resp = http.request(req)
-            result[:send_message] = { status: resp.code, body: resp.body[0..200] }
-          rescue => e
-            result[:send_message] = { ok: false, error: e.message }
-          end
-        end
-
-        render json: result
-      end
-
       # GET /api/v1/telegram/updates
       # El agente nocturno llama esto en lugar de getUpdates directamente.
       # Devuelve updates no consumidos y los marca como consumidos.
