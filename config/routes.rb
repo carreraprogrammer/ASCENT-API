@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
+  get "health" => "rails/health#show"
 
   # OAuth — fuera del namespace api/v1 porque OmniAuth maneja sus propias rutas
   get "/auth/google_oauth2/callback", to: "api/v1/oauth#google_callback"
