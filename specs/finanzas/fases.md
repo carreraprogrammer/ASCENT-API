@@ -44,38 +44,388 @@ Cada fase es desplegable y funcional de forma independiente. No se avanza a la s
 
 ---
 
-## Fase 2 — Presupuestos y Alertas de Burn Rate
+## Fase 2 — Brain Layer + Presupuestos Inteligentes
 
-**Objetivo**: El agente puede advertirte antes de que te pases del presupuesto, no después.
+**Objetivo**: Introducir el Brain (FastAPI) como capa de inteligencia entre Telegram y la API. El usuario puede planificar su presupuesto de forma interactiva cada quincena, recibir un plan de flujo de caja con recomendaciones basadas en ciencia del comportamiento, y el agente nocturno alerta antes de que se pase del presupuesto — no después.
 
-**Duración estimada**: 4 días
+**Duración estimada**: 1 semana
 
-### Qué se construye
+---
 
-- Migration: `budgets`
-- Interactor `BurnRateAnalysis`: calcula proyección al fin de mes por categoría
-- Endpoints:
-  - `GET /api/v1/budgets?month=&year=`
-  - `POST /api/v1/budgets`
-  - `PATCH /api/v1/budgets/:id`
-  - `GET /api/v1/summary?month=&year=` (versión inicial)
-- Lógica de burn rate:
-  ```
-  gasto_proyectado = (gasto_real / días_transcurridos) × días_del_mes
-  alerta si gasto_proyectado > presupuesto × 0.85
-  ```
-- El resumen nocturno incluye alertas de burn rate por categoría
+### Arquitectura que se establece en esta fase
+
+```
+Telegram
+    ↕
+FastAPI — daniel15k-agents  (Brain)
+    ├── webhook/telegram      ← se mueve desde Rails
+    ├── agents/nightly        ← revision_nocturna.py
+    ├── agents/planning       ← planificacion_quincenal.py
+    └── scheduler             ← reemplaza GitHub Actions + Railway cron
+    ↕
+Rails API — daniel15k-api   (Data)
+    ├── /transactions
+    ├── /budgets              ← nuevo
+    ├── /debts                ← nuevo (adelantado desde Fase 3)
+    ├── /financial_context    ← nuevo (adelantado desde Fase 4)
+    ├── /pending_actions      ← nuevo
+    └── /summary              ← nuevo
+```
+
+**Principio:** Rails no sabe nada de Claude ni de Telegram. El Brain orquesta, Rails persiste.
+
+---
+
+### Parte 1 — Rails API: nuevas tablas y endpoints
+
+#### Migrations
+
+**`budgets`**
+```sql
+id, user_id, category_id,
+month, year,
+amount_limit (integer),        -- en pesos COP
+created_at, updated_at
+UNIQUE (user_id, category_id, month, year)
+```
+
+**`debts`**
+```sql
+id, user_id,
+name, debt_type,               -- credit_card | personal_loan | family | mortgage
+original_amount, current_balance, monthly_payment,
+interest_rate (decimal),       -- % mensual
+status,                        -- active | paid_off | paused
+payoff_date (date),
+created_at, updated_at
+```
+
+**`financial_contexts`**
+```sql
+id, user_id,
+phase,                         -- debt_payoff | emergency_fund | investing | wealth_building
+strategy,                      -- snowball | avalanche (solo en debt_payoff)
+monthly_income_1 (integer),    -- 1a quincena (ej: EMAPTA)
+monthly_income_2 (integer),    -- 2a quincena (ej: 525)
+income_day_1 (integer),        -- día del mes en que cae (ej: 4)
+income_day_2 (integer),        -- día del mes en que cae (ej: 19)
+reward_pct (integer),          -- % del excedente que va a recompensa (default: 5)
+notes (text),
+updated_at
+```
+
+**`pending_actions`**
+```sql
+id, user_id,
+action_type,                   -- budget_planning | debt_setup | onboarding | ...
+current_step (integer),
+total_steps (integer),
+context (jsonb),               -- datos acumulados entre pasos
+status,                        -- waiting_response | in_progress | completed | cancelled | expired
+expires_at (datetime),
+created_at, updated_at
+```
+
+#### Nuevos endpoints Rails
+
+```
+GET  /api/v1/budgets?month=&year=
+POST /api/v1/budgets              (bulk: acepta array)
+PATCH /api/v1/budgets/:id
+
+GET  /api/v1/debts
+POST /api/v1/debts
+PATCH /api/v1/debts/:id
+
+GET  /api/v1/financial_context
+PATCH /api/v1/financial_context
+
+GET  /api/v1/pending_actions/active   ← el Brain consulta si hay flujo abierto
+POST /api/v1/pending_actions
+PATCH /api/v1/pending_actions/:id
+
+GET  /api/v1/summary?month=&year=
+```
+
+#### `GET /api/v1/summary` — respuesta completa
+
+```json
+{
+  "period": { "month": 5, "year": 2026 },
+  "balance": {
+    "income_confirmed": 6414526,
+    "income_projected": 6100000,
+    "expense_confirmed": 3200000,
+    "expense_pending": 86000,
+    "expense_projected": 893000,
+    "balance_confirmed": 3214526,
+    "balance_total": 8835526
+  },
+  "burn_rate": {
+    "days_elapsed": 13,
+    "days_in_month": 31,
+    "categories": [
+      {
+        "category": "Discrecional",
+        "budget": 500000,
+        "spent": 320000,
+        "projected": 762000,
+        "pct": 152,
+        "on_track": false,
+        "alert": "⚠️ Discrecional: vas a $762.000 proyectados vs presupuesto de $500.000"
+      }
+    ]
+  },
+  "debts": {
+    "total_balance": 8500000,
+    "monthly_payments": 1144000,
+    "recommended_payment": { "name": "CrediExpress #238105", "balance": 830000, "strategy": "snowball" }
+  },
+  "financial_context": {
+    "phase": "debt_payoff",
+    "strategy": "snowball",
+    "monthly_surplus_estimate": 800000,
+    "recommended_action": "Abona $760.000 al CrediExpress #238105 — lo liquidas en 1 mes."
+  }
+}
+```
+
+#### Limpieza en Rails
+- Eliminar `TelegramController` (se mueve al Brain)
+- Eliminar `TelegramUpdate` model y migration (el Brain maneja el estado)
+- Eliminar rutas `/telegram/*`
+
+---
+
+### Parte 2 — FastAPI Brain (repositorio `daniel15k-agents`)
+
+#### Estructura del repositorio
+
+```
+daniel15k-agents/
+├── main.py                    ← FastAPI app
+├── routers/
+│   ├── webhook.py             ← POST /webhook/telegram
+│   └── agents.py             ← POST /agents/nightly, /agents/planning
+├── agents/
+│   ├── nightly.py             ← revision_nocturna (migrado)
+│   └── planning.py            ← agente de planificación quincenal
+├── flows/
+│   └── budget_wizard.py       ← máquina de estados del wizard
+├── services/
+│   ├── api_client.py          ← cliente HTTP para Rails API
+│   └── telegram.py            ← enviar mensajes, botones, polls
+├── scheduler.py               ← APScheduler: reemplaza GitHub Actions
+├── requirements.txt
+├── Dockerfile
+└── railway.toml
+```
+
+#### Webhook (`POST /webhook/telegram`)
+
+Lógica de entrada:
+
+```
+recibe update de Telegram
+  → ¿hay PendingAction activo para este usuario?
+      sí → delegar a flows/budget_wizard.py con el mensaje/callback
+      no → flujo normal (registrar gasto, resolver callback de categorización)
+```
+
+#### Scheduler (reemplaza GitHub Actions)
+
+```python
+# APScheduler corriendo dentro del mismo proceso FastAPI
+scheduler.add_job(run_nightly,   cron, hour=4,  minute=0)   # 11pm Colombia
+scheduler.add_job(run_planning,  cron, day=1,   hour=13)    # 8am Colombia día 1
+scheduler.add_job(run_planning,  cron, day=15,  hour=13)    # 8am Colombia día 15
+```
+
+---
+
+### Parte 3 — Flujo de planificación quincenal
+
+#### Escenarios cubiertos
+
+| Escenario | Comportamiento |
+|-----------|---------------|
+| Sin financial_context ni deudas | Wizard completo: onboarding + planificación |
+| Con contexto pero sin presupuestos del mes | Propuesta automática basada en historial |
+| Con presupuestos del mes anterior | Propuesta con ajustes basados en desviaciones reales |
+| Usuario responde "No" | No crea PendingAction. Silencio hasta próxima quincena |
+| Usuario responde "Mañana" | Crea PendingAction expirado en 24h, reintenta al día siguiente |
+| Usuario no responde en 48h | PendingAction expira, se cancela automáticamente |
+| Usuario quiere ajustar una categoría | Vuelve al paso de esa categoría con el valor actual como default |
+| Usuario aprueba todo | Escribe budgets vía Rails API, confirma con resumen |
+
+#### Pasos del wizard `budget_planning`
+
+```
+Step 0 — Trigger
+  Bot: "Hola Daniel 👋 Es quincena — ¿planificamos el presupuesto de mayo?"
+  Botones: [Sí, vamos | No por ahora | Mañana]
+  → "Sí" → crea PendingAction { step: 1 }
+  → "No" → no hace nada
+  → "Mañana" → crea PendingAction { expires_at: +24h, step: 0 }
+
+Step 1 — Confirmar ingresos
+  Bot: "Este mes esperas:
+        • EMAPTA el día 4: $3.335.000
+        • 525 el día 19: ~$3.000.000
+        ¿Es correcto o cambió algo?"
+  Botones: [Correcto ✓ | Cambió algo]
+  → Correcto → step 2
+  → Cambió → pregunta qué cambió (texto libre), actualiza financial_context, step 2
+
+Step 2 — Comprometido (no negociable)
+  Bot: "Tus gastos fijos este mes:
+        • Arriendo: $2.500.000
+        • CrediExpress #290742: $866.000
+        • CrediExpress #238105: $83.000
+        • Moto: $245.000
+        • iPhone papá: $178.000
+        Total comprometido: $3.872.000
+        Estos salen de tu primera quincena (día 4). ¿Ok?"
+  Botones: [Ok ✓ | Hay un cambio]
+  → Ok → step 3
+  → Cambio → recibe texto, actualiza deuda/gasto, recalcula, muestra de nuevo
+
+Step 3 — Deuda recomendada (snowball)
+  Bot: "Con la estrategia snowball, te recomiendo abonar $200.000 extra al
+        CrediExpress #238105 (saldo $630.000). Lo liquidas en 3 meses.
+        ¿Lo incluimos en el plan?"
+  Botones: [Sí, incluirlo | Ajustar monto | No este mes]
+  → Sí → guarda en context, step 4
+  → Ajustar → pide monto, actualiza, step 4
+  → No → anota en context, step 4
+
+Step 4 — Necesario
+  Bot: "Para lo necesario (mercado, transporte, celular, salud) el mes pasado
+        gastaste $687.000. Te propongo presupuestar $700.000.
+        ¿Te parece bien?"
+  Botones: [Bien ✓ | Ajustar]
+  → Bien → guarda, step 5
+  → Ajustar → recibe monto, step 5
+
+Step 5 — Discrecional
+  Bot: "Discrecional (restaurantes, ocio, suscripciones, ropa):
+        Abril gastaste $1.180.000 — estuvo alto.
+        Teniendo en cuenta tus metas, te propongo $600.000.
+        ¿Qué te parece?"
+  Botones: [Perfecto | Necesito más | Puedo menos]
+  → Perfecto → guarda, step 6
+  → Necesito más / Puedo menos → recibe monto o ajuste porcentual, step 6
+
+Step 6 — Recompensa
+  Bot: "Si llegas al final del mes dentro del presupuesto, el 5% del excedente
+        es tuyo para gastar sin culpa. Con este plan serían ~$85.000.
+        ¿Ajustamos el porcentaje?"
+  Botones: [Está bien | Cambiar %]
+  → Está bien → guarda, step 7
+  → Cambiar → recibe %, actualiza, step 7
+
+Step 7 — Plan de flujo de caja
+  Bot genera y envía:
+  "📋 Plan de caja — Mayo 2026
+
+   Quincena 1 (día 4 — EMAPTA $3.335.000):
+   ✓ Pagar arriendo: -$2.500.000
+   ✓ CrediExpress #290742: -$866.000
+   ✓ Abono extra snowball: -$200.000
+   Queda en mano: $769.000
+
+   Quincena 2 (día 19 — 525 ~$3.000.000):
+   ✓ CrediExpress #238105: -$83.000
+   ✓ Moto: -$245.000
+   ✓ iPhone papá: -$178.000
+   ✓ Necesario (mercado, etc.): -$700.000
+   ✓ Discrecional: -$600.000
+   Queda en mano: $1.194.000
+
+   💰 Excedente proyectado: $1.194.000
+   🎁 Tu recompensa si cumples: $59.700 (5%)
+   📈 Resto para metas/ahorro: $1.134.300
+
+   ¿Aprobamos este plan?"
+  Botones: [Aprobar ✓ | Ajustar algo]
+  → Aprobar → step 8
+  → Ajustar → vuelve al paso que el usuario indique
+
+Step 8 — Confirmar y escribir
+  El Brain llama:
+    POST /api/v1/budgets (bulk) con todos los presupuestos del mes
+    PATCH /api/v1/financial_context con reward_pct
+  Bot: "✅ Plan guardado. Esta noche el agente ya sabe con qué comparar.
+        Si ves que algo no cuadra, escríbeme y lo ajustamos."
+  PendingAction → status: completed
+```
+
+#### Lógica de propuesta automática de presupuestos
+
+Cuando el usuario ya tiene historial:
+
+```python
+def proponer_presupuestos(categoria, historial_3_meses, income_total):
+    promedio = mean(historial_3_meses)
+    # Benchmarks por categoría (basados en finanzas personales Colombia)
+    benchmarks = {
+        "committed":     0.50,   # máx 50% del ingreso
+        "necessary":     0.15,
+        "discretionary": 0.10,   # regla 50/30/20 adaptada
+        "investment":    0.10,
+        "social":        0.05,
+    }
+    recomendado = min(promedio * 1.05, income_total * benchmarks[categoria])
+    return round(recomendado / 1000) * 1000  # redondear a miles
+```
+
+---
+
+### Parte 4 — Agente nocturno actualizado
+
+El `revision_nocturna.py` migrado al Brain agrega:
+
+- Consulta `GET /api/v1/summary` al inicio del run
+- Si `burn_rate.categories` tiene alertas → las incluye en el mensaje de Telegram
+- Si hay `PendingAction` expirado → lo marca como `cancelled` vía API
+- Si es día 1 o día 15 → no lanza planning (ya lo hace el scheduler); solo menciona en el resumen si el plan del mes está aprobado o no
+
+---
 
 ### Criterios de aceptación
 
-- [ ] `POST /api/v1/budgets` crea presupuesto para una categoría y mes/año
-- [ ] `GET /api/v1/summary` incluye para cada categoría: `budget`, `spent`, `projected`, `pct`, `on_track`
-- [ ] Si `projected > budget × 0.85`, el campo `burn_rate_alert` contiene un mensaje en español con los números concretos
-- [ ] Si `projected > budget`, `on_track` es `false`
-- [ ] El mensaje de Telegram nocturno menciona explícitamente las categorías en alerta con los montos proyectados
-- [ ] El cálculo de días usa la fecha actual en hora Colombia (UTC-5), no UTC
-- [ ] `GET /api/v1/summary` retorna `200` aunque no haya presupuestos definidos (muestra solo el gasto, sin proyección)
-- [ ] Tests cubren: sin presupuesto, dentro del presupuesto, en zona de alerta (85-100%), sobre presupuesto (>100%)
+#### Rails API
+- [ ] `POST /api/v1/budgets` acepta array y crea/upserta todos los presupuestos del mes
+- [ ] `GET /api/v1/summary` retorna el JSON completo con `balance`, `burn_rate`, `debts`, `financial_context`
+- [ ] Burn rate usa hora Colombia (UTC-5), no UTC
+- [ ] `burn_rate_alert` aparece si `projected > budget × 0.85`
+- [ ] `GET /api/v1/summary` retorna `200` aunque no haya presupuestos (omite sección burn_rate)
+- [ ] `GET /api/v1/pending_actions/active` retorna el PendingAction activo o `null`
+- [ ] `PATCH /api/v1/pending_actions/:id` actualiza `step`, `context`, `status`
+- [ ] `PATCH /api/v1/debts/:id` pasa a `paid_off` automáticamente si `current_balance <= 0`
+- [ ] `TelegramController` eliminado de Rails; rutas `/telegram/*` eliminadas
+- [ ] Tests cubren: sin presupuesto, en alerta (85-100%), sobre presupuesto, PendingAction expirado
+
+#### FastAPI Brain
+- [ ] `POST /webhook/telegram` recibe callbacks y mensajes; delega a wizard si hay PendingAction activo
+- [ ] Scheduler corre `nightly` a las 11pm Colombia y `planning` el día 1 y 15 a las 8am
+- [ ] El webhook responde a Telegram en < 2 segundos (answerCallbackQuery inmediato)
+- [ ] Si no hay PendingAction activo, el webhook funciona exactamente igual que el comportamiento actual
+
+#### Wizard de planificación
+- [ ] Escenario sin financial_context: onboarding antes del step 1
+- [ ] Escenario "Mañana": PendingAction con `expires_at = now + 24h`; al día siguiente reinicia desde step 0
+- [ ] Escenario sin respuesta 48h: cron marca PendingAction como `expired`
+- [ ] Escenario ajuste en step 5 (discrecional): recalcula el plan de caja en step 7 automáticamente
+- [ ] Step 8 escribe todos los budgets vía Rails API en una sola llamada bulk
+- [ ] El plan de flujo de caja en step 7 asigna cada gasto a la quincena correcta según `income_day_1` e `income_day_2`
+- [ ] Si el excedente proyectado es negativo, step 7 lo muestra en rojo con la categoría que más impacta
+- [ ] La recompensa nunca es más del 10% del excedente (cap de seguridad)
+
+#### Agente nocturno migrado
+- [ ] Corre desde Railway (Brain), no desde GitHub Actions
+- [ ] Incluye alertas de burn rate en el mensaje cuando aplica
+- [ ] Menciona si el plan quincenal está aprobado o falta aprobar al inicio del mes
 
 ---
 
