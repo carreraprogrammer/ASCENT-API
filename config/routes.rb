@@ -42,8 +42,9 @@ Rails.application.routes.draw do
         end
       end
 
-      # Telegram webhook (sin autenticación — Telegram llama directamente)
+      # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"
+      get  "telegram/updates", to: "telegram#updates"
     end
   end
 end
