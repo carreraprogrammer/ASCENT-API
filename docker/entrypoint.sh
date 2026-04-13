@@ -1,4 +1,11 @@
 #!/bin/bash
 set -e
-bundle exec rails db:prepare
-exec "$@"
+
+echo "==> Running migrations..."
+bundle exec rails db:migrate
+
+echo "==> Running seeds..."
+bundle exec rails db:seed
+
+echo "==> Starting Puma..."
+exec bundle exec puma -C config/puma.rb
