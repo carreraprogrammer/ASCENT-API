@@ -81,7 +81,8 @@ module Api
       end
 
       def update_transaction(id, attrs)
-        user = ::User.first
+        email = ENV["DANIEL15K_EMAIL"].presence || ENV["API_EMAIL"].presence
+        user  = email ? ::User.find_by(email: email) : ::User.order(:id).first
         return nil unless user
         transaction = Finanzas::Interactors::UpdateTransaction.new.call(
           id: id, user_id: user.id, **attrs
