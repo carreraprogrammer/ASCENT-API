@@ -174,5 +174,3 @@ forms.each do |attrs|
   end
 end
 puts "Seeded: #{FormSchema.count} form schemas"
-
-puts "Daniel seed complete — #{Debt.where(user: daniel).count} deudas, #{RecurringObligation.where(user: daniel).count} gastos fijos"
