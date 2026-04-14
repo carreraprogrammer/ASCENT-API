@@ -31,15 +31,19 @@ module Finanzas
 
       def map_to_entity(record)
         {
-          id:          record.id,
-          user_id:     record.user_id,
-          category_id: record.category_id,
-          name:        record.name,
-          amount:      record.amount,
-          due_day:     record.due_day,
-          active:      record.active,
-          created_at:  record.created_at,
-          updated_at:  record.updated_at
+          id:               record.id,
+          user_id:          record.user_id,
+          category_id:      record.category_id,
+          name:             record.name,
+          amount:           record.amount,
+          due_day:          record.due_day,
+          active:           record.active,
+          notes:            record.notes,
+          ai_analysis:      record.ai_analysis || [],
+          allocatable_type: record.allocatable_type,
+          allocatable_id:   record.allocatable_id,
+          created_at:       record.created_at,
+          updated_at:       record.updated_at
         }
       end
     end
