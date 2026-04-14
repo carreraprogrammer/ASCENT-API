@@ -5,5 +5,12 @@ module Finanzas
     class TransactionNotFound < StandardError; end
     class InvalidTransaction < StandardError; end
     class InvalidCategory < StandardError; end
+    class DuplicateTransaction < StandardError
+      attr_reader :existing_id
+      def initialize(msg = nil, existing_id: nil)
+        @existing_id = existing_id
+        super(msg)
+      end
+    end
   end
 end
