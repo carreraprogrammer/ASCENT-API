@@ -49,4 +49,40 @@ RSpec.describe Finanzas::Interactors::CreateTransaction do
     result = interactor.call(user_id: user.id, date: "11/04", concept: "Prueba", amount: 1_000)
     expect(result.transaction_type).to eq("expense")
   end
+
+  context "deduplication for automated sources" do
+    let(:attrs) do
+      { user_id: user.id, date: "13/04/2026", concept: "Libra de café", amount: 18_000,
+        product: "nequi", source: "telegram" }
+    end
+
+    before { interactor.call(**attrs) }
+
+    it "raises DuplicateTransaction when telegram source repeats same day+amount+product" do
+      expect {
+        interactor.call(**attrs.merge(concept: "cafe (duplicado)"))
+      }.to raise_error(Finanzas::Errors::DuplicateTransaction)
+    end
+
+    it "includes the existing_id in the raised error" do
+      first = Transaction.last
+      expect {
+        interactor.call(**attrs.merge(concept: "cafe (duplicado)"))
+      }.to raise_error(Finanzas::Errors::DuplicateTransaction) do |err|
+        expect(err.existing_id).to eq(first.id)
+      end
+    end
+
+    it "allows the same amount on a different product (nequi vs debito)" do
+      expect {
+        interactor.call(**attrs.merge(product: "debito", concept: "Otro café"))
+      }.not_to raise_error
+    end
+
+    it "allows duplicate when source is manual" do
+      expect {
+        interactor.call(**attrs.merge(source: "manual", concept: "Revisión manual"))
+      }.not_to raise_error
+    end
+  end
 end

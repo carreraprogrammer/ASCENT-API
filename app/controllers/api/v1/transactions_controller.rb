@@ -33,6 +33,11 @@ module Api
           **transaction_create_params
         )
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction), status: :created
+      rescue Finanzas::Errors::DuplicateTransaction => e
+        render json: {
+          errors: [ { status: "409", title: "Duplicate Transaction", detail: e.message } ],
+          existing_id: e.existing_id
+        }, status: :conflict
       rescue Finanzas::Errors::InvalidTransaction => e
         render json: { errors: [ { status: "422", title: "Invalid Transaction", detail: e.message } ] },
                status: :unprocessable_entity

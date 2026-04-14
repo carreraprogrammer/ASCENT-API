@@ -44,6 +44,19 @@ module Finanzas
         record && map_to_entity(record)
       end
 
+      # Returns an existing transaction entity if one with the same
+      # (user_id, date, amount, product, transaction_type) already exists.
+      def find_duplicate(user_id:, date:, amount:, product:, transaction_type:)
+        record = ::Transaction.find_by(
+          user_id: user_id,
+          date: date,
+          amount: amount.to_i,
+          product: product,
+          transaction_type: transaction_type
+        )
+        record && map_to_entity(record)
+      end
+
       def create(attrs)
         record = ::Transaction.create!(attrs)
         map_to_entity(record)
