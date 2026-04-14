@@ -201,9 +201,9 @@ DEBTS_DATA = [
     original_amount: 10_000_000,
     current_balance: 7_548_886,
     monthly_payment: 324_000,
-    interest_rate: 2.1,
+    interest_rate: 0.0,
     status: "active",
-    notes: "iPhone 17 Pro Max — cuota sin intereses",
+    notes: "iPhone 17 Pro Max — Plan A facturado a $324k/mes (debería ser ~$230k). En disputa con la operadora. 24 cuotas.",
   },
   {
     name: "Línea Crédito Plus (moto)",
@@ -224,16 +224,6 @@ DEBTS_DATA = [
     interest_rate: 1.85,
     status: "active",
     notes: nil,
-  },
-  {
-    name: "TC Davivienda #1322",
-    debt_type: "credit_card",
-    original_amount: 500_000,
-    current_balance: 79_557,
-    monthly_payment: 0,
-    interest_rate: 0.0,
-    status: "disputed",
-    notes: "En disputa legal — no pagar hasta resolver",
   },
   {
     name: "iPhone papá",
