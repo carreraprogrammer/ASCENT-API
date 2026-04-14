@@ -44,6 +44,8 @@ module Finanzas
           interest_rate:    record.interest_rate.to_f,
           status:           record.status,
           payoff_date:      record.payoff_date,
+          notes:            record.notes,
+          ai_analysis:      record.ai_analysis || [],
           created_at:       record.created_at,
           updated_at:       record.updated_at
         }

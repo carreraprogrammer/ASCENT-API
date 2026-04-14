@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20) do
+ActiveRecord::Schema[8.0].define(version: 21) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -54,6 +54,8 @@ ActiveRecord::Schema[8.0].define(version: 20) do
     t.date "payoff_date"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "notes"
+    t.jsonb "ai_analysis", default: [], null: false
     t.index ["user_id", "status"], name: "index_debts_on_user_id_and_status"
     t.index ["user_id"], name: "index_debts_on_user_id"
   end
@@ -122,13 +124,18 @@ ActiveRecord::Schema[8.0].define(version: 20) do
 
   create_table "recurring_obligations", force: :cascade do |t|
     t.bigint "user_id", null: false
-    t.bigint "category_id", null: false
+    t.bigint "category_id"
     t.string "name", null: false
     t.integer "amount", default: 0, null: false
-    t.integer "due_day", null: false
+    t.integer "due_day"
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "allocatable_type"
+    t.bigint "allocatable_id"
+    t.text "notes"
+    t.jsonb "ai_analysis", default: [], null: false
+    t.index ["allocatable_type", "allocatable_id"], name: "index_recurring_obligations_on_allocatable"
     t.index ["category_id"], name: "index_recurring_obligations_on_category_id"
     t.index ["user_id", "active"], name: "index_recurring_obligations_on_user_id_and_active"
     t.index ["user_id"], name: "index_recurring_obligations_on_user_id"

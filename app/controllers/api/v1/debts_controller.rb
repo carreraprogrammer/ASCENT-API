@@ -37,14 +37,14 @@ module Api
       def allowed_create_params
         params.permit(
           :name, :debt_type, :original_amount, :current_balance,
-          :monthly_payment, :interest_rate, :status, :payoff_date
+          :monthly_payment, :interest_rate, :status, :payoff_date, :notes
         ).to_h.symbolize_keys
       end
 
       def allowed_update_params
         params.permit(
           :name, :current_balance, :monthly_payment,
-          :interest_rate, :status, :payoff_date
+          :interest_rate, :status, :payoff_date, :notes
         ).to_h.symbolize_keys
       end
     end

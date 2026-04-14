@@ -38,7 +38,10 @@ module Api
       end
 
       def allowed_params
-        params.permit(:name, :amount, :due_day, :category_id, :active).to_h.symbolize_keys
+        params.permit(
+          :name, :amount, :due_day, :category_id, :active,
+          :notes, :allocatable_type, :allocatable_id
+        ).to_h.symbolize_keys
       end
     end
   end
