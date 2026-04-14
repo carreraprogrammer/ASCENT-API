@@ -1,0 +1,159 @@
+module Api
+  module V1
+    class SummaryController < Api::V1::BaseController
+      skip_after_action :verify_authorized
+      skip_after_action :verify_policy_scoped
+
+      COLOMBIA_OFFSET = -5 * 3600  # UTC-5
+
+      # GET /api/v1/summary?month=&year=
+      def show
+        now_col = Time.now.utc + COLOMBIA_OFFSET
+        month   = (params[:month] || now_col.month).to_i
+        year    = (params[:year]  || now_col.year).to_i
+        uid     = current_user.id
+
+        balance  = txn_repo.balance(user_id: uid, month: month, year: year)
+        budgets  = budget_repo.for_month(user_id: uid, month: month, year: year)
+        debts    = debt_repo.all_for_user(uid)
+        ctx      = ctx_repo.find_by_user(uid)
+
+        render json: {
+          period:            { month: month, year: year },
+          balance:           balance,
+          burn_rate:         build_burn_rate(uid, month, year, budgets, now_col),
+          debts:             build_debts_summary(debts),
+          financial_context: build_context_summary(ctx, balance, debts)
+        }
+      end
+
+      private
+
+      # ── Burn rate ────────────────────────────────────────────────────────────
+
+      def build_burn_rate(user_id, month, year, budgets, now_col)
+        return nil if budgets.empty?
+
+        days_in_month = Date.new(year, month, -1).day
+        days_elapsed  = [now_col.day, days_in_month].min
+
+        # Gastos reales por categoría (confirmados + pending)
+        spent_by_cat = ::Transaction
+          .where(user_id: user_id, month: month, year: year, transaction_type: "expense")
+          .where(status: %w[confirmed pending])
+          .group(:category_id)
+          .sum(:amount)
+
+        categories = budgets.map do |b|
+          spent     = spent_by_cat[b[:category_id]].to_i
+          budget    = b[:amount_limit]
+          projected = days_elapsed > 0 ? (spent.to_f / days_elapsed * days_in_month).round : 0
+          pct       = budget > 0 ? (projected.to_f / budget * 100).round : 0
+          on_track  = projected <= budget
+          alert     = !on_track ? "⚠️ #{b[:category_name]}: vas a #{format_cop(projected)} proyectados vs presupuesto de #{format_cop(budget)}" : nil
+
+          {
+            category:    b[:category_name],
+            category_id: b[:category_id],
+            budget:      budget,
+            spent:       spent,
+            projected:   projected,
+            pct:         pct,
+            on_track:    on_track,
+            alert:       alert
+          }
+        end
+
+        {
+          days_elapsed:  days_elapsed,
+          days_in_month: days_in_month,
+          categories:    categories
+        }
+      end
+
+      # ── Debts summary ─────────────────────────────────────────────────────────
+
+      def build_debts_summary(debts)
+        active = debts.select { |d| d[:status] == "active" }
+        return nil if active.empty?
+
+        total_balance    = active.sum { |d| d[:current_balance] }
+        monthly_payments = active.sum { |d| d[:monthly_payment] }
+
+        # Snowball: menor saldo primero
+        recommended = active.min_by { |d| d[:current_balance] }
+
+        {
+          total_balance:       total_balance,
+          monthly_payments:    monthly_payments,
+          recommended_payment: recommended ? {
+            id:       recommended[:id],
+            name:     recommended[:name],
+            balance:  recommended[:current_balance],
+            strategy: "snowball"
+          } : nil
+        }
+      end
+
+      # ── Financial context summary ─────────────────────────────────────────────
+
+      def build_context_summary(ctx, balance, debts)
+        return nil unless ctx
+
+        income = ctx[:monthly_income_1].to_i + ctx[:monthly_income_2].to_i
+        expenses_est = debts.select { |d| d[:status] == "active" }.sum { |d| d[:monthly_payment] }.to_i
+        surplus = income - expenses_est
+
+        active_debts = debts.select { |d| d[:status] == "active" }
+        recommended_action = build_recommended_action(ctx, active_debts, surplus)
+
+        {
+          phase:                    ctx[:phase],
+          strategy:                 ctx[:strategy],
+          monthly_surplus_estimate: surplus,
+          recommended_action:       recommended_action
+        }
+      end
+
+      def build_recommended_action(ctx, active_debts, surplus)
+        return nil if active_debts.empty?
+
+        case ctx[:phase]
+        when "debt_payoff"
+          target = ctx[:strategy] == "snowball" ?
+            active_debts.min_by { |d| d[:current_balance] } :
+            active_debts.max_by { |d| d[:interest_rate] }
+          return nil unless target
+
+          abono = [surplus, target[:current_balance]].min
+          months = abono > 0 ? (target[:current_balance].to_f / abono).ceil : "?"
+          "Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
+        else
+          nil
+        end
+      end
+
+      def format_cop(amount)
+        "$#{amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1.').reverse}"
+      end
+
+      # ── Repos ─────────────────────────────────────────────────────────────────
+
+      def txn_repo
+        @txn_repo ||= Finanzas::Repositories::TransactionRepository.new
+      end
+
+      def budget_repo
+        @budget_repo ||= Finanzas::Repositories::BudgetRepository.new
+      end
+
+      def debt_repo
+        @debt_repo ||= Finanzas::Repositories::DebtRepository.new
+      end
+
+      def ctx_repo
+        @ctx_repo ||= Finanzas::Repositories::FinancialContextRepository.new
+      end
+    end
+  end
+end
