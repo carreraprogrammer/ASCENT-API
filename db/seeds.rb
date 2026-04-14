@@ -193,7 +193,7 @@ DEBTS_DATA = [
     monthly_payment: 866_000,
     interest_rate: 1.85,
     status: "active",
-    notes: "App Davivienda — débito automático",
+    notes: "Crédito móvil",
   },
   {
     name: "TC LifeMiles #7248",
@@ -203,7 +203,7 @@ DEBTS_DATA = [
     monthly_payment: 324_000,
     interest_rate: 2.1,
     status: "active",
-    notes: "iPhone 17 Pro Max",
+    notes: "iPhone 17 Pro Max — cuota sin intereses",
   },
   {
     name: "Línea Crédito Plus (moto)",
@@ -213,17 +213,7 @@ DEBTS_DATA = [
     monthly_payment: 245_433,
     interest_rate: 1.5,
     status: "active",
-    notes: nil,
-  },
-  {
-    name: "Crédito moto",
-    debt_type: "personal_loan",
-    original_amount: 3_500_000,
-    current_balance: 2_786_130,
-    monthly_payment: 0,
-    interest_rate: 0.0,
-    status: "active",
-    notes: nil,
+    notes: "Cascos, matrícula, protecciones",
   },
   {
     name: "CrediExpress #238105",
@@ -243,7 +233,7 @@ DEBTS_DATA = [
     monthly_payment: 0,
     interest_rate: 0.0,
     status: "disputed",
-    notes: "En disputa legal",
+    notes: "En disputa legal — no pagar hasta resolver",
   },
   {
     name: "iPhone papá",
@@ -253,7 +243,7 @@ DEBTS_DATA = [
     monthly_payment: 178_000,
     interest_rate: 0.0,
     status: "active",
-    notes: "Hasta dic-2026",
+    notes: "Hasta diciembre 2026",
   },
 ].freeze
 
