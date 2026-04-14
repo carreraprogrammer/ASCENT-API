@@ -26,12 +26,7 @@ module Api
       end
 
       def allowed_params
-        params.permit(
-          :phase, :strategy,
-          :monthly_income_1, :monthly_income_2,
-          :income_day_1, :income_day_2,
-          :monthly_rent, :reward_pct, :notes
-        ).to_h.symbolize_keys
+        params.permit(:phase, :strategy, :reward_pct, :notes).to_h.symbolize_keys
       end
     end
   end
