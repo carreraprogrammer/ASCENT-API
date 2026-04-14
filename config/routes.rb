@@ -46,7 +46,7 @@ Rails.application.routes.draw do
       get   "financial_context", to: "financial_contexts#show"
       patch "financial_context", to: "financial_contexts#update"
 
-      resources :debts,                only: [ :index, :create, :update ]
+      resources :debts,                only: [ :index, :create, :update, :destroy ]
       resources :budgets,              only: [ :index, :create, :update ]
       resources :income_sources,       only: [ :index, :create, :update, :destroy ]
       resources :recurring_obligations, only: [ :index, :create, :update, :destroy ]

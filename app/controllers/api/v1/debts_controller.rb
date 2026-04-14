@@ -18,6 +18,16 @@ module Api
         render_unprocessable(e.message)
       end
 
+      # DELETE /api/v1/debts/:id
+      def destroy
+        debt = repo.find(params[:id])
+        raise ActiveRecord::RecordNotFound unless debt
+        ::Debt.find(params[:id]).destroy!
+        head :no_content
+      rescue ActiveRecord::RecordNotFound
+        render json: { errors: [ { status: "404", detail: "Debt not found" } ] }, status: :not_found
+      end
+
       # PATCH /api/v1/debts/:id
       def update
         debt = repo.update(params[:id], allowed_update_params)
