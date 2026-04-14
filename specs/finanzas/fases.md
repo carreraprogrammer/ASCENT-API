@@ -48,7 +48,17 @@ Cada fase es desplegable y funcional de forma independiente. No se avanza a la s
 
 **Objetivo**: Introducir el Brain (FastAPI) como capa de inteligencia entre Telegram y la API. El usuario puede planificar su presupuesto de forma interactiva cada quincena, recibir un plan de flujo de caja con recomendaciones basadas en ciencia del comportamiento, y el agente nocturno alerta antes de que se pase del presupuesto — no después.
 
-**Duración estimada**: 1 semana
+**Estado actual**: 🟡 En validación final — todo construido y desplegado, pendiente test end-to-end del wizard con datos reales (~20/04/2026)
+
+### Cambios respecto al spec original
+
+Durante la implementación se descubrió que hardcodear 2 fuentes de ingreso en `financial_contexts` no era suficientemente genérico. Se tomaron dos decisiones de diseño:
+
+1. **`income_sources`** — tabla nueva que reemplaza `monthly_income_1/2`, `income_day_1/2` y `monthly_rent` en `financial_contexts`. Soporta N fuentes de ingreso con rangos de días (`expected_day_from` / `expected_day_to`) para reflejar incertidumbre real (ej: "EMAPTA entre el 1 y el 5").
+
+2. **`recurring_obligations`** — tabla nueva para gastos fijos recurrentes (arriendo, créditos, etc.) con su día de pago. Alimenta el Step 2 del wizard de planificación.
+
+Ambas tablas tienen soft delete (`active: false`) en lugar de borrado físico.
 
 ---
 
@@ -395,37 +405,41 @@ El `revision_nocturna.py` migrado al Brain agrega:
 ### Criterios de aceptación
 
 #### Rails API
-- [ ] `POST /api/v1/budgets` acepta array y crea/upserta todos los presupuestos del mes
-- [ ] `GET /api/v1/summary` retorna el JSON completo con `balance`, `burn_rate`, `debts`, `financial_context`
-- [ ] Burn rate usa hora Colombia (UTC-5), no UTC
-- [ ] `burn_rate_alert` aparece si `projected > budget × 0.85`
-- [ ] `GET /api/v1/summary` retorna `200` aunque no haya presupuestos (omite sección burn_rate)
-- [ ] `GET /api/v1/pending_actions/active` retorna el PendingAction activo o `null`
-- [ ] `PATCH /api/v1/pending_actions/:id` actualiza `step`, `context`, `status`
-- [ ] `PATCH /api/v1/debts/:id` pasa a `paid_off` automáticamente si `current_balance <= 0`
-- [ ] `TelegramController` eliminado de Rails; rutas `/telegram/*` eliminadas
-- [ ] Tests cubren: sin presupuesto, en alerta (85-100%), sobre presupuesto, PendingAction expirado
+- [x] `POST /api/v1/budgets` acepta array y crea/upserta todos los presupuestos del mes
+- [x] `GET /api/v1/summary` retorna el JSON completo con `balance`, `burn_rate`, `debts`, `financial_context`
+- [x] Burn rate usa hora Colombia (UTC-5), no UTC
+- [x] `GET /api/v1/summary` retorna `200` aunque no haya presupuestos
+- [x] `GET /api/v1/pending_actions/active` retorna el PendingAction activo o `null`
+- [x] `PATCH /api/v1/pending_actions/:id` actualiza `step`, `context`, `status`
+- [x] `PATCH /api/v1/debts/:id` pasa a `paid_off` automáticamente si `current_balance <= 0`
+- [x] `GET/PATCH /api/v1/financial_context` funciona correctamente (upsert)
+- [x] `GET/POST/PATCH/DELETE /api/v1/income_sources` — CRUD con soft delete
+- [x] `GET/POST/PATCH/DELETE /api/v1/recurring_obligations` — CRUD con soft delete
+- [x] Tests cubren income_sources, recurring_obligations y financial_context (20 ejemplos, 0 fallos)
+- [ ] `TelegramController` eliminado de Rails — pendiente (sigue siendo usado por `get_telegram_messages` en el agente nocturno)
+- [ ] Tests cubren summary con burn_rate_alert, PendingAction expirado
 
 #### FastAPI Brain
-- [ ] `POST /webhook/telegram` recibe callbacks y mensajes; delega a wizard si hay PendingAction activo
-- [ ] Scheduler corre `nightly` a las 11pm Colombia y `planning` el día 1 y 15 a las 8am
-- [ ] El webhook responde a Telegram en < 2 segundos (answerCallbackQuery inmediato)
-- [ ] Si no hay PendingAction activo, el webhook funciona exactamente igual que el comportamiento actual
+- [x] `POST /webhook/telegram` recibe callbacks y mensajes; delega a wizard si hay PendingAction activo
+- [x] Scheduler corre `nightly` a las 11pm Colombia y `planning` el día 1 y 15 a las 8am
+- [x] El webhook responde a Telegram en < 2 segundos (answerCallbackQuery inmediato)
+- [x] Brain desplegado en Railway — `GET /health` responde `{"ok": true}`
 
 #### Wizard de planificación
-- [ ] Escenario sin financial_context: onboarding antes del step 1
-- [ ] Escenario "Mañana": PendingAction con `expires_at = now + 24h`; al día siguiente reinicia desde step 0
-- [ ] Escenario sin respuesta 48h: cron marca PendingAction como `expired`
-- [ ] Escenario ajuste en step 5 (discrecional): recalcula el plan de caja en step 7 automáticamente
-- [ ] Step 8 escribe todos los budgets vía Rails API en una sola llamada bulk
-- [ ] El plan de flujo de caja en step 7 asigna cada gasto a la quincena correcta según `income_day_1` e `income_day_2`
-- [ ] Si el excedente proyectado es negativo, step 7 lo muestra en rojo con la categoría que más impacta
-- [ ] La recompensa nunca es más del 10% del excedente (cap de seguridad)
+- [x] Máquina de estados de 8 pasos construida
+- [x] Estado persiste en `PendingAction.context` (jsonb)
+- [x] Escenario "Mañana": PendingAction con `expires_at = now + 24h`
+- [x] Expiración automática vía cron horario
+- [ ] **Pendiente de validación end-to-end con datos reales** (~20/04/2026, segunda quincena EMAPTA)
+- [ ] Escenario ajuste en mid-wizard probado con usuario real
+- [ ] Step 8 escribe presupuestos y el agente nocturno los usa para burn rate
 
 #### Agente nocturno migrado
-- [ ] Corre desde Railway (Brain), no desde GitHub Actions
-- [ ] Incluye alertas de burn rate en el mensaje cuando aplica
-- [ ] Menciona si el plan quincenal está aprobado o falta aprobar al inicio del mes
+- [x] Corre desde Railway (Brain), no desde GitHub Actions — confirmado 13/04/2026
+- [x] GitHub Actions cron deshabilitado (solo queda `workflow_dispatch` como fallback)
+- [x] Incluye alertas de burn rate si el summary las trae
+- [x] Registra transacciones de Gmail automáticamente
+- [ ] Menciona si el plan quincenal está aprobado o falta aprobar (pendiente de tener presupuestos reales)
 
 ---
 

@@ -189,6 +189,59 @@ POST /api/v1/categories        # el agente puede crear categorías nuevas
 
 ---
 
+### Fuentes de ingreso
+
+```http
+GET  /api/v1/income_sources
+POST /api/v1/income_sources
+
+{
+  "name": "EMAPTA Q1",
+  "expected_day_from": 1,
+  "expected_day_to": 5,
+  "expected_amount": 3335000,
+  "is_variable": false
+}
+```
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | string | Nombre descriptivo |
+| `expected_day_from` | integer 1-31 | Día más temprano en que puede llegar |
+| `expected_day_to` | integer 1-31 | Día más tardío (debe ser >= from) |
+| `expected_amount` | integer | Monto esperado en pesos |
+| `is_variable` | boolean | Si el monto varía (ej: freelance) |
+
+```http
+PATCH  /api/v1/income_sources/:id
+DELETE /api/v1/income_sources/:id   # soft-delete (active=false)
+```
+
+---
+
+### Obligaciones recurrentes
+
+Gastos fijos que se repiten todos los meses (arriendo, créditos, etc.).
+
+```http
+GET  /api/v1/recurring_obligations
+POST /api/v1/recurring_obligations
+
+{
+  "name": "Arriendo",
+  "amount": 2500000,
+  "due_day": 5,
+  "category_id": 3
+}
+```
+
+```http
+PATCH  /api/v1/recurring_obligations/:id
+DELETE /api/v1/recurring_obligations/:id   # soft-delete (active=false)
+```
+
+---
+
 ### Presupuestos
 
 ```http
@@ -216,24 +269,26 @@ POST /api/v1/debts
 }
 ```
 
+`PATCH /api/v1/debts/:id` — si `current_balance` llega a 0, pasa a `paid_off` automáticamente.
+
 ---
 
-### Metas de ahorro (sinking funds)
+### Acciones pendientes (flujos interactivos)
 
 ```http
-GET  /api/v1/savings_goals
-POST /api/v1/savings_goals
+GET   /api/v1/pending_actions/active     # devuelve el PendingAction activo o null
+POST  /api/v1/pending_actions
+PATCH /api/v1/pending_actions/:id
 
 {
-  "name": "Matrícula moto 2027",
-  "goal_type": "sinking_fund",
-  "target_amount": 800000,
-  "target_date": "2027-01-15",
-  "priority": 1
+  "action_type": "budget_planning",
+  "current_step": 0,
+  "total_steps": 8,
+  "context": {},
+  "status": "waiting_response",
+  "expires_at": "2026-04-22T13:00:00Z"
 }
 ```
-
-El campo `monthly_contribution_needed` se calcula automáticamente.
 
 ---
 
