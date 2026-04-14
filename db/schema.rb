@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 17) do
+ActiveRecord::Schema[8.0].define(version: 20) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -62,11 +62,6 @@ ActiveRecord::Schema[8.0].define(version: 17) do
     t.bigint "user_id", null: false
     t.string "phase", default: "debt_payoff", null: false
     t.string "strategy", default: "snowball", null: false
-    t.integer "monthly_income_1", default: 0, null: false
-    t.integer "monthly_income_2", default: 0, null: false
-    t.integer "income_day_1", default: 4, null: false
-    t.integer "income_day_2", default: 19, null: false
-    t.integer "monthly_rent", default: 0, null: false
     t.integer "reward_pct", default: 5, null: false
     t.text "notes"
     t.datetime "created_at", null: false
@@ -86,6 +81,20 @@ ActiveRecord::Schema[8.0].define(version: 17) do
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_form_schemas_on_active"
     t.index ["slug"], name: "index_form_schemas_on_slug", unique: true
+  end
+
+  create_table "income_sources", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.integer "expected_day_from", null: false
+    t.integer "expected_day_to", null: false
+    t.integer "expected_amount", default: 0, null: false
+    t.boolean "is_variable", default: false, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "active"], name: "index_income_sources_on_user_id_and_active"
+    t.index ["user_id"], name: "index_income_sources_on_user_id"
   end
 
   create_table "pending_actions", force: :cascade do |t|
@@ -109,6 +118,20 @@ ActiveRecord::Schema[8.0].define(version: 17) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["resource", "action"], name: "index_permissions_on_resource_and_action", unique: true
+  end
+
+  create_table "recurring_obligations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "category_id", null: false
+    t.string "name", null: false
+    t.integer "amount", default: 0, null: false
+    t.integer "due_day", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_recurring_obligations_on_category_id"
+    t.index ["user_id", "active"], name: "index_recurring_obligations_on_user_id_and_active"
+    t.index ["user_id"], name: "index_recurring_obligations_on_user_id"
   end
 
   create_table "role_permissions", force: :cascade do |t|
@@ -212,7 +235,10 @@ ActiveRecord::Schema[8.0].define(version: 17) do
   add_foreign_key "categories", "users"
   add_foreign_key "debts", "users"
   add_foreign_key "financial_contexts", "users"
+  add_foreign_key "income_sources", "users"
   add_foreign_key "pending_actions", "users"
+  add_foreign_key "recurring_obligations", "categories"
+  add_foreign_key "recurring_obligations", "users"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
   add_foreign_key "subcategories", "categories"
