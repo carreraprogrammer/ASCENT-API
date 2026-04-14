@@ -1,0 +1,67 @@
+module Api
+  module V1
+    class BudgetsController < Api::V1::BaseController
+      skip_after_action :verify_authorized
+      skip_after_action :verify_policy_scoped
+
+      # GET /api/v1/budgets?month=&year=
+      def index
+        month = params[:month] || Time.now.month
+        year  = params[:year]  || Time.now.year
+        budgets = repo.for_month(user_id: current_user.id, month: month, year: year)
+        render json: { data: budgets }
+      end
+
+      # POST /api/v1/budgets — acepta array { budgets: [...] } o un solo objeto
+      def create
+        month = params[:month] || Time.now.month
+        year  = params[:year]  || Time.now.year
+
+        if params[:budgets].present?
+          budgets_attrs = params[:budgets].map do |b|
+            b.permit(:category_id, :amount_limit).to_h.symbolize_keys
+          end
+          result = repo.upsert_bulk(
+            user_id: current_user.id,
+            month: month, year: year,
+            budgets: budgets_attrs
+          )
+          render json: { data: result }, status: :created
+        else
+          budget = repo.upsert_bulk(
+            user_id: current_user.id,
+            month: month, year: year,
+            budgets: [ single_budget_params ]
+          ).first
+          render json: { data: budget }, status: :created
+        end
+      rescue => e
+        render_unprocessable(e.message)
+      end
+
+      # PATCH /api/v1/budgets/:id
+      def update
+        budget = repo.update(params[:id], allowed_update_params)
+        render json: { data: budget }
+      rescue ActiveRecord::RecordNotFound => e
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      rescue => e
+        render_unprocessable(e.message)
+      end
+
+      private
+
+      def repo
+        @repo ||= Finanzas::Repositories::BudgetRepository.new
+      end
+
+      def single_budget_params
+        params.permit(:category_id, :amount_limit).to_h.symbolize_keys
+      end
+
+      def allowed_update_params
+        params.permit(:amount_limit).to_h.symbolize_keys
+      end
+    end
+  end
+end

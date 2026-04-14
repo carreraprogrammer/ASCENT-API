@@ -1,0 +1,38 @@
+module Api
+  module V1
+    class FinancialContextsController < Api::V1::BaseController
+      skip_after_action :verify_authorized
+      skip_after_action :verify_policy_scoped
+
+      # GET /api/v1/financial_context
+      def show
+        ctx = repo.find_by_user(current_user.id)
+        return render json: { data: nil }, status: :ok unless ctx
+        render json: { data: ctx }
+      end
+
+      # PATCH /api/v1/financial_context
+      def update
+        ctx = repo.upsert(current_user.id, allowed_params)
+        render json: { data: ctx }
+      rescue => e
+        render_unprocessable(e.message)
+      end
+
+      private
+
+      def repo
+        @repo ||= Finanzas::Repositories::FinancialContextRepository.new
+      end
+
+      def allowed_params
+        params.permit(
+          :phase, :strategy,
+          :monthly_income_1, :monthly_income_2,
+          :income_day_1, :income_day_2,
+          :monthly_rent, :reward_pct, :notes
+        ).to_h.symbolize_keys
+      end
+    end
+  end
+end

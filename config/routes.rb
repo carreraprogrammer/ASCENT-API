@@ -33,7 +33,7 @@ Rails.application.routes.draw do
         end
       end
 
-      # Finanzas
+      # Finanzas — Core
       resources :categories, only: [ :index, :create, :destroy ]
       resources :transactions, only: [ :index, :create, :update, :destroy ] do
         collection do
@@ -41,6 +41,21 @@ Rails.application.routes.draw do
           get :balance
         end
       end
+
+      # Finanzas — Fase 2
+      get   "financial_context", to: "financial_contexts#show"
+      patch "financial_context", to: "financial_contexts#update"
+
+      resources :debts,   only: [ :index, :create, :update ]
+      resources :budgets, only: [ :index, :create, :update ]
+
+      resources :pending_actions, only: [ :create, :update ] do
+        collection do
+          get :active
+        end
+      end
+
+      get "summary", to: "summary#show"
 
       # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"
