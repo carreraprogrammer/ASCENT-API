@@ -42,34 +42,71 @@ module Api
 
       def create
         return unless require_scope!("transactions:create")
+        Rails.logger.info(
+          "[TransactionsController#create] actor_type=#{current_actor_type} " \
+          "actor_id=#{current_actor&.id} owner_user_id=#{current_owner_user_id} " \
+          "account_id=#{current_account&.id} raw_date=#{params[:date].inspect} " \
+          "source=#{params[:source].inspect} transaction_type=#{params[:transaction_type].inspect}"
+        )
         transaction = Finanzas::Interactors::CreateTransaction.new.call(
           user_id: current_owner_user_id,
           account_id: current_account.id,
           **transaction_create_params
         )
+        Rails.logger.info(
+          "[TransactionsController#create] created id=#{transaction.id} " \
+          "user_id=#{transaction.user_id} account_id=#{current_account&.id} " \
+          "date=#{transaction.date.inspect} year=#{transaction.year.inspect} " \
+          "month=#{transaction.month.inspect} status=#{transaction.status.inspect} " \
+          "source=#{transaction.source.inspect}"
+        )
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction), status: :created
       rescue Finanzas::Errors::DuplicateTransaction => e
+        Rails.logger.warn(
+          "[TransactionsController#create] duplicate raw_date=#{params[:date].inspect} " \
+          "amount=#{params[:amount].inspect} source=#{params[:source].inspect} existing_id=#{e.existing_id.inspect}"
+        )
         render json: {
           errors: [ { status: "409", title: "Duplicate Transaction", detail: e.message } ],
           existing_id: e.existing_id
         }, status: :conflict
       rescue Finanzas::Errors::InvalidTransaction => e
+        Rails.logger.warn(
+          "[TransactionsController#create] invalid raw_date=#{params[:date].inspect} " \
+          "amount=#{params[:amount].inspect} detail=#{e.message.inspect}"
+        )
         render json: { errors: [ { status: "422", title: "Invalid Transaction", detail: e.message } ] },
                status: :unprocessable_entity
       end
 
       def update
         return unless require_scope!("transactions:update")
+        Rails.logger.info(
+          "[TransactionsController#update] actor_type=#{current_actor_type} " \
+          "actor_id=#{current_actor&.id} owner_user_id=#{current_owner_user_id} " \
+          "account_id=#{current_account&.id} transaction_id=#{params[:id].inspect} " \
+          "raw_date=#{params[:date].inspect} status=#{params[:status].inspect}"
+        )
         transaction = Finanzas::Interactors::UpdateTransaction.new.call(
           id: params[:id],
           account_id: current_account.id,
           **transaction_update_params
         )
+        Rails.logger.info(
+          "[TransactionsController#update] updated id=#{transaction.id} " \
+          "date=#{transaction.date.inspect} year=#{transaction.year.inspect} " \
+          "month=#{transaction.month.inspect} status=#{transaction.status.inspect}"
+        )
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction)
       rescue Finanzas::Errors::TransactionNotFound => e
+        Rails.logger.warn("[TransactionsController#update] not_found transaction_id=#{params[:id].inspect}")
         render json: { errors: [ { status: "404", title: "Not Found", detail: e.message } ] },
                status: :not_found
       rescue Finanzas::Errors::InvalidTransaction => e
+        Rails.logger.warn(
+          "[TransactionsController#update] invalid transaction_id=#{params[:id].inspect} " \
+          "raw_date=#{params[:date].inspect} detail=#{e.message.inspect}"
+        )
         render json: { errors: [ { status: "422", title: "Invalid Transaction", detail: e.message } ] },
                status: :unprocessable_entity
       end
