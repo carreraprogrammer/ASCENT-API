@@ -58,12 +58,13 @@ module Api
       end
 
       def resolve_user_account(user)
-        return user.default_account if requested_account_id.blank?
+        scope = Account.active.where(owner_user_id: user.id)
 
-        account = user.owned_accounts.find(requested_account_id)
-        raise ActiveRecord::RecordNotFound unless account.active?
-
-        account
+        if requested_account_id.present?
+          scope.find(requested_account_id)
+        else
+          scope.order(:id).first || raise(ActiveRecord::RecordNotFound)
+        end
       end
 
       def requested_account_id
