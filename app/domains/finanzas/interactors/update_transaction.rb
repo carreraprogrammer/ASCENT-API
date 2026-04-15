@@ -13,6 +13,11 @@ module Finanzas
                                 :product, :amount, :date, :source, :metadata,
                                 :clarification_resolved_at)
 
+        Rails.logger.info(
+          "[UpdateTransaction] id=#{id.inspect} account_id=#{account_id.inspect} " \
+          "incoming=#{permitted.inspect}"
+        )
+
         if permitted[:amount] && permitted[:amount].to_i <= 0
           raise Finanzas::Errors::InvalidTransaction, "Amount must be positive"
         end
