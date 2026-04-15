@@ -12,7 +12,7 @@ module Auth
       end
 
       def self.user_resource(user)
-        account = user.default_account
+        account = Account.active.where(owner_user_id: user.id).order(:id).first
         {
           id: user.id.to_s,
           type: "users",
@@ -23,8 +23,8 @@ module Auth
             created_at: user.created_at,
             avatar_url: user.avatar_url,
             auth_provider: user.auth_provider,
-            default_account_id: account.id,
-            default_account_slug: account.slug
+            default_account_id: account&.id,
+            default_account_slug: account&.slug
           }
         }
       end
