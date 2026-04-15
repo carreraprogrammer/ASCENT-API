@@ -1,5 +1,8 @@
 class Budget < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
   belongs_to :category
 
   validates :month,        presence: true, inclusion: { in: 1..12 }

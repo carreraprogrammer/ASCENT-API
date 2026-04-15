@@ -1,8 +1,8 @@
 module Finanzas
   module Repositories
     class PendingActionRepository
-      def active_for_user(user_id)
-        record = ::PendingAction.active.where(user_id: user_id).order(:created_at).first
+      def active_for_account(account_id)
+        record = ::PendingAction.active.where(account_id: account_id).order(:created_at).first
         record && map_to_entity(record)
       end
 
@@ -13,8 +13,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def update(id, attrs)
-        record = ::PendingAction.find_by(id: id)
+      def update(id, attrs, account_id: nil)
+        scope = ::PendingAction.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise ActiveRecord::RecordNotFound, "PendingAction #{id} not found" unless record
         record.update!(attrs)
         map_to_entity(record)

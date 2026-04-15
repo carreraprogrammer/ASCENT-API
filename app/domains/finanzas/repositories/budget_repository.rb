@@ -1,21 +1,22 @@
 module Finanzas
   module Repositories
     class BudgetRepository
-      def for_month(user_id:, month:, year:)
-        ::Budget.where(user_id: user_id, month: month.to_i, year: year.to_i)
+      def for_month(account_id:, month:, year:)
+        ::Budget.where(account_id: account_id, month: month.to_i, year: year.to_i)
                 .includes(:category)
                 .order(:category_id)
                 .map { |r| map_to_entity(r) }
       end
 
-      def upsert_bulk(user_id:, month:, year:, budgets:)
+      def upsert_bulk(user_id:, account_id:, month:, year:, budgets:)
         results = budgets.map do |b|
           record = ::Budget.find_or_initialize_by(
-            user_id: user_id,
+            account_id: account_id,
             category_id: b[:category_id],
             month: month.to_i,
             year: year.to_i
           )
+          record.user_id = user_id
           record.amount_limit = b[:amount_limit]
           record.save!
           map_to_entity(record)
@@ -25,8 +26,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def update(id, attrs)
-        record = ::Budget.find_by(id: id)
+      def update(id, attrs, account_id: nil)
+        scope = ::Budget.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise ActiveRecord::RecordNotFound, "Budget #{id} not found" unless record
         record.update!(attrs)
         map_to_entity(record)

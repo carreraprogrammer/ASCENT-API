@@ -5,12 +5,11 @@ module Finanzas
         @repo = repo
       end
 
-      def call(id:, user_id:)
-        transaction = @repo.find(id)
+      def call(id:, account_id:)
+        transaction = @repo.find(id, account_id: account_id)
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless transaction
-        raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless transaction.user_id == user_id
 
-        @repo.destroy(id)
+        @repo.destroy(id, account_id: account_id)
       end
     end
   end

@@ -1,16 +1,18 @@
 module Finanzas
   module Repositories
     class DebtRepository
-      def all_for_user(user_id)
-        ::Debt.where(user_id: user_id).order(:created_at).map { |r| map_to_entity(r) }
+      def all_for_account(account_id)
+        ::Debt.where(account_id: account_id).order(:created_at).map { |r| map_to_entity(r) }
       end
 
-      def active_for_user(user_id)
-        ::Debt.active.where(user_id: user_id).order(:current_balance).map { |r| map_to_entity(r) }
+      def active_for_account(account_id)
+        ::Debt.active.where(account_id: account_id).order(:current_balance).map { |r| map_to_entity(r) }
       end
 
-      def find(id)
-        record = ::Debt.find_by(id: id)
+      def find(id, account_id: nil)
+        scope = ::Debt.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         record && map_to_entity(record)
       end
 
@@ -21,8 +23,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def update(id, attrs)
-        record = ::Debt.find_by(id: id)
+      def update(id, attrs, account_id: nil)
+        scope = ::Debt.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise ActiveRecord::RecordNotFound, "Debt #{id} not found" unless record
         record.update!(attrs)
         map_to_entity(record)

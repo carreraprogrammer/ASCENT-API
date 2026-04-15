@@ -6,13 +6,15 @@ module Api
 
       # GET /api/v1/pending_actions/active
       def active
-        action = repo.active_for_user(current_user.id)
+        return unless require_scope!("pending_actions:read")
+        action = repo.active_for_account(current_account.id)
         render json: { data: action }
       end
 
       # POST /api/v1/pending_actions
       def create
-        action = repo.create(allowed_create_params.merge(user_id: current_user.id))
+        return unless require_scope!("pending_actions:create")
+        action = repo.create(allowed_create_params.merge(user_id: current_owner_user_id, account_id: current_account.id))
         render json: { data: action }, status: :created
       rescue => e
         render_unprocessable(e.message)
@@ -20,7 +22,8 @@ module Api
 
       # PATCH /api/v1/pending_actions/:id
       def update
-        action = repo.update(params[:id], allowed_update_params)
+        return unless require_scope!("pending_actions:update")
+        action = repo.update(params[:id], allowed_update_params, account_id: current_account.id)
         render json: { data: action }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found

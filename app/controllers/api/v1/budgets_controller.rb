@@ -6,14 +6,16 @@ module Api
 
       # GET /api/v1/budgets?month=&year=
       def index
+        return unless require_scope!("budgets:read")
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
-        budgets = repo.for_month(user_id: current_user.id, month: month, year: year)
+        budgets = repo.for_month(account_id: current_account.id, month: month, year: year)
         render json: { data: budgets }
       end
 
       # POST /api/v1/budgets — acepta array { budgets: [...] } o un solo objeto
       def create
+        return unless require_scope!("budgets:create")
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
 
@@ -22,14 +24,16 @@ module Api
             b.permit(:category_id, :amount_limit).to_h.symbolize_keys
           end
           result = repo.upsert_bulk(
-            user_id: current_user.id,
+            user_id: current_owner_user_id,
+            account_id: current_account.id,
             month: month, year: year,
             budgets: budgets_attrs
           )
           render json: { data: result }, status: :created
         else
           budget = repo.upsert_bulk(
-            user_id: current_user.id,
+            user_id: current_owner_user_id,
+            account_id: current_account.id,
             month: month, year: year,
             budgets: [ single_budget_params ]
           ).first
@@ -41,7 +45,8 @@ module Api
 
       # PATCH /api/v1/budgets/:id
       def update
-        budget = repo.update(params[:id], allowed_update_params)
+        return unless require_scope!("budgets:update")
+        budget = repo.update(params[:id], allowed_update_params, account_id: current_account.id)
         render json: { data: budget }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found

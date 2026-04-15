@@ -1,19 +1,19 @@
 module Finanzas
   module Repositories
     class TransactionRepository
-      def for_month(user_id:, month:, year:)
-        records = ::Transaction.where(user_id: user_id, month: month.to_i, year: year.to_i)
+      def for_month(account_id:, month:, year:)
+        records = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
                                .order(year: :desc, month: :desc, date: :asc)
         records.map { |r| map_to_entity(r) }
       end
 
-      def pending(user_id:)
-        records = ::Transaction.where(user_id: user_id, status: "pending").order(created_at: :asc)
+      def pending(account_id:)
+        records = ::Transaction.where(account_id: account_id, status: "pending").order(created_at: :asc)
         records.map { |r| map_to_entity(r) }
       end
 
-      def balance(user_id:, month:, year:)
-        rows = ::Transaction.where(user_id: user_id, month: month.to_i, year: year.to_i)
+      def balance(account_id:, month:, year:)
+        rows = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
                             .select(:amount, :transaction_type, :status)
 
         totals = Hash.new(0)
@@ -39,16 +39,18 @@ module Finanzas
         }
       end
 
-      def find(id)
-        record = ::Transaction.find_by(id: id)
+      def find(id, account_id: nil)
+        scope = ::Transaction.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         record && map_to_entity(record)
       end
 
       # Returns an existing transaction entity if one with the same
-      # (user_id, date, amount, product, transaction_type) already exists.
-      def find_duplicate(user_id:, date:, amount:, product:, transaction_type:)
+      # (account_id, date, amount, product, transaction_type) already exists.
+      def find_duplicate(account_id:, date:, amount:, product:, transaction_type:)
         record = ::Transaction.find_by(
-          user_id: user_id,
+          account_id: account_id,
           date: date,
           amount: amount.to_i,
           product: product,
@@ -64,8 +66,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def update(id, attrs)
-        record = ::Transaction.find_by(id: id)
+      def update(id, attrs, account_id: nil)
+        scope = ::Transaction.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
         record.update!(attrs)
@@ -74,8 +78,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def destroy(id)
-        record = ::Transaction.find_by(id: id)
+      def destroy(id, account_id: nil)
+        scope = ::Transaction.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
         record.destroy!

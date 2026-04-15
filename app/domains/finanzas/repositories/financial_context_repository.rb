@@ -1,13 +1,14 @@
 module Finanzas
   module Repositories
     class FinancialContextRepository
-      def find_by_user(user_id)
-        record = ::FinancialContext.find_by(user_id: user_id)
+      def find_by_account(account_id)
+        record = ::FinancialContext.find_by(account_id: account_id)
         record && map_to_entity(record)
       end
 
-      def upsert(user_id, attrs)
-        record = ::FinancialContext.find_or_initialize_by(user_id: user_id)
+      def upsert(user_id:, account_id:, attrs:)
+        record = ::FinancialContext.find_or_initialize_by(account_id: account_id)
+        record.user_id = user_id
         record.assign_attributes(attrs)
         record.save!
         map_to_entity(record)

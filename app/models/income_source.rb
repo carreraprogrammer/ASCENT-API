@@ -1,5 +1,8 @@
 class IncomeSource < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
 
   validates :name, presence: true
   validates :expected_day_from, numericality: { in: 1..31 }

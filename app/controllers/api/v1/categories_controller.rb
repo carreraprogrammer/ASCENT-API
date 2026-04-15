@@ -5,13 +5,16 @@ module Api
       skip_after_action :verify_policy_scoped
 
       def index
-        categories = Finanzas::Interactors::ListCategories.new.call(user_id: current_user.id)
+        return unless require_scope!("transactions:read")
+        categories = Finanzas::Interactors::ListCategories.new.call(account_id: current_account.id)
         render json: Finanzas::Presenters::CategoryPresenter.collection(categories)
       end
 
       def create
+        return unless require_scope!("transactions:update")
         category = Finanzas::Interactors::CreateCategory.new.call(
-          user_id: current_user.id,
+          user_id: current_owner_user_id,
+          account_id: current_account.id,
           **category_params
         )
         render json: Finanzas::Presenters::CategoryPresenter.single(category), status: :created
@@ -21,7 +24,8 @@ module Api
       end
 
       def destroy
-        Finanzas::Interactors::DestroyCategory.new.call(id: params[:id])
+        return unless require_scope!("transactions:delete")
+        Finanzas::Repositories::CategoryRepository.new.destroy(id: params[:id], account_id: current_account.id)
         head :no_content
       rescue Finanzas::Errors::CategoryNotFound => e
         render json: { errors: [ { status: "404", title: "Not Found", detail: e.message } ] },

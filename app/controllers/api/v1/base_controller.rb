@@ -14,6 +14,12 @@ module Api
           errors: [ { status: "401", code: "unauthorized", detail: "Unauthorized" } ]
         }, status: :unauthorized
       end
+
+      def render_forbidden(detail = "Forbidden")
+        render json: {
+          errors: [ { status: "403", code: "forbidden", detail: detail } ]
+        }, status: :forbidden
+      end
     end
   end
 end

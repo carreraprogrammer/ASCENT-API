@@ -1,8 +1,8 @@
 module Finanzas
   module Repositories
     class RecurringObligationRepository
-      def active_for_user(user_id)
-        ::RecurringObligation.active.where(user_id: user_id).map { |r| map_to_entity(r) }
+      def active_for_account(account_id)
+        ::RecurringObligation.active.where(account_id: account_id).map { |r| map_to_entity(r) }
       end
 
       def create(attrs)
@@ -12,8 +12,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def update(id, attrs)
-        record = ::RecurringObligation.find_by(id: id)
+      def update(id, attrs, account_id: nil)
+        scope = ::RecurringObligation.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise ActiveRecord::RecordNotFound, "RecurringObligation #{id} not found" unless record
         record.update!(attrs)
         map_to_entity(record)
@@ -21,8 +23,10 @@ module Finanzas
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
-      def destroy(id)
-        record = ::RecurringObligation.find_by(id: id)
+      def destroy(id, account_id: nil)
+        scope = ::RecurringObligation.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
         raise ActiveRecord::RecordNotFound, "RecurringObligation #{id} not found" unless record
         record.update!(active: false)
       end

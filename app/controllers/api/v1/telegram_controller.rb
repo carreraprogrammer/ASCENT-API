@@ -85,7 +85,7 @@ module Api
         user  = email ? ::User.find_by(email: email) : ::User.order(:id).first
         return nil unless user
         transaction = Finanzas::Interactors::UpdateTransaction.new.call(
-          id: id, user_id: user.id, **attrs
+          id: id, account_id: user.default_account.id, **attrs
         )
         { concept: transaction.concept, amount: transaction.amount }
       rescue StandardError => e
