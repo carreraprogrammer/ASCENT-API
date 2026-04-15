@@ -10,11 +10,28 @@ module Finanzas
         "created_at" => :created_at
       }.freeze
 
-      def for_month(account_id:, month:, year:, filters: {}, sort_by: "date", sort_dir: "desc")
+      DEFAULT_PER_PAGE = 20
+      MAX_PER_PAGE = 100
+
+      def for_month(account_id:, month:, year:, filters: {}, sort_by: "date", sort_dir: "desc", page: 1, per_page: DEFAULT_PER_PAGE)
         records = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
         records = apply_filters(records, filters)
         records = apply_sort(records, sort_by, sort_dir)
-        records.map { |r| map_to_entity(r) }
+        page_number = normalize_page(page)
+        page_size = normalize_per_page(per_page)
+        total = records.count
+        paged_records = records.offset((page_number - 1) * page_size).limit(page_size)
+
+        {
+          data: paged_records.map { |r| map_to_entity(r) },
+          meta: {
+            total: total,
+            page: page_number,
+            per_page: page_size,
+            total_pages: total.zero? ? 0 : (total.to_f / page_size).ceil,
+            has_next_page: (page_number * page_size) < total
+          }
+        }
       end
 
       def pending(account_id:, filters: {}, sort_by: "created_at", sort_dir: "asc")
@@ -151,6 +168,18 @@ module Finanzas
           created_at: record.created_at,
           updated_at: record.updated_at
         )
+      end
+
+      def normalize_page(page)
+        number = page.to_i
+        number.positive? ? number : 1
+      end
+
+      def normalize_per_page(per_page)
+        number = per_page.to_i
+        return DEFAULT_PER_PAGE unless number.positive?
+
+        [number, MAX_PER_PAGE].min
       end
     end
   end

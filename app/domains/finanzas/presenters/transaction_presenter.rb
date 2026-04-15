@@ -1,8 +1,10 @@
 module Finanzas
   module Presenters
     class TransactionPresenter
-      def self.collection(transactions)
-        { data: transactions.map { |t| resource(t) } }
+      def self.collection(transactions, meta: nil)
+        payload = { data: transactions.map { |t| resource(t) } }
+        payload[:meta] = meta if meta.present?
+        payload
       end
 
       def self.single(transaction)

@@ -14,9 +14,11 @@ module Api
           year: year,
           filters: transaction_filters,
           sort_by: params[:sort_by],
-          sort_dir: normalized_sort_dir(params[:sort_dir], default: "desc")
+          sort_dir: normalized_sort_dir(params[:sort_dir], default: "desc"),
+          page: params[:page],
+          per_page: params[:per_page]
         )
-        render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
+        render json: Finanzas::Presenters::TransactionPresenter.collection(transactions[:data], meta: transactions[:meta])
       end
 
       def pending
