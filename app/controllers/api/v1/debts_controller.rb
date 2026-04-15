@@ -6,13 +6,15 @@ module Api
 
       # GET /api/v1/debts
       def index
-        debts = repo.all_for_user(current_user.id)
+        return unless require_scope!("debts:read")
+        debts = repo.all_for_account(current_account.id)
         render json: { data: debts }
       end
 
       # POST /api/v1/debts
       def create
-        debt = repo.create(allowed_create_params.merge(user_id: current_user.id))
+        return unless require_scope!("debts:update")
+        debt = repo.create(allowed_create_params.merge(user_id: current_owner_user_id, account_id: current_account.id))
         render json: { data: debt }, status: :created
       rescue => e
         render_unprocessable(e.message)
@@ -20,9 +22,10 @@ module Api
 
       # DELETE /api/v1/debts/:id
       def destroy
-        debt = repo.find(params[:id])
+        return unless require_scope!("debts:update")
+        debt = repo.find(params[:id], account_id: current_account.id)
         raise ActiveRecord::RecordNotFound unless debt
-        ::Debt.find(params[:id]).destroy!
+        ::Debt.find_by!(id: params[:id], account_id: current_account.id).destroy!
         head :no_content
       rescue ActiveRecord::RecordNotFound
         render json: { errors: [ { status: "404", detail: "Debt not found" } ] }, status: :not_found
@@ -30,7 +33,8 @@ module Api
 
       # PATCH /api/v1/debts/:id
       def update
-        debt = repo.update(params[:id], allowed_update_params)
+        return unless require_scope!("debts:update")
+        debt = repo.update(params[:id], allowed_update_params, account_id: current_account.id)
         render json: { data: debt }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found

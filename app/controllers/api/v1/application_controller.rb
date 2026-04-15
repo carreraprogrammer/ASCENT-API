@@ -3,22 +3,120 @@ module Api
     class ApplicationController < ::ApplicationController
       include Authorizable
 
+      class AuthenticationError < StandardError; end
+
       before_action :authenticate_request!
 
       private
 
       def authenticate_request!
         token = request.headers["Authorization"]&.split(" ")&.last
-        @jwt_payload = JwtService.decode(token)
-        @current_user = Auth::Interactors::FetchUser.new.call(id: @jwt_payload[:user_id])
-      rescue JwtService::ExpiredToken, JwtService::InvalidToken, Auth::Errors::InvalidToken
+        raise JwtService::InvalidToken if token.blank?
+
+        authenticate_user_request!(token)
+      rescue JwtService::ExpiredToken
+        render json: {
+          errors: [ { status: "401", code: "unauthorized", detail: "Token inválido o expirado" } ]
+        }, status: :unauthorized and return
+      rescue JwtService::InvalidToken, Auth::Errors::InvalidToken
+        authenticate_service_account_request!(token)
+      rescue ActiveRecord::RecordNotFound
+        render json: {
+          errors: [ { status: "404", code: "account_not_found", detail: "Cuenta no encontrada" } ]
+        }, status: :not_found and return
+      rescue AuthenticationError
         render json: {
           errors: [ { status: "401", code: "unauthorized", detail: "Token inválido o expirado" } ]
         }, status: :unauthorized and return
       end
 
+      def authenticate_user_request!(token)
+        @jwt_payload = JwtService.decode(token)
+        @current_user = Auth::Interactors::FetchUser.new.call(id: @jwt_payload[:user_id])
+        @current_account = resolve_user_account(@current_user)
+      end
+
+      def authenticate_service_account_request!(token)
+        @current_service_account = ServiceAccount.authenticate(token)
+        raise AuthenticationError if @current_service_account.blank?
+
+        @current_agent_type = AgentType.active.find_by!(slug: requested_agent_type_slug)
+        @current_account = Account.active.find(requested_account_id)
+        @current_delegation = Delegation.active.find_by!(
+          service_account: @current_service_account,
+          account: @current_account,
+          agent_type: @current_agent_type,
+          user_id: @current_account.owner_user_id
+        )
+        @current_user = nil
+        @jwt_payload = {
+          service_account_id: @current_service_account.id,
+          account_id: @current_account.id,
+          agent_type: @current_agent_type.slug,
+          type: "service_access"
+        }
+      end
+
+      def resolve_user_account(user)
+        return user.default_account if requested_account_id.blank?
+
+        account = user.owned_accounts.find(requested_account_id)
+        raise ActiveRecord::RecordNotFound unless account.active?
+
+        account
+      end
+
+      def requested_account_id
+        request.headers["X-Account-Id"].presence || params[:account_id].presence
+      end
+
+      def requested_agent_type_slug
+        request.headers["X-Agent-Type"].presence || "finance_coach"
+      end
+
       def current_user
         @current_user
+      end
+
+      def current_account
+        @current_account
+      end
+
+      def current_service_account
+        @current_service_account
+      end
+
+      def current_agent_type
+        @current_agent_type
+      end
+
+      def current_delegation
+        @current_delegation
+      end
+
+      def current_actor
+        current_service_account || current_user
+      end
+
+      def current_actor_type
+        current_service_account.present? ? "service_account" : "user"
+      end
+
+      def service_account_request?
+        current_service_account.present?
+      end
+
+      def current_owner_user_id
+        current_account&.owner_user_id || current_user&.id
+      end
+
+      def require_scope!(scope)
+        return true unless service_account_request?
+        return true if current_delegation&.allows_scope?(scope)
+
+        render json: {
+          errors: [ { status: "403", code: "forbidden", detail: "Scope '#{scope}' no permitido" } ]
+        }, status: :forbidden and return false
       end
 
       def pundit_user

@@ -5,8 +5,8 @@ module Finanzas
         @repo = repo
       end
 
-      def call(user_id:)
-        @repo.pending(user_id: user_id)
+      def call(account_id:)
+        @repo.pending(account_id: account_id)
       end
     end
   end

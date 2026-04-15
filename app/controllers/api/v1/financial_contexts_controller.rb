@@ -6,14 +6,16 @@ module Api
 
       # GET /api/v1/financial_context
       def show
-        ctx = repo.find_by_user(current_user.id)
+        return unless require_scope!("financial_context:read")
+        ctx = repo.find_by_account(current_account.id)
         return render json: { data: nil }, status: :ok unless ctx
         render json: { data: ctx }
       end
 
       # PATCH /api/v1/financial_context
       def update
-        ctx = repo.upsert(current_user.id, allowed_params)
+        return unless require_scope!("financial_context:update")
+        ctx = repo.upsert(user_id: current_owner_user_id, account_id: current_account.id, attrs: allowed_params)
         render json: { data: ctx }
       rescue => e
         render_unprocessable(e.message)

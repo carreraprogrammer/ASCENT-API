@@ -1,5 +1,8 @@
 class RecurringObligation < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
   belongs_to :category, optional: true
 
   # Una obligación puede estar "destinada" a una deuda o meta de ahorro.

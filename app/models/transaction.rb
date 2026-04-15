@@ -1,5 +1,8 @@
 class Transaction < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
   belongs_to :category, optional: true
   belongs_to :subcategory, optional: true
 

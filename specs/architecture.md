@@ -216,6 +216,7 @@ ALLOWED_ORIGINS
 | authorization | ✅ completo | roles-permissions.md |
 | forms | ✅ completo | forms.md |
 | finanzas | ✅ MVP completo | finanzas/plan.md |
+| agent delegation foundation | 🟡 fase inicial | agent-delegation.md |
 
 ---
 

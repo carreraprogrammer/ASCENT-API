@@ -1,5 +1,8 @@
 class Debt < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
 
   # Una deuda puede tener una sola obligación recurrente asociada
   # (la cuota mensual que sale del flujo de caja).

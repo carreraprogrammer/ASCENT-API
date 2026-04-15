@@ -5,8 +5,8 @@ module Finanzas
         @repo = repo
       end
 
-      def call(user_id:, month:, year:)
-        @repo.for_month(user_id: user_id, month: month, year: year)
+      def call(account_id:, month:, year:)
+        @repo.for_month(account_id: account_id, month: month, year: year)
       end
     end
   end

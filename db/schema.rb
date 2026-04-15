@@ -10,9 +10,32 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 21) do
+ActiveRecord::Schema[8.0].define(version: 26) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "accounts", force: :cascade do |t|
+    t.bigint "owner_user_id", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.boolean "active", default: true, null: false
+    t.jsonb "settings", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_user_id"], name: "index_accounts_on_owner_user_id"
+    t.index ["slug"], name: "index_accounts_on_slug", unique: true
+  end
+
+  create_table "agent_types", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.jsonb "capabilities", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_agent_types_on_slug", unique: true
+  end
 
   create_table "budgets", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -22,6 +45,8 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.integer "amount_limit", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
+    t.index ["account_id"], name: "index_budgets_on_account_id"
     t.index ["category_id"], name: "index_budgets_on_category_id"
     t.index ["user_id", "category_id", "month", "year"], name: "index_budgets_on_user_id_and_category_id_and_month_and_year", unique: true
     t.index ["user_id"], name: "index_budgets_on_user_id"
@@ -37,6 +62,9 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.boolean "is_system", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
+    t.index ["account_id", "code"], name: "index_categories_on_account_id_and_code"
+    t.index ["account_id"], name: "index_categories_on_account_id"
     t.index ["code"], name: "index_categories_on_code"
     t.index ["user_id", "code"], name: "index_categories_on_user_id_and_code"
     t.index ["user_id"], name: "index_categories_on_user_id"
@@ -56,8 +84,29 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.datetime "updated_at", null: false
     t.text "notes"
     t.jsonb "ai_analysis", default: [], null: false
+    t.bigint "account_id"
+    t.index ["account_id", "status"], name: "index_debts_on_account_id_and_status"
+    t.index ["account_id"], name: "index_debts_on_account_id"
     t.index ["user_id", "status"], name: "index_debts_on_user_id_and_status"
     t.index ["user_id"], name: "index_debts_on_user_id"
+  end
+
+  create_table "delegations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "service_account_id", null: false
+    t.bigint "agent_type_id", null: false
+    t.jsonb "scopes", default: [], null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "granted_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_delegations_on_account_id"
+    t.index ["agent_type_id"], name: "index_delegations_on_agent_type_id"
+    t.index ["service_account_id"], name: "index_delegations_on_service_account_id"
+    t.index ["user_id", "account_id", "service_account_id", "agent_type_id"], name: "index_delegations_on_owner_and_actor_and_type", unique: true
+    t.index ["user_id"], name: "index_delegations_on_user_id"
   end
 
   create_table "financial_contexts", force: :cascade do |t|
@@ -68,6 +117,8 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
+    t.index ["account_id"], name: "index_financial_contexts_on_account_id"
     t.index ["user_id"], name: "index_financial_contexts_on_user_id", unique: true
   end
 
@@ -95,6 +146,9 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
+    t.index ["account_id", "active"], name: "index_income_sources_on_account_id_and_active"
+    t.index ["account_id"], name: "index_income_sources_on_account_id"
     t.index ["user_id", "active"], name: "index_income_sources_on_user_id_and_active"
     t.index ["user_id"], name: "index_income_sources_on_user_id"
   end
@@ -109,6 +163,9 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.datetime "expires_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
+    t.index ["account_id", "status"], name: "index_pending_actions_on_account_id_and_status"
+    t.index ["account_id"], name: "index_pending_actions_on_account_id"
     t.index ["user_id", "status"], name: "index_pending_actions_on_user_id_and_status"
     t.index ["user_id"], name: "index_pending_actions_on_user_id"
   end
@@ -135,6 +192,9 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.bigint "allocatable_id"
     t.text "notes"
     t.jsonb "ai_analysis", default: [], null: false
+    t.bigint "account_id"
+    t.index ["account_id", "active"], name: "index_recurring_obligations_on_account_id_and_active"
+    t.index ["account_id"], name: "index_recurring_obligations_on_account_id"
     t.index ["allocatable_type", "allocatable_id"], name: "index_recurring_obligations_on_allocatable"
     t.index ["category_id"], name: "index_recurring_obligations_on_category_id"
     t.index ["user_id", "active"], name: "index_recurring_obligations_on_user_id_and_active"
@@ -159,6 +219,20 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_roles_on_slug", unique: true
+  end
+
+  create_table "service_accounts", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "token_hash"
+    t.boolean "active", default: true, null: false
+    t.datetime "last_used_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_service_accounts_on_slug", unique: true
+    t.index ["token_hash"], name: "index_service_accounts_on_token_hash"
   end
 
   create_table "subcategories", force: :cascade do |t|
@@ -201,6 +275,10 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.integer "month", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
+    t.index ["account_id", "status"], name: "index_transactions_on_account_id_and_status"
+    t.index ["account_id", "year", "month"], name: "index_transactions_on_account_id_and_year_and_month"
+    t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["subcategory_id"], name: "index_transactions_on_subcategory_id"
     t.index ["user_id", "status"], name: "index_transactions_on_user_id_and_status"
@@ -237,18 +315,31 @@ ActiveRecord::Schema[8.0].define(version: 21) do
     t.index ["refresh_token_hash"], name: "index_users_on_refresh_token_hash"
   end
 
+  add_foreign_key "accounts", "users", column: "owner_user_id"
+  add_foreign_key "budgets", "accounts"
   add_foreign_key "budgets", "categories"
   add_foreign_key "budgets", "users"
+  add_foreign_key "categories", "accounts"
   add_foreign_key "categories", "users"
+  add_foreign_key "debts", "accounts"
   add_foreign_key "debts", "users"
+  add_foreign_key "delegations", "accounts"
+  add_foreign_key "delegations", "agent_types"
+  add_foreign_key "delegations", "service_accounts"
+  add_foreign_key "delegations", "users"
+  add_foreign_key "financial_contexts", "accounts"
   add_foreign_key "financial_contexts", "users"
+  add_foreign_key "income_sources", "accounts"
   add_foreign_key "income_sources", "users"
+  add_foreign_key "pending_actions", "accounts"
   add_foreign_key "pending_actions", "users"
+  add_foreign_key "recurring_obligations", "accounts"
   add_foreign_key "recurring_obligations", "categories"
   add_foreign_key "recurring_obligations", "users"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
   add_foreign_key "subcategories", "categories"
+  add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "subcategories"
   add_foreign_key "transactions", "users"

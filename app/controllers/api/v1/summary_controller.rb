@@ -8,20 +8,21 @@ module Api
 
       # GET /api/v1/summary?month=&year=
       def show
+        return unless require_scope!("summary:read")
         now_col = Time.now.utc + COLOMBIA_OFFSET
         month   = (params[:month] || now_col.month).to_i
         year    = (params[:year]  || now_col.year).to_i
-        uid     = current_user.id
+        account_id = current_account.id
 
-        balance  = txn_repo.balance(user_id: uid, month: month, year: year)
-        budgets  = budget_repo.for_month(user_id: uid, month: month, year: year)
-        debts    = debt_repo.all_for_user(uid)
-        ctx      = ctx_repo.find_by_user(uid)
+        balance  = txn_repo.balance(account_id: account_id, month: month, year: year)
+        budgets  = budget_repo.for_month(account_id: account_id, month: month, year: year)
+        debts    = debt_repo.all_for_account(account_id)
+        ctx      = ctx_repo.find_by_account(account_id)
 
         render json: {
           period:            { month: month, year: year },
           balance:           balance,
-          burn_rate:         build_burn_rate(uid, month, year, budgets, now_col),
+          burn_rate:         build_burn_rate(account_id, month, year, budgets, now_col),
           debts:             build_debts_summary(debts),
           financial_context: build_context_summary(ctx, balance, debts)
         }
@@ -31,7 +32,7 @@ module Api
 
       # ── Burn rate ────────────────────────────────────────────────────────────
 
-      def build_burn_rate(user_id, month, year, budgets, now_col)
+      def build_burn_rate(account_id, month, year, budgets, now_col)
         return nil if budgets.empty?
 
         days_in_month = Date.new(year, month, -1).day
@@ -39,7 +40,7 @@ module Api
 
         # Gastos reales por categoría (confirmados + pending)
         spent_by_cat = ::Transaction
-          .where(user_id: user_id, month: month, year: year, transaction_type: "expense")
+          .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
           .where(status: %w[confirmed pending])
           .group(:category_id)
           .sum(:amount)

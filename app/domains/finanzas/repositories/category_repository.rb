@@ -1,8 +1,9 @@
 module Finanzas
   module Repositories
     class CategoryRepository
-      def all_for_user(user_id)
-        records = ::Category.where("user_id = ? OR user_id IS NULL", user_id)
+      def all_for_account(account_id)
+        records = ::Category.where(account_id: account_id)
+                             .or(::Category.where(user_id: nil))
                              .includes(:subcategories)
                              .order(:category_type, :name)
         records.map { |r| map_to_entity(r) }
@@ -13,7 +14,7 @@ module Finanzas
         record && map_to_entity(record)
       end
 
-      def create(name:, code:, category_type:, color: nil, icon: nil, user_id: nil)
+      def create(name:, code:, category_type:, color: nil, icon: nil, user_id: nil, account_id: nil)
         record = ::Category.create!(
           name: name,
           code: code,
@@ -21,6 +22,7 @@ module Finanzas
           color: color,
           icon: icon,
           user_id: user_id,
+          account_id: account_id,
           is_system: false
         )
         map_to_entity(record)
@@ -28,8 +30,8 @@ module Finanzas
         raise Finanzas::Errors::InvalidCategory, e.message
       end
 
-      def destroy(id)
-        record = ::Category.find_by(id: id)
+      def destroy(id, account_id:)
+        record = ::Category.find_by(id: id, account_id: account_id)
         raise Finanzas::Errors::CategoryNotFound, "Category #{id} not found" unless record
         raise Finanzas::Errors::CategoryNotDeletable, "System categories cannot be deleted" if record.is_system?
         record.destroy!
@@ -37,9 +39,11 @@ module Finanzas
 
       # Resuelve category_code / subcategory_code a IDs cuando el llamador
       # pasa códigos en lugar de IDs. Devuelve attrs limpio (sin los _code).
-      def resolve_codes(attrs, user_id:)
+      def resolve_codes(attrs, account_id:)
         if attrs[:category_code] && !attrs[:category_id]
-          record = ::Category.find_by(code: attrs[:category_code], user_id: [ user_id, nil ])
+          record = ::Category.where(code: attrs[:category_code], account_id: account_id)
+                             .or(::Category.where(code: attrs[:category_code], user_id: nil))
+                             .first
           attrs[:category_id] = record&.id
         end
 

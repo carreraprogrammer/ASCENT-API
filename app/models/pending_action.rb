@@ -1,5 +1,8 @@
 class PendingAction < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
 
   TYPES    = %w[budget_planning debt_setup onboarding].freeze
   STATUSES = %w[in_progress waiting_response completed cancelled expired].freeze

@@ -1,5 +1,8 @@
 class Category < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user, optional: true
+  belongs_to :account, optional: true
   has_many :subcategories, dependent: :destroy
   has_many :transactions, dependent: :nullify
 

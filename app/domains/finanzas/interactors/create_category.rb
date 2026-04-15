@@ -5,14 +5,15 @@ module Finanzas
         @repo = repo
       end
 
-      def call(user_id:, name:, code:, category_type:, color: nil, icon: nil)
+      def call(user_id:, account_id:, name:, code:, category_type:, color: nil, icon: nil)
         @repo.create(
           name: name,
           code: code,
           category_type: category_type,
           color: color,
           icon: icon,
-          user_id: user_id
+          user_id: user_id,
+          account_id: account_id
         )
       end
     end

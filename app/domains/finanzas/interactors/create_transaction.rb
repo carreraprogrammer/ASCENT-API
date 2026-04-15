@@ -7,14 +7,14 @@ module Finanzas
 
       AUTOMATED_SOURCES = %w[telegram gmail].freeze
 
-      def call(user_id:, date:, concept:, amount:, transaction_type: "expense",
+      def call(user_id:, account_id:, date:, concept:, amount:, transaction_type: "expense",
                product: nil, category_id: nil, subcategory_id: nil,
                source: "manual", status: "confirmed", metadata: {})
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         if AUTOMATED_SOURCES.include?(source.to_s)
           existing = @repo.find_duplicate(
-            user_id: user_id, date: date, amount: amount,
+            account_id: account_id, date: date, amount: amount,
             product: product, transaction_type: transaction_type
           )
           if existing
@@ -29,6 +29,7 @@ module Finanzas
 
         @repo.create(
           user_id: user_id,
+          account_id: account_id,
           date: date,
           concept: concept,
           product: product,

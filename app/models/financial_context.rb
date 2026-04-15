@@ -1,5 +1,8 @@
 class FinancialContext < ApplicationRecord
+  include AccountScopedFromUser
+
   belongs_to :user
+  belongs_to :account, optional: true
 
   PHASES     = %w[debt_payoff emergency_fund investing wealth_building].freeze
   STRATEGIES = %w[snowball avalanche].freeze

@@ -5,31 +5,36 @@ module Api
       skip_after_action :verify_policy_scoped
 
       def index
+        return unless require_scope!("transactions:read")
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
         transactions = Finanzas::Interactors::ListTransactions.new.call(
-          user_id: current_user.id, month: month, year: year
+          account_id: current_account.id, month: month, year: year
         )
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
       def pending
-        transactions = Finanzas::Interactors::ListPendingTransactions.new.call(user_id: current_user.id)
+        return unless require_scope!("transactions:read")
+        transactions = Finanzas::Interactors::ListPendingTransactions.new.call(account_id: current_account.id)
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
       def balance
+        return unless require_scope!("summary:read")
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
         result = Finanzas::Repositories::TransactionRepository.new.balance(
-          user_id: current_user.id, month: month, year: year
+          account_id: current_account.id, month: month, year: year
         )
         render json: { data: result }
       end
 
       def create
+        return unless require_scope!("transactions:create")
         transaction = Finanzas::Interactors::CreateTransaction.new.call(
-          user_id: current_user.id,
+          user_id: current_owner_user_id,
+          account_id: current_account.id,
           **transaction_create_params
         )
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction), status: :created
@@ -44,9 +49,10 @@ module Api
       end
 
       def update
+        return unless require_scope!("transactions:update")
         transaction = Finanzas::Interactors::UpdateTransaction.new.call(
           id: params[:id],
-          user_id: current_user.id,
+          account_id: current_account.id,
           **transaction_update_params
         )
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction)
@@ -59,7 +65,8 @@ module Api
       end
 
       def destroy
-        Finanzas::Interactors::DestroyTransaction.new.call(id: params[:id], user_id: current_user.id)
+        return unless require_scope!("transactions:delete")
+        Finanzas::Interactors::DestroyTransaction.new.call(id: params[:id], account_id: current_account.id)
         head :no_content
       rescue Finanzas::Errors::TransactionNotFound => e
         render json: { errors: [ { status: "404", title: "Not Found", detail: e.message } ] },
@@ -74,7 +81,7 @@ module Api
           :category_id, :subcategory_id, :category_code, :subcategory_code,
           :source, :status, metadata: {}
         ).to_h.symbolize_keys
-        category_repo.resolve_codes(p, user_id: current_user.id)
+        category_repo.resolve_codes(p, account_id: current_account.id)
       end
 
       def transaction_update_params
@@ -83,7 +90,7 @@ module Api
           :concept, :product, :amount, :date, :source, :clarification_resolved_at,
           metadata: {}
         ).to_h.symbolize_keys
-        category_repo.resolve_codes(p, user_id: current_user.id)
+        category_repo.resolve_codes(p, account_id: current_account.id)
       end
 
       def category_repo
