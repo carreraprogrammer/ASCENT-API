@@ -1,14 +1,26 @@
 module Finanzas
   module Repositories
     class TransactionRepository
-      def for_month(account_id:, month:, year:)
+      SORT_FIELDS = {
+        "date" => :date,
+        "amount" => :amount,
+        "concept" => :concept,
+        "product" => :product,
+        "status" => :status,
+        "created_at" => :created_at
+      }.freeze
+
+      def for_month(account_id:, month:, year:, filters: {}, sort_by: "date", sort_dir: "desc")
         records = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
-                               .order(year: :desc, month: :desc, date: :asc)
+        records = apply_filters(records, filters)
+        records = apply_sort(records, sort_by, sort_dir)
         records.map { |r| map_to_entity(r) }
       end
 
-      def pending(account_id:)
-        records = ::Transaction.where(account_id: account_id, status: "pending").order(created_at: :asc)
+      def pending(account_id:, filters: {}, sort_by: "created_at", sort_dir: "asc")
+        records = ::Transaction.where(account_id: account_id, status: "pending")
+        records = apply_filters(records, filters.except(:status))
+        records = apply_sort(records, sort_by, sort_dir)
         records.map { |r| map_to_entity(r) }
       end
 
@@ -88,6 +100,35 @@ module Finanzas
       end
 
       private
+
+      def apply_filters(scope, filters)
+        filtered = scope
+
+        if filters[:q].present?
+          query = "%#{filters[:q].strip.downcase}%"
+          filtered = filtered.where(
+            "LOWER(concept) LIKE :query OR LOWER(COALESCE(product, '')) LIKE :query",
+            query: query
+          )
+        end
+
+        filtered = filtered.where(status: filters[:status]) if filters[:status].present?
+        filtered = filtered.where(transaction_type: filters[:transaction_type]) if filters[:transaction_type].present?
+        filtered = filtered.where(source: filters[:source]) if filters[:source].present?
+        filtered = filtered.where(category_id: filters[:category_id]) if filters[:category_id].present?
+        filtered
+      end
+
+      def apply_sort(scope, sort_by, sort_dir)
+        direction = sort_dir.to_s.downcase == "asc" ? :asc : :desc
+        field = SORT_FIELDS[sort_by.to_s] || :date
+
+        if field == :date
+          scope.order(year: direction, month: direction, date: direction, created_at: direction)
+        else
+          scope.order(field => direction, created_at: :desc)
+        end
+      end
 
       def map_to_entity(record)
         Finanzas::Entities::Transaction.new(

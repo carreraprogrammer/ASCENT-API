@@ -7,7 +7,12 @@ module Api
       # GET /api/v1/debts
       def index
         return unless require_scope!("debts:read")
-        debts = repo.all_for_account(current_account.id)
+        debts = repo.all_for_account(
+          current_account.id,
+          filters: debt_filters,
+          sort_by: params[:sort_by],
+          sort_dir: normalized_sort_dir(params[:sort_dir], default: "desc")
+        )
         render json: { data: debts }
       end
 
@@ -60,6 +65,14 @@ module Api
           :name, :current_balance, :monthly_payment,
           :interest_rate, :status, :payoff_date, :notes
         ).to_h.symbolize_keys
+      end
+
+      def debt_filters
+        {
+          q: normalized_presence(params[:q]),
+          status: normalized_presence(params[:status]),
+          debt_type: normalized_presence(params[:debt_type])
+        }.compact
       end
     end
   end

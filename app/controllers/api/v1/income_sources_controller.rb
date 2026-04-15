@@ -6,7 +6,14 @@ module Api
 
       def index
         return unless require_scope!("income_sources:read")
-        render json: { data: repo.active_for_account(current_account.id) }
+        render json: {
+          data: repo.for_account(
+            current_account.id,
+            filters: income_source_filters,
+            sort_by: params[:sort_by],
+            sort_dir: normalized_sort_dir(params[:sort_dir], default: "asc")
+          )
+        }
       end
 
       def create
@@ -44,6 +51,14 @@ module Api
       def allowed_params
         params.permit(:name, :expected_day_from, :expected_day_to,
                       :expected_amount, :is_variable, :active).to_h.symbolize_keys
+      end
+
+      def income_source_filters
+        {
+          q: normalized_presence(params[:q]),
+          active: normalized_boolean_filter(params[:active]),
+          is_variable: normalized_boolean_filter(params[:is_variable])
+        }.compact
       end
     end
   end

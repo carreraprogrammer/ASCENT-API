@@ -1,11 +1,20 @@
 module Finanzas
   module Repositories
     class BudgetRepository
-      def for_month(account_id:, month:, year:)
-        ::Budget.where(account_id: account_id, month: month.to_i, year: year.to_i)
-                .includes(:category)
-                .order(:category_id)
-                .map { |r| map_to_entity(r) }
+      SORT_FIELDS = {
+        "category_id" => "budgets.category_id",
+        "amount_limit" => "budgets.amount_limit",
+        "created_at" => "budgets.created_at",
+        "category_name" => "categories.name"
+      }.freeze
+
+      def for_month(account_id:, month:, year:, filters: {}, sort_by: "category_id", sort_dir: "asc")
+        records = ::Budget.where(account_id: account_id, month: month.to_i, year: year.to_i)
+                          .includes(:category)
+                          .left_joins(:category)
+        records = apply_filters(records, filters)
+        records = apply_sort(records, sort_by, sort_dir)
+        records.map { |r| map_to_entity(r) }
       end
 
       def upsert_bulk(user_id:, account_id:, month:, year:, budgets:)
@@ -36,6 +45,25 @@ module Finanzas
       end
 
       private
+
+      def apply_filters(scope, filters)
+        filtered = scope
+
+        filtered = filtered.where(category_id: filters[:category_id]) if filters[:category_id].present?
+
+        if filters[:q].present?
+          query = "%#{filters[:q].strip.downcase}%"
+          filtered = filtered.where("LOWER(COALESCE(categories.name, '')) LIKE ?", query)
+        end
+
+        filtered
+      end
+
+      def apply_sort(scope, sort_by, sort_dir)
+        field = SORT_FIELDS[sort_by.to_s] || "budgets.category_id"
+        direction = sort_dir.to_s.downcase == "desc" ? "DESC" : "ASC"
+        scope.order(Arel.sql("#{field} #{direction}, budgets.created_at DESC"))
+      end
 
       def map_to_entity(record)
         {

@@ -1,8 +1,23 @@
 module Finanzas
   module Repositories
     class RecurringObligationRepository
+      SORT_FIELDS = {
+        "name" => :name,
+        "amount" => :amount,
+        "due_day" => :due_day,
+        "active" => :active,
+        "created_at" => :created_at
+      }.freeze
+
+      def for_account(account_id, filters: {}, sort_by: "due_day", sort_dir: "asc")
+        records = ::RecurringObligation.where(account_id: account_id)
+        records = apply_filters(records, filters)
+        records = apply_sort(records, sort_by, sort_dir)
+        records.map { |r| map_to_entity(r) }
+      end
+
       def active_for_account(account_id)
-        ::RecurringObligation.active.where(account_id: account_id).map { |r| map_to_entity(r) }
+        for_account(account_id, filters: { active: true }, sort_by: "due_day", sort_dir: "asc")
       end
 
       def create(attrs)
@@ -32,6 +47,25 @@ module Finanzas
       end
 
       private
+
+      def apply_filters(scope, filters)
+        filtered = scope
+
+        if filters[:q].present?
+          query = "%#{filters[:q].strip.downcase}%"
+          filtered = filtered.where("LOWER(name) LIKE ?", query)
+        end
+
+        filtered = filtered.where(active: ActiveModel::Type::Boolean.new.cast(filters[:active])) if filters.key?(:active) && !filters[:active].nil?
+        filtered = filtered.where(category_id: filters[:category_id]) if filters[:category_id].present?
+        filtered
+      end
+
+      def apply_sort(scope, sort_by, sort_dir)
+        field = SORT_FIELDS[sort_by.to_s] || :due_day
+        direction = sort_dir.to_s.downcase == "desc" ? :desc : :asc
+        scope.order(field => direction, created_at: :desc)
+      end
 
       def map_to_entity(record)
         {

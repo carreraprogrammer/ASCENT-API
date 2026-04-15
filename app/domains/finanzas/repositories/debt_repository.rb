@@ -1,8 +1,20 @@
 module Finanzas
   module Repositories
     class DebtRepository
-      def all_for_account(account_id)
-        ::Debt.where(account_id: account_id).order(:created_at).map { |r| map_to_entity(r) }
+      SORT_FIELDS = {
+        "name" => :name,
+        "current_balance" => :current_balance,
+        "monthly_payment" => :monthly_payment,
+        "interest_rate" => :interest_rate,
+        "status" => :status,
+        "created_at" => :created_at
+      }.freeze
+
+      def all_for_account(account_id, filters: {}, sort_by: "created_at", sort_dir: "desc")
+        records = ::Debt.where(account_id: account_id)
+        records = apply_filters(records, filters)
+        records = apply_sort(records, sort_by, sort_dir)
+        records.map { |r| map_to_entity(r) }
       end
 
       def active_for_account(account_id)
@@ -35,6 +47,25 @@ module Finanzas
       end
 
       private
+
+      def apply_filters(scope, filters)
+        filtered = scope
+
+        if filters[:q].present?
+          query = "%#{filters[:q].strip.downcase}%"
+          filtered = filtered.where("LOWER(name) LIKE ?", query)
+        end
+
+        filtered = filtered.where(status: filters[:status]) if filters[:status].present?
+        filtered = filtered.where(debt_type: filters[:debt_type]) if filters[:debt_type].present?
+        filtered
+      end
+
+      def apply_sort(scope, sort_by, sort_dir)
+        field = SORT_FIELDS[sort_by.to_s] || :created_at
+        direction = sort_dir.to_s.downcase == "asc" ? :asc : :desc
+        scope.order(field => direction, created_at: :desc)
+      end
 
       def map_to_entity(record)
         {

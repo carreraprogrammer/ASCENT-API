@@ -9,14 +9,24 @@ module Api
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
         transactions = Finanzas::Interactors::ListTransactions.new.call(
-          account_id: current_account.id, month: month, year: year
+          account_id: current_account.id,
+          month: month,
+          year: year,
+          filters: transaction_filters,
+          sort_by: params[:sort_by],
+          sort_dir: normalized_sort_dir(params[:sort_dir], default: "desc")
         )
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
       def pending
         return unless require_scope!("transactions:read")
-        transactions = Finanzas::Interactors::ListPendingTransactions.new.call(account_id: current_account.id)
+        transactions = Finanzas::Interactors::ListPendingTransactions.new.call(
+          account_id: current_account.id,
+          filters: transaction_filters,
+          sort_by: params[:sort_by],
+          sort_dir: normalized_sort_dir(params[:sort_dir], default: "asc")
+        )
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
@@ -95,6 +105,16 @@ module Api
 
       def category_repo
         @category_repo ||= Finanzas::Repositories::CategoryRepository.new
+      end
+
+      def transaction_filters
+        {
+          q: normalized_presence(params[:q]),
+          status: normalized_presence(params[:status]),
+          transaction_type: normalized_presence(params[:transaction_type]),
+          source: normalized_presence(params[:source]),
+          category_id: normalized_presence(params[:category_id])
+        }.compact
       end
     end
   end
