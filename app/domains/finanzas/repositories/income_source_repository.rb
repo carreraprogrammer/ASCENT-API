@@ -1,8 +1,25 @@
 module Finanzas
   module Repositories
     class IncomeSourceRepository
+      SORT_FIELDS = {
+        "name" => :name,
+        "expected_amount" => :expected_amount,
+        "expected_day_from" => :expected_day_from,
+        "expected_day_to" => :expected_day_to,
+        "is_variable" => :is_variable,
+        "active" => :active,
+        "created_at" => :created_at
+      }.freeze
+
+      def for_account(account_id, filters: {}, sort_by: "expected_day_from", sort_dir: "asc")
+        records = ::IncomeSource.where(account_id: account_id)
+        records = apply_filters(records, filters)
+        records = apply_sort(records, sort_by, sort_dir)
+        records.map { |r| map_to_entity(r) }
+      end
+
       def active_for_account(account_id)
-        ::IncomeSource.active.where(account_id: account_id).map { |r| map_to_entity(r) }
+        for_account(account_id, filters: { active: true }, sort_by: "expected_day_from", sort_dir: "asc")
       end
 
       def create(attrs)
@@ -32,6 +49,25 @@ module Finanzas
       end
 
       private
+
+      def apply_filters(scope, filters)
+        filtered = scope
+
+        if filters[:q].present?
+          query = "%#{filters[:q].strip.downcase}%"
+          filtered = filtered.where("LOWER(name) LIKE ?", query)
+        end
+
+        filtered = filtered.where(active: ActiveModel::Type::Boolean.new.cast(filters[:active])) if filters.key?(:active) && !filters[:active].nil?
+        filtered = filtered.where(is_variable: ActiveModel::Type::Boolean.new.cast(filters[:is_variable])) if filters.key?(:is_variable) && !filters[:is_variable].nil?
+        filtered
+      end
+
+      def apply_sort(scope, sort_by, sort_dir)
+        field = SORT_FIELDS[sort_by.to_s] || :expected_day_from
+        direction = sort_dir.to_s.downcase == "desc" ? :desc : :asc
+        scope.order(field => direction, created_at: :desc)
+      end
 
       def map_to_entity(record)
         {

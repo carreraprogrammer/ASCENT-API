@@ -6,7 +6,14 @@ module Api
 
       def index
         return unless require_scope!("recurring_obligations:read")
-        render json: { data: repo.active_for_account(current_account.id) }
+        render json: {
+          data: repo.for_account(
+            current_account.id,
+            filters: recurring_filters,
+            sort_by: params[:sort_by],
+            sort_dir: normalized_sort_dir(params[:sort_dir], default: "asc")
+          )
+        }
       end
 
       def create
@@ -46,6 +53,14 @@ module Api
           :name, :amount, :due_day, :category_id, :active,
           :notes, :allocatable_type, :allocatable_id
         ).to_h.symbolize_keys
+      end
+
+      def recurring_filters
+        {
+          q: normalized_presence(params[:q]),
+          active: normalized_boolean_filter(params[:active]),
+          category_id: normalized_presence(params[:category_id])
+        }.compact
       end
     end
   end

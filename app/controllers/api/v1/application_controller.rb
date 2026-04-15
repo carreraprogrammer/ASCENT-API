@@ -126,6 +126,23 @@ module Api
           permissions: Array(@jwt_payload&.dig(:permissions))
         )
       end
+
+      def normalized_sort_dir(value, default: "asc")
+        value.to_s.downcase == "desc" ? "desc" : default
+      end
+
+      def normalized_presence(value)
+        value.respond_to?(:strip) ? value.strip.presence : value.presence
+      end
+
+      def normalized_boolean_filter(value)
+        return nil if value.nil?
+
+        normalized = value.to_s.strip.downcase
+        return nil if normalized.blank? || normalized == "all"
+
+        ActiveModel::Type::Boolean.new.cast(normalized)
+      end
     end
   end
 end

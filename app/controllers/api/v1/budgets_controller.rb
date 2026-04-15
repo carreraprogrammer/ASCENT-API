@@ -9,7 +9,14 @@ module Api
         return unless require_scope!("budgets:read")
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
-        budgets = repo.for_month(account_id: current_account.id, month: month, year: year)
+        budgets = repo.for_month(
+          account_id: current_account.id,
+          month: month,
+          year: year,
+          filters: budget_filters,
+          sort_by: params[:sort_by],
+          sort_dir: normalized_sort_dir(params[:sort_dir], default: "asc")
+        )
         render json: { data: budgets }
       end
 
@@ -66,6 +73,13 @@ module Api
 
       def allowed_update_params
         params.permit(:amount_limit).to_h.symbolize_keys
+      end
+
+      def budget_filters
+        {
+          q: normalized_presence(params[:q]),
+          category_id: normalized_presence(params[:category_id])
+        }.compact
       end
     end
   end
