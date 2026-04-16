@@ -50,7 +50,9 @@ module Api
 
       def allowed_params
         params.permit(:name, :expected_day_from, :expected_day_to,
-                      :expected_amount, :is_variable, :active).to_h.symbolize_keys
+                      :expected_amount, :classification, :cadence,
+                      :reliability_score, :last_confirmed_at, :evidence_source,
+                      :is_variable, :active).to_h.symbolize_keys
       end
 
       def income_source_filters

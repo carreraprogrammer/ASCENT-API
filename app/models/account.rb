@@ -4,6 +4,7 @@ class Account < ApplicationRecord
   has_many :transactions, dependent: :nullify
   has_many :debts, dependent: :nullify
   has_many :budgets, dependent: :nullify
+  has_many :monthly_financial_plans, dependent: :nullify
   has_many :income_sources, dependent: :nullify
   has_many :recurring_obligations, dependent: :nullify
   has_many :pending_actions, dependent: :nullify

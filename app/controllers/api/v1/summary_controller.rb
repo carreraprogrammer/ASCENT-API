@@ -18,13 +18,15 @@ module Api
         budgets  = budget_repo.for_month(account_id: account_id, month: month, year: year)
         debts    = debt_repo.all_for_account(account_id)
         ctx      = ctx_repo.find_by_account(account_id)
+        plan     = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
 
         render json: {
           period:            { month: month, year: year },
           balance:           balance,
           burn_rate:         build_burn_rate(account_id, month, year, budgets, now_col),
           debts:             build_debts_summary(debts),
-          financial_context: build_context_summary(ctx, balance, debts)
+          monthly_plan:      build_monthly_plan_summary(plan),
+          financial_context: build_context_summary(ctx, plan, debts)
         }
       end
 
@@ -98,12 +100,36 @@ module Api
 
       # ── Financial context summary ─────────────────────────────────────────────
 
-      def build_context_summary(ctx, balance, debts)
+      def build_monthly_plan_summary(plan)
+        return nil unless plan
+
+        {
+          id:                       plan[:id],
+          status:                   plan[:status],
+          mode:                     plan[:mode],
+          base_budget_income:       plan[:base_budget_income],
+          expected_variable_income: plan[:expected_variable_income],
+          recurring_obligations_total: plan[:recurring_obligations_total],
+          debt_minimums_total:      plan[:debt_minimums_total],
+          protected_buffer_amount:  plan[:protected_buffer_amount],
+          discretionary_limit:      plan[:discretionary_limit],
+          overflow_rule:            plan[:overflow_rule],
+          reward_pct:               plan[:reward_pct],
+          debt_strategy:            plan[:debt_strategy],
+          confirmed_at:             plan[:confirmed_at]
+        }
+      end
+
+      def build_context_summary(ctx, plan, debts)
         return nil unless ctx
 
-        income = ctx[:monthly_income_1].to_i + ctx[:monthly_income_2].to_i
-        expenses_est = debts.select { |d| d[:status] == "active" }.sum { |d| d[:monthly_payment] }.to_i
-        surplus = income - expenses_est
+        surplus = if plan
+          plan[:base_budget_income].to_i -
+            plan[:recurring_obligations_total].to_i -
+            plan[:debt_minimums_total].to_i -
+            plan[:protected_buffer_amount].to_i -
+            plan[:discretionary_limit].to_i
+        end
 
         active_debts = debts.select { |d| d[:status] == "active" }
         recommended_action = build_recommended_action(ctx, active_debts, surplus)
@@ -111,6 +137,7 @@ module Api
         {
           phase:                    ctx[:phase],
           strategy:                 ctx[:strategy],
+          monthly_plan_status:      plan&.dig(:status) || "missing",
           monthly_surplus_estimate: surplus,
           recommended_action:       recommended_action
         }
@@ -118,6 +145,7 @@ module Api
 
       def build_recommended_action(ctx, active_debts, surplus)
         return nil if active_debts.empty?
+        return nil if surplus.nil?
 
         case ctx[:phase]
         when "debt_payoff"
@@ -154,6 +182,10 @@ module Api
 
       def ctx_repo
         @ctx_repo ||= Finanzas::Repositories::FinancialContextRepository.new
+      end
+
+      def plan_repo
+        @plan_repo ||= Finanzas::Repositories::MonthlyFinancialPlanRepository.new
       end
     end
   end

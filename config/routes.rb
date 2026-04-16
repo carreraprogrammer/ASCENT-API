@@ -48,6 +48,15 @@ Rails.application.routes.draw do
 
       resources :debts,                only: [ :index, :create, :update, :destroy ]
       resources :budgets,              only: [ :index, :create, :update ]
+      resources :monthly_plans,        only: [ :index, :update ] do
+        collection do
+          get :current
+          post :generate
+        end
+        member do
+          post :confirm
+        end
+      end
       resources :income_sources,       only: [ :index, :create, :update, :destroy ]
       resources :recurring_obligations, only: [ :index, :create, :update, :destroy ]
 
