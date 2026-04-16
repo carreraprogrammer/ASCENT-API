@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 26) do
+ActiveRecord::Schema[8.0].define(version: 20260415) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -276,6 +276,8 @@ ActiveRecord::Schema[8.0].define(version: 26) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "account_id"
+    t.string "source_event_id"
+    t.index ["account_id", "source", "source_event_id"], name: "idx_on_account_id_source_source_event_id_5beb8b9a55", unique: true, where: "(source_event_id IS NOT NULL)"
     t.index ["account_id", "status"], name: "index_transactions_on_account_id_and_status"
     t.index ["account_id", "year", "month"], name: "index_transactions_on_account_id_and_year_and_month"
     t.index ["account_id"], name: "index_transactions_on_account_id"

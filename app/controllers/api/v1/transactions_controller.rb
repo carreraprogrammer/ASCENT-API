@@ -65,11 +65,11 @@ module Api
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction), status: :created
       rescue Finanzas::Errors::DuplicateTransaction => e
         Rails.logger.warn(
-          "[TransactionsController#create] duplicate raw_date=#{params[:date].inspect} " \
+          "[TransactionsController#create] idempotency duplicate source_event_id=#{params.dig(:metadata, :source_event_id).inspect} " \
           "amount=#{params[:amount].inspect} source=#{params[:source].inspect} existing_id=#{e.existing_id.inspect}"
         )
         render json: {
-          errors: [ { status: "409", title: "Duplicate Transaction", detail: e.message } ],
+          errors: [ { status: "409", title: "Duplicate Transaction (idempotency)", detail: e.message } ],
           existing_id: e.existing_id
         }, status: :conflict
       rescue Finanzas::Errors::InvalidTransaction => e
