@@ -15,12 +15,15 @@ module Finanzas
                source: "manual", status: "confirmed", metadata: {})
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
+        metadata = (metadata || {}).to_h.stringify_keys
+        source_event_id = metadata["source_event_id"].presence
+
         # Idempotencia técnica: si viene source_event_id, bloquear solo si ya existe ese evento técnico
-        if metadata && metadata["source_event_id"].present?
+        if source_event_id
           existing = @repo.find_by_source_event_id(
             account_id: account_id,
             source: source,
-            source_event_id: metadata["source_event_id"]
+            source_event_id: source_event_id
           )
           if existing
             raise Finanzas::Errors::DuplicateTransaction.new(
@@ -44,6 +47,7 @@ module Finanzas
           subcategory_id: subcategory_id,
           source: source,
           status: status,
+          source_event_id: source_event_id,
           metadata: metadata,
           year: year,
           month: month

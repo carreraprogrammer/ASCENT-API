@@ -161,6 +161,7 @@ module Finanzas
           clarification_requested_at: record.clarification_requested_at,
           clarification_resolved_at: record.clarification_resolved_at,
           metadata: record.metadata,
+          source_event_id: record.source_event_id,
           year: record.year,
           month: record.month,
           created_at: record.created_at,
