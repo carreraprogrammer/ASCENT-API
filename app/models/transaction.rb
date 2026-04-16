@@ -18,4 +18,5 @@ class Transaction < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :year, presence: true
   validates :month, presence: true
+  validates :source_event_id, uniqueness: { scope: [:account_id, :source], allow_nil: true }, if: -> { source_event_id.present? }
 end

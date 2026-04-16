@@ -15,14 +15,16 @@ module Finanzas
                source: "manual", status: "confirmed", metadata: {})
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
-        if AUTOMATED_SOURCES.include?(source.to_s)
-          existing = @repo.find_duplicate(
-            account_id: account_id, date: date, amount: amount,
-            product: product, transaction_type: transaction_type
+        # Idempotencia técnica: si viene source_event_id, bloquear solo si ya existe ese evento técnico
+        if metadata && metadata["source_event_id"].present?
+          existing = @repo.find_by_source_event_id(
+            account_id: account_id,
+            source: source,
+            source_event_id: metadata["source_event_id"]
           )
           if existing
             raise Finanzas::Errors::DuplicateTransaction.new(
-              "Duplicate: transaction already exists (id=#{existing.id}, concept=#{existing.concept})",
+              "Duplicate: transaction already exists for source_event_id (id=#{existing.id}, concept=#{existing.concept})",
               existing_id: existing.id
             )
           end

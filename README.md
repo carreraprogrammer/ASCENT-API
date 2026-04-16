@@ -36,6 +36,36 @@ La meta no es ganar $15.000 USD/mes. Es convertirse en la persona que se los mer
 
 ---
 
+## Deduplicación y contrato agente/API
+
+### Estrategia actual (abril 2026)
+
+- **El backend solo protege contra duplicados técnicos**: si recibe el mismo `source_event_id` para el mismo `account_id` y `source`, responde 409 Conflict.
+- **El agente es responsable de deduplicación semántica**: decide si crear, actualizar, ignorar o pedir aclaración según el contexto conversacional.
+- **Ya no se rechazan transacciones por coincidencia de fecha/monto/concepto**: pueden coexistir gastos distintos con mismos valores si provienen de eventos técnicos distintos.
+
+#### Ejemplo de uso de idempotencia técnica
+
+```json
+{
+  "date": "15/04/2026",
+  "concept": "Almuerzo pollo",
+  "amount": 14000,
+  "transaction_type": "expense",
+  "source": "telegram",
+  "metadata": {
+    "source_event_id": "telegram:message:123456"
+  }
+}
+```
+
+Si el agente reintenta el mismo mensaje, la API responde 409 y no duplica el gasto.
+
+#### Ejemplo de coexistencia de gastos
+
+Dos gastos distintos con mismo monto y fecha pueden coexistir si el `source_event_id` es distinto o nulo.
+
+---
 ## Setup local
 
 ```bash
