@@ -22,6 +22,7 @@ module Finanzas
             amount: transaction.amount,
             transaction_type: transaction.transaction_type,
             source: transaction.source,
+            source_event_id: transaction.source_event_id,
             status: transaction.status,
             year: transaction.year,
             month: transaction.month,
