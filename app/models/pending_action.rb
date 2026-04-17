@@ -4,7 +4,7 @@ class PendingAction < ApplicationRecord
   belongs_to :user
   belongs_to :account, optional: true
 
-  TYPES    = %w[budget_planning debt_setup onboarding].freeze
+  TYPES    = %w[budget_planning debt_setup onboarding financial_context_setup].freeze
   STATUSES = %w[in_progress waiting_response completed cancelled expired].freeze
 
   validates :action_type, inclusion: { in: TYPES }

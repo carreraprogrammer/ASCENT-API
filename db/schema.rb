@@ -118,6 +118,7 @@ ActiveRecord::Schema[8.0].define(version: 20260415) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "account_id"
+    t.datetime "debts_confirmed_at"
     t.index ["account_id"], name: "index_financial_contexts_on_account_id"
     t.index ["user_id"], name: "index_financial_contexts_on_user_id", unique: true
   end
@@ -147,10 +148,43 @@ ActiveRecord::Schema[8.0].define(version: 20260415) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "account_id"
+    t.string "classification"
+    t.string "cadence"
+    t.integer "reliability_score"
+    t.datetime "last_confirmed_at"
+    t.string "evidence_source"
     t.index ["account_id", "active"], name: "index_income_sources_on_account_id_and_active"
+    t.index ["account_id", "classification"], name: "index_income_sources_on_account_id_and_classification"
     t.index ["account_id"], name: "index_income_sources_on_account_id"
     t.index ["user_id", "active"], name: "index_income_sources_on_user_id_and_active"
     t.index ["user_id"], name: "index_income_sources_on_user_id"
+  end
+
+  create_table "monthly_financial_plans", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "account_id"
+    t.integer "month", null: false
+    t.integer "year", null: false
+    t.string "status", default: "draft", null: false
+    t.string "mode", default: "conservative", null: false
+    t.integer "base_budget_income", default: 0, null: false
+    t.integer "expected_variable_income", default: 0, null: false
+    t.integer "recurring_obligations_total", default: 0, null: false
+    t.integer "debt_minimums_total", default: 0, null: false
+    t.integer "protected_buffer_amount", default: 0, null: false
+    t.integer "discretionary_limit", default: 0, null: false
+    t.string "overflow_rule", default: "debt", null: false
+    t.jsonb "overflow_rule_detail", default: {}, null: false
+    t.integer "reward_pct"
+    t.integer "investment_target"
+    t.string "debt_strategy"
+    t.jsonb "assumptions", default: {}, null: false
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "year", "month"], name: "index_monthly_financial_plans_on_account_and_period", unique: true
+    t.index ["account_id"], name: "index_monthly_financial_plans_on_account_id"
+    t.index ["user_id"], name: "index_monthly_financial_plans_on_user_id"
   end
 
   create_table "pending_actions", force: :cascade do |t|
@@ -333,6 +367,8 @@ ActiveRecord::Schema[8.0].define(version: 20260415) do
   add_foreign_key "financial_contexts", "users"
   add_foreign_key "income_sources", "accounts"
   add_foreign_key "income_sources", "users"
+  add_foreign_key "monthly_financial_plans", "accounts"
+  add_foreign_key "monthly_financial_plans", "users"
   add_foreign_key "pending_actions", "accounts"
   add_foreign_key "pending_actions", "users"
   add_foreign_key "recurring_obligations", "accounts"

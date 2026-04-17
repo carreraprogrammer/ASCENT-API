@@ -20,7 +20,7 @@ module Finanzas
 
         dimensions = {
           INCOME_PROFILE => income_profile_state(income_sources),
-          DEBTS => debts_state(debts),
+          DEBTS => debts_state(debts, context),
           RECURRING_EXPENSES => recurring_state(recurring),
           STRATEGY => strategy_state(context),
           MONTHLY_PLAN => monthly_plan_state(plan)
@@ -85,19 +85,24 @@ module Finanzas
         }
       end
 
-      def debts_state(debts)
+      def debts_state(debts, context = nil)
         active_count = debts.count { |debt| debt.status == "active" }
+        confirmed_at = context&.dig(:debts_confirmed_at)
 
         status =
-          if debts.empty?
+          if debts.empty? && confirmed_at.present?
+            "sufficient"
+          elsif debts.empty?
             "partial"
           else
             "sufficient"
           end
 
         reason =
-          if debts.empty?
-            "No hay deudas registradas; puede significar cero deudas o falta de confirmación."
+          if debts.empty? && confirmed_at.present?
+            "Confirmado sin deudas activas."
+          elsif debts.empty?
+            "No hay deudas registradas. Si no tenés deudas, confirmalo con 'no tengo deudas'."
           elsif active_count.zero?
             "Las deudas están registradas y ninguna aparece activa."
           else
@@ -109,7 +114,8 @@ module Finanzas
           reason: reason,
           observed: {
             total_debts: debts.size,
-            active_debts: active_count
+            active_debts: active_count,
+            debts_confirmed_at: confirmed_at
           }
         }
       end
