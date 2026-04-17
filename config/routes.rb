@@ -66,6 +66,9 @@ Rails.application.routes.draw do
         end
       end
 
+      get "completeness", to: "completeness#show"
+      post "agents/preflight", to: "agents#preflight"
+
       get "summary", to: "summary#show"
 
       # Telegram (sin autenticación JWT — Telegram llama directamente)
