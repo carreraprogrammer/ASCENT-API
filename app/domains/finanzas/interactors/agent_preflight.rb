@@ -22,6 +22,9 @@ module Finanzas
         when "monthly_status"
           nudges << "monthly_plan" if needs_attention?(dimensions["monthly_plan"])
           nudges << "strategy" if needs_attention?(dimensions["strategy"])
+        when "debt_status"
+          nudges << "debts" if needs_attention?(dimensions["debts"])
+          nudges << "strategy" if needs_attention?(dimensions["strategy"])
         else
           nudges << "monthly_plan" if dimensions["monthly_plan"][:status] == "missing"
         end
@@ -64,6 +67,8 @@ module Finanzas
           "Antes de hablar de presupuesto necesito cerrar tu base del mes: #{humanize_dimensions(dimensions)}."
         when "overflow"
           "Antes de decidir qué hacer con un ingreso extra necesito tu plan mensual al día: #{humanize_dimensions(dimensions)}."
+        when "debt_status"
+          "Para darte un panorama real de tus deudas necesito: #{humanize_dimensions(dimensions)}."
         else
           "Antes de seguir necesito completar esto: #{humanize_dimensions(dimensions)}."
         end
@@ -73,6 +78,8 @@ module Finanzas
         case intent.to_s
         when "monthly_status"
           "Puedo responderte, pero me falta afinar: #{humanize_dimensions(dimensions)}."
+        when "debt_status"
+          "Puedo mostrarte las deudas, pero conviene completar: #{humanize_dimensions(dimensions)}."
         else
           "Puedo seguir, pero conviene completar: #{humanize_dimensions(dimensions)}."
         end
@@ -80,11 +87,11 @@ module Finanzas
 
       def humanize_dimensions(dimensions)
         labels = {
-          "income_profile" => "perfil de ingresos",
-          "debts" => "deudas",
+          "income_profile"     => "perfil de ingresos",
+          "debts"              => "deudas",
           "recurring_expenses" => "gastos recurrentes",
-          "strategy" => "estrategia financiera",
-          "monthly_plan" => "plan mensual"
+          "strategy"           => "estrategia financiera",
+          "monthly_plan"       => "plan mensual"
         }
         dimensions.map { |name| labels[name] || name }.join(", ")
       end

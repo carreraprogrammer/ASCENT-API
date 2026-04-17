@@ -25,7 +25,11 @@ module Finanzas
 
         base_income = base_sources.sum { |source| source[:expected_amount].to_i }
         variable_income = variable_sources.sum { |source| source[:expected_amount].to_i }
-        planning_income = mode.to_s == "expected" ? base_income + (variable_income * 0.35).round : base_income
+        weighted_variable_income = variable_sources.sum do |source|
+          score = source[:reliability_score] || 50
+          (source[:expected_amount].to_i * (score / 100.0)).round
+        end
+        planning_income = mode.to_s == "expected" ? base_income + weighted_variable_income : base_income
 
         recurring_total = @recurring_repo.active_for_account(account_id)
                                          .reject { |item| item[:allocatable_type] == "Debt" }
@@ -59,7 +63,10 @@ module Finanzas
             assumptions: {
               planning_income_used: planning_income,
               base_sources: base_sources.map { |source| source[:name] },
-              variable_sources: variable_sources.map { |source| source[:name] },
+              variable_sources: variable_sources.map { |source|
+                { name: source[:name], reliability_score: source[:reliability_score] || 50 }
+              },
+              weighted_variable_income: weighted_variable_income,
               generated_from: "income_sources",
               generated_at: Time.current.iso8601
             }
