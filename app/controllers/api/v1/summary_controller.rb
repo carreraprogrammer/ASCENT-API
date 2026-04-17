@@ -26,6 +26,7 @@ module Api
           burn_rate:         build_burn_rate(account_id, month, year, budgets, now_col),
           debts:             build_debts_summary(debts),
           monthly_plan:      build_monthly_plan_summary(plan),
+          overflow_status:   build_overflow_status(plan, balance, ctx, debts),
           financial_context: build_context_summary(ctx, plan, debts)
         }
       end
@@ -114,9 +115,34 @@ module Api
           protected_buffer_amount:  plan[:protected_buffer_amount],
           discretionary_limit:      plan[:discretionary_limit],
           overflow_rule:            plan[:overflow_rule],
+          overflow_rule_detail:     plan[:overflow_rule_detail],
           reward_pct:               plan[:reward_pct],
           debt_strategy:            plan[:debt_strategy],
+          assumptions:              plan[:assumptions],
           confirmed_at:             plan[:confirmed_at]
+        }
+      end
+
+      def build_overflow_status(plan, balance, ctx, debts)
+        return nil unless plan
+
+        base_budget_income = plan[:base_budget_income].to_i
+        confirmed_income = balance[:income_confirmed].to_i
+        expected_variable_income = plan[:expected_variable_income].to_i
+        realized_overflow = [confirmed_income - base_budget_income, 0].max
+        target = overflow_target_for(plan, ctx, debts)
+
+        {
+          rule: plan[:overflow_rule],
+          rule_detail: plan[:overflow_rule_detail] || {},
+          base_budget_income: base_budget_income,
+          confirmed_income: confirmed_income,
+          expected_variable_income: expected_variable_income,
+          realized_overflow: realized_overflow,
+          remaining_expected_overflow: [expected_variable_income - realized_overflow, 0].max,
+          status: realized_overflow.positive? ? "available" : "waiting",
+          suggested_destination: target,
+          suggested_action: overflow_action(plan, realized_overflow, target)
         }
       end
 
@@ -157,6 +183,52 @@ module Api
           abono = [surplus, target[:current_balance]].min
           months = abono > 0 ? (target[:current_balance].to_f / abono).ceil : "?"
           "Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
+        else
+          nil
+        end
+      end
+
+      def overflow_target_for(plan, ctx, debts)
+        case plan[:overflow_rule]
+        when "debt"
+          active_debts = debts.select { |d| d[:status] == "active" }
+          return nil if active_debts.empty?
+
+          strategy = plan[:debt_strategy].presence || ctx&.dig(:strategy)
+          target = strategy == "avalanche" ?
+            active_debts.max_by { |d| d[:interest_rate].to_f } :
+            active_debts.min_by { |d| d[:current_balance].to_i }
+
+          {
+            type: "debt",
+            debt_id: target[:id],
+            debt_name: target[:name],
+            strategy: strategy.presence || "snowball"
+          }
+        when "emergency_fund"
+          { type: "emergency_fund", label: "colchón de seguridad" }
+        when "investment"
+          { type: "investment", label: "inversión / construcción de futuro" }
+        when "mixed"
+          { type: "mixed", label: "mix entre deuda, colchón e inversión" }
+        else
+          nil
+        end
+      end
+
+      def overflow_action(plan, realized_overflow, target)
+        return "Todavía no hay ingreso extra confirmado sobre la base del plan." if realized_overflow <= 0
+
+        case plan[:overflow_rule]
+        when "debt"
+          debt_name = target&.dig(:debt_name) || "deuda prioritaria"
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería ir a #{debt_name}."
+        when "emergency_fund"
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería reforzar tu colchón."
+        when "investment"
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería ir a inversión."
+        when "mixed"
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería repartirse sin inflar tu presupuesto base."
         else
           nil
         end
