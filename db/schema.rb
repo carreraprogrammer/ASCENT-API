@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260418) do
+ActiveRecord::Schema[8.0].define(version: 20260419) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -225,8 +225,11 @@ ActiveRecord::Schema[8.0].define(version: 20260418) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "account_id"
+    t.string "actionable_type"
+    t.bigint "actionable_id"
     t.index ["account_id", "status"], name: "index_pending_actions_on_account_id_and_status"
     t.index ["account_id"], name: "index_pending_actions_on_account_id"
+    t.index ["actionable_type", "actionable_id"], name: "index_pending_actions_on_actionable"
     t.index ["user_id", "status"], name: "index_pending_actions_on_user_id_and_status"
     t.index ["user_id"], name: "index_pending_actions_on_user_id"
   end
@@ -254,7 +257,9 @@ ActiveRecord::Schema[8.0].define(version: 20260418) do
     t.text "notes"
     t.jsonb "ai_analysis", default: [], null: false
     t.bigint "account_id"
+    t.string "budget_category"
     t.index ["account_id", "active"], name: "index_recurring_obligations_on_account_id_and_active"
+    t.index ["account_id", "budget_category"], name: "index_recurring_obligations_on_account_budget_category"
     t.index ["account_id"], name: "index_recurring_obligations_on_account_id"
     t.index ["allocatable_type", "allocatable_id"], name: "index_recurring_obligations_on_allocatable"
     t.index ["category_id"], name: "index_recurring_obligations_on_category_id"

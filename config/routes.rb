@@ -75,7 +75,8 @@ Rails.application.routes.draw do
       post "agent_events",         to: "agent_ui_events#create"
       patch "agent_events/:id/consume", to: "agent_ui_events#consume"
 
-      get "summary", to: "summary#show"
+      get "summary",        to: "summary#show"
+      get "budget_context", to: "budget_context#show"
 
       # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"

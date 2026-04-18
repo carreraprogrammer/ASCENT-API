@@ -4,7 +4,7 @@ class MonthlyFinancialPlan < ApplicationRecord
   belongs_to :user
   belongs_to :account, optional: true
 
-  STATUSES = %w[draft confirmed superseded].freeze
+  STATUSES = %w[draft provisional confirmed superseded].freeze
   MODES = %w[conservative expected].freeze
   OVERFLOW_RULES = %w[debt emergency_fund investment mixed].freeze
 

@@ -72,6 +72,7 @@ module Finanzas
           id:               record.id,
           user_id:          record.user_id,
           category_id:      record.category_id,
+          budget_category:  record.budget_category,
           name:             record.name,
           amount:           record.amount,
           due_day:          record.due_day,

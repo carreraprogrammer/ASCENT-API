@@ -10,9 +10,15 @@ class RecurringObligation < ApplicationRecord
   # se desactiva automáticamente via callback en el modelo destino.
   belongs_to :allocatable, polymorphic: true, optional: true
 
+  BUDGET_CATEGORIES = %w[
+    housing utilities groceries transportation health
+    debt_payoff dining_leisure personal_care savings_buffer
+  ].freeze
+
   validates :name,   presence: true
   validates :amount, numericality: { greater_than: 0 }
   validates :due_day, numericality: { in: 1..31 }, allow_nil: true
+  validates :budget_category, inclusion: { in: BUDGET_CATEGORIES }, allow_nil: true
 
   scope :active, -> { where(active: true).order(:due_day) }
 
