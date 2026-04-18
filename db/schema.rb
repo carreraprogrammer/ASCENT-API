@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260419) do
+ActiveRecord::Schema[8.0].define(version: 20260420) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,6 +22,7 @@ ActiveRecord::Schema[8.0].define(version: 20260419) do
     t.jsonb "settings", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "financial_level", default: 1, null: false
     t.index ["owner_user_id"], name: "index_accounts_on_owner_user_id"
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
   end
@@ -354,6 +355,19 @@ ActiveRecord::Schema[8.0].define(version: 20260419) do
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end
 
+  create_table "user_milestones", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "account_id"
+    t.string "code", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "achieved_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "code"], name: "index_user_milestones_on_account_and_code", unique: true
+    t.index ["account_id"], name: "index_user_milestones_on_account_id"
+    t.index ["user_id"], name: "index_user_milestones_on_user_id"
+  end
+
   create_table "user_roles", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "role_id", null: false
@@ -415,6 +429,8 @@ ActiveRecord::Schema[8.0].define(version: 20260419) do
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "subcategories"
   add_foreign_key "transactions", "users"
+  add_foreign_key "user_milestones", "accounts"
+  add_foreign_key "user_milestones", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
 end
