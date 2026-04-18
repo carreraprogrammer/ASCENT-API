@@ -2,6 +2,7 @@ module Finanzas
   module Interactors
     class BuildBudgetContext
       VARIABLE_CLASSIFICATIONS = %w[variable seasonal one_time].freeze
+      SPENDING_HISTORY_MONTHS = 3
 
       def initialize(
         income_repo:   Finanzas::Repositories::IncomeSourceRepository.new,
@@ -61,7 +62,10 @@ module Finanzas
             missing_income:       income_sources.empty?,
             missing_obligations:  obligations.empty?,
             obligations_seem_low: obligations_total < (fixed_total * 0.15).round && fixed_total > 0
-          }
+          },
+          spending_history:   build_spending_history(account_id),
+          sinking_funds:      build_sinking_funds(account_id),
+          budget_categories:  build_budget_categories(account_id)
         }
       end
 
@@ -89,6 +93,65 @@ module Finanzas
           {
             total: items.sum { |o| o[:amount].to_i },
             items: items.map { |o| { id: o[:id], name: o[:name], amount: o[:amount], due_day: o[:due_day] } }
+          }
+        end
+      end
+
+      def build_spending_history(account_id)
+        since = SPENDING_HISTORY_MONTHS.months.ago.to_date
+
+        rows = ::Transaction
+          .joins("LEFT JOIN categories ON categories.id = transactions.category_id")
+          .where(account_id: account_id, transaction_type: "expense")
+          .where("transactions.date >= ?", since)
+          .select(
+            "categories.code AS category_code",
+            "categories.category_type AS category_type",
+            "transactions.year",
+            "transactions.month",
+            "SUM(transactions.amount) AS total"
+          )
+          .group("categories.code", "categories.category_type", "transactions.year", "transactions.month")
+
+        # Group by category_code (or fall back to category_type), then average over months
+        by_category = Hash.new { |h, k| h[k] = [] }
+        rows.each do |row|
+          key = row.category_code.presence || row.category_type.presence || "uncategorized"
+          by_category[key] << row.total.to_i
+        end
+
+        by_category.transform_values do |monthly_totals|
+          {
+            average_monthly: (monthly_totals.sum.to_f / SPENDING_HISTORY_MONTHS).round,
+            months_with_data: monthly_totals.size,
+            monthly_totals: monthly_totals
+          }
+        end
+      end
+
+      def build_sinking_funds(account_id)
+        ::SinkingFund.where(account_id: account_id).active.map do |sf|
+          {
+            id:                   sf.id,
+            name:                 sf.name,
+            monthly_contribution: sf.monthly_contribution,
+            current_balance:      sf.current_balance,
+            target_amount:        sf.target_amount,
+            target_date:          sf.target_date,
+            budget_category:      sf.budget_category
+          }
+        end
+      end
+
+      def build_budget_categories(account_id)
+        ::BudgetCategory.where(account_id: account_id).active.map do |bc|
+          {
+            id:            bc.id,
+            code:          bc.code,
+            name:          bc.name,
+            category_type: bc.category_type,
+            system:        bc.system,
+            sort_order:    bc.sort_order
           }
         end
       end
