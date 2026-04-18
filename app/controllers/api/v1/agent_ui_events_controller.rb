@@ -17,8 +17,6 @@ module Api
 
       # POST /api/v1/agent_events
       def create
-        return unless require_scope!("agent_events:write")
-
         event = AgentUiEvent.create!(
           account_id: current_account.id,
           session_id: params[:session_id],
