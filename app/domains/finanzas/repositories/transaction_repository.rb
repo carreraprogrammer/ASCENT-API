@@ -52,19 +52,17 @@ module Finanzas
         end
 
         income_confirmed  = totals["income_confirmed"]
-        income_projected  = totals["income_projected"]
+        income_pending    = totals["income_pending"]
         expense_confirmed = totals["expense_confirmed"]
         expense_pending   = totals["expense_pending"]
-        expense_projected = totals["expense_projected"]
 
         {
           income_confirmed:  income_confirmed,
-          income_projected:  income_projected,
+          income_pending:    income_pending,
           expense_confirmed: expense_confirmed,
           expense_pending:   expense_pending,
-          expense_projected: expense_projected,
           balance_confirmed: income_confirmed - expense_confirmed,
-          balance_total:     (income_confirmed + income_projected) - (expense_confirmed + expense_pending + expense_projected)
+          balance_total:     (income_confirmed + income_pending) - (expense_confirmed + expense_pending)
         }
       end
 

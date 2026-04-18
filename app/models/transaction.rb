@@ -8,7 +8,7 @@ class Transaction < ApplicationRecord
 
   TYPES = %w[expense income].freeze
   SOURCES = %w[telegram gmail manual].freeze
-  STATUSES = %w[confirmed pending projected].freeze
+  STATUSES = %w[confirmed pending].freeze
 
   validates :date, presence: true
   validates :concept, presence: true
