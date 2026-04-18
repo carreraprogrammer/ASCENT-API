@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260420) do
+ActiveRecord::Schema[8.0].define(version: 20260422) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,6 +49,20 @@ ActiveRecord::Schema[8.0].define(version: 20260420) do
     t.index ["account_id", "consumed_at"], name: "index_agent_ui_events_on_account_id_and_consumed_at"
     t.index ["account_id"], name: "index_agent_ui_events_on_account_id"
     t.index ["session_id"], name: "index_agent_ui_events_on_session_id"
+  end
+
+  create_table "budget_categories", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.string "category_type", null: false
+    t.boolean "system", default: false, null: false
+    t.boolean "active", default: true, null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "code"], name: "index_budget_categories_on_account_id_and_code", unique: true
+    t.index ["account_id"], name: "index_budget_categories_on_account_id"
   end
 
   create_table "budgets", force: :cascade do |t|
@@ -302,6 +316,24 @@ ActiveRecord::Schema[8.0].define(version: 20260420) do
     t.index ["token_hash"], name: "index_service_accounts_on_token_hash"
   end
 
+  create_table "sinking_funds", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "account_id"
+    t.string "name", null: false
+    t.integer "monthly_contribution", default: 0, null: false
+    t.integer "target_amount"
+    t.date "target_date"
+    t.integer "current_balance", default: 0, null: false
+    t.string "budget_category"
+    t.boolean "active", default: true, null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "index_sinking_funds_on_account_id_and_active"
+    t.index ["account_id"], name: "index_sinking_funds_on_account_id"
+    t.index ["user_id"], name: "index_sinking_funds_on_user_id"
+  end
+
   create_table "subcategories", force: :cascade do |t|
     t.bigint "category_id", null: false
     t.string "name", null: false
@@ -399,6 +431,7 @@ ActiveRecord::Schema[8.0].define(version: 20260420) do
 
   add_foreign_key "accounts", "users", column: "owner_user_id"
   add_foreign_key "agent_ui_events", "accounts"
+  add_foreign_key "budget_categories", "accounts"
   add_foreign_key "budgets", "accounts"
   add_foreign_key "budgets", "categories"
   add_foreign_key "budgets", "users"
@@ -424,6 +457,8 @@ ActiveRecord::Schema[8.0].define(version: 20260420) do
   add_foreign_key "recurring_obligations", "users"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
+  add_foreign_key "sinking_funds", "accounts"
+  add_foreign_key "sinking_funds", "users"
   add_foreign_key "subcategories", "categories"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
