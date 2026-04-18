@@ -81,3 +81,30 @@ Y si llega un update legacy sin `schedules`, se reemplaza el schedule principal 
   - update weekly con schedules
 
 `rspec` no pudo ejecutarse localmente porque el host no tiene acceso al Postgres de test.
+
+---
+
+## Implementación en el Brain
+
+El Brain es compatible con el modelo nuevo de schedules sin romper los flujos conversacionales existentes.
+
+### Qué hace el Brain
+
+- lee `schedules` cuando el API los devuelve
+- crea `income_sources` con `cadence + schedules`
+- no asume una sola ventana por ingreso
+- muestra el breakdown de ventanas si el source trae `schedules`
+- `rails_api.py` y `rails_http.py` aceptan: `cadence`, `schedules`, `notes`
+
+### Income wizard en el Brain
+
+- pregunta cadencia explícita
+- pide el monto por evento cuando la cadencia es quincenal o semanal
+- calcula el total mensual internamente antes de persistir `expected_amount`
+- soporta mensual / quincenal / semanal / irregular
+- crea una sola fuente por ingreso aunque tenga varias ventanas
+- pide confiabilidad solo para ingreso variable
+
+### Deuda técnica pendiente
+
+El Brain sigue conviviendo con campos legacy (`expected_day_from`, `expected_day_to`, `expected_amount`) porque la API los usa como denormalización de lectura. Eso no bloquea ningún flujo actual.

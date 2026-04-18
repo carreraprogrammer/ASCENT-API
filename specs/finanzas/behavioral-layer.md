@@ -1,6 +1,7 @@
-# Behavioral Layer — daniel15k-api
+# Behavioral Layer
 
-Fecha: 2026-04-15
+> Fuente de verdad: daniel15k-api/specs/finanzas/behavioral-layer.md
+> Última actualización: 2026-04-18
 
 ## Tesis
 
@@ -112,3 +113,46 @@ La lectura conductual debe poder cambiar sin migrar tablas cada semana.
   - acción recomendada
   - respuesta del usuario
   - resultado posterior
+
+---
+
+## Rol del agente (Brain)
+
+El agente es quien ejecuta la lectura conductual. La API expone los datos — el Brain los interpreta.
+
+### Comportamiento implementado en chat
+
+El `SYSTEM_PROMPT` exige una lectura conductual mínima al confirmar cada transacción:
+
+- `discretionary` → nombrar que fue elegido / discrecional
+- `investment` → nombrar que construye futuro
+- `committed` → nombrar que es carga fija
+- `necessary` → nombrar que sostiene / mantiene
+- `social` → nombrar que es vínculo / social
+- `income` → nombrar que es entrada
+
+Regla de formato: breve, una sola respuesta final, sin narrar herramientas ni proceso de razonamiento.
+
+Ejemplo válido: `✅ Registrado: $14.000 en tamales. Fue discrecional.`
+
+### Comportamiento implementado en nightly
+
+El agente nocturno incluye una lectura conductual del día/mes (máximo 2 bullets):
+
+- `discretionary` alto → fricción suave
+- `investment` bajo → señalar falta de construcción
+- `committed` alto → señalar presión estructural
+- `social` visible → señalar gasto relacional
+
+### Lo que el agente NO hace todavía
+
+- no mantiene memoria explícita de intervención pasada entre sesiones
+- no cierra loops tipo "te dije esto ayer, hoy pasó esto"
+- no genera automáticamente acciones futuras agendadas
+- no aplica cooling-off real antes de compras impulsivas
+
+### Evolución futura del agente conductual
+
+- helper interno `behavior_frame(category_type, monthly_context)`
+- mensajes distintos según patrón: repetido / aislado / escalando
+- `Behavior Engine` separado con input (transacciones + summary + contexto) y output (nudges / fricción / refuerzo)
