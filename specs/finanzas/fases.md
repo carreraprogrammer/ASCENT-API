@@ -25,7 +25,7 @@ La regla nueva es esta:
 - categorias y subcategorias del sistema
 - CRUD completo de transacciones
 - clasificacion por categoria/subcategoria
-- soporte de `confirmed`, `pending`, `projected`
+- soporte de `confirmed` y `pending`
 - deduplicacion tecnica por `source_event_id`
 - agente en tiempo real registrando y corrigiendo movimientos
 - UI operativa para revisar, editar y eliminar transacciones
@@ -62,7 +62,7 @@ La infraestructura del Brain esta cerrada. Lo que queda pendiente ya no es "tene
 
 **Tesis**
 
-El sistema ya sabe registrar movimientos, pero todavia no sabe convertir ingresos estructurales en un plan mensual confiable. Hoy existe `budgets`, existen `income_sources`, y existen `projected transactions`; lo que falta es la capa que decide:
+El sistema ya sabe registrar movimientos, pero todavia no sabe convertir ingresos estructurales en un plan mensual confiable. Hoy existe `budgets` e `income_sources`; lo que falta es la capa que decide:
 
 - con que ingreso vivir este mes
 - que parte del ingreso es base vs variable
@@ -73,7 +73,6 @@ El sistema ya sabe registrar movimientos, pero todavia no sabe convertir ingreso
 
 Corregir la confusion entre:
 
-- `transactions.status = projected`
 - `budgets`
 - `income_sources`
 - `financial_context`
@@ -163,15 +162,153 @@ El wizard deja de preguntar por quincenas hardcodeadas y pasa a confirmar:
 - regla de overflow
 - recompensa opcional
 
+---
+
+#### 6. Agente web bidireccional — canal completo
+
+El web app tiene su propio canal con el agente, independiente de Telegram. El agente es el mismo cerebro; lo que cambia es el canal de entrada y las herramientas de salida que usa.
+
+##### Principio de diseno
+
+El wizard de presupuesto no es un formulario — es una conversacion guiada por el agente renderizada como componentes estructurados. El usuario no habla con texto: interactua con tarjetas, formularios y propuestas que el agente genera dinamicamente.
+
+Telegram y web son canales separados que convergen en el mismo agente:
+
+```
+Telegram  →  webhook        →  agente  →  send_telegram (texto + inline_keyboard)
+Web       →  /agents/chat   →  agente  →  emit_ui_event (componentes estructurados)
+```
+
+##### Canal de salida: herramientas del agente para web
+
+El agente dispone de cinco herramientas de salida especificas para el canal web:
+
+| tool | proposito | componente en front |
+|---|---|---|
+| `emit_ui_event: show_plan_proposal` | proponer draft calculado del plan mensual | `PlanProposalCard` |
+| `emit_ui_event: show_card` | informacion, advertencia o exito | `AgentCard` |
+| `emit_ui_event: show_form` | formulario dinamico con campos y valores pre-llenados | `DynamicForm` |
+| `emit_ui_event: request_confirmation` | solicitar confirmacion explicita antes de guardar | `ConfirmCard` |
+| `navigate_to(route)` | redirigir al usuario a una pagina al terminar un flujo | navegacion del router |
+
+El agente nunca usa `send_telegram` cuando el `source` es `"web"`. El contexto del canal llega en cada request.
+
+##### Canal de entrada: web → agente
+
+El front-end se comunica con el agente via un unico endpoint:
+
+```
+POST /api/v1/agents/chat
+{
+  "message": "string | null",       // texto libre del usuario
+  "event_response": {               // respuesta estructurada a un evento previo
+    "event_id": 123,
+    "type": "form_submitted | confirmed | dismissed",
+    "data": {}
+  },
+  "session_id": "string",
+  "source": "web"
+}
+```
+
+El agente recibe el mensaje, corre con las mismas herramientas de lectura/escritura que en Telegram, y responde emitiendo eventos web en lugar de mensajes de Telegram. La conversacion se almacena por `session_id`.
+
+##### Flujo completo del wizard de presupuesto
+
+```
+1. Usuario toca "Comenzar presupuesto"
+   → POST /agents/chat { message: "Quiero crear mi plan mensual", source: "web" }
+
+2. Agente detecta datos disponibles, calcula draft
+   → emit_ui_event: show_plan_proposal { draft, warnings }
+   → Front renderiza PlanProposalCard
+
+3. Usuario ajusta una linea (ej. baja obligaciones)
+   → POST /agents/chat { event_response: { type: "form_submitted", data: { ... } } }
+   → Agente valida, recalcula
+   → emit_ui_event: show_card { tone: "warning", ... }  si hay conflicto
+   → emit_ui_event: show_plan_proposal actualizado  si es valido
+
+4. Usuario confirma
+   → POST /agents/chat { event_response: { type: "confirmed", event_id: ... } }
+   → Agente guarda monthly_financial_plan
+   → emit_ui_event: show_card { tone: "success", title: "Plan confirmado" }
+   → navigate_to("/budgets")
+```
+
+##### Plan rolling: confirmacion mensual, no re-creacion
+
+El plan no se crea desde cero cada mes. El agente:
+
+1. Detecta si existe plan confirmado para el mes actual
+2. Si no existe, hereda el del mes anterior como draft
+3. Marca que cambio respecto al mes anterior (ingreso variable no confirmado, nueva deuda, etc.)
+4. Emite `show_plan_proposal` con las diferencias resaltadas — el usuario confirma o ajusta
+5. Si ya existe plan confirmado, el agente puede proponer ajustes puntuales sin reabrir todo
+
+Esto convierte el presupuesto en algo que se mantiene vivo sin friccion, no en un formulario que hay que rellenar cada mes.
+
+##### Contexto de ciudad en el system prompt
+
+El agente conoce rangos de costo de vida colombiano para que sus sugerencias sean realistas:
+
+- Almuerzo corriente: $12.000–$25.000 (Pasto mas bajo, Bogota mas alto)
+- Transporte urbano: $3.000–$6.000 por trayecto segun ciudad
+- Salida / ocio: $80.000–$200.000 segun ciudad y tipo de plan
+- Mercado mensual (1 persona): $300.000–$600.000 segun ciudad y habitos
+
+Si no conoce la ciudad del usuario, la pregunta antes de proponer cifras.
+
+##### Que se construye
+
+**API (Rails)** — ya construido:
+```text
+POST  /api/v1/agent_events           -- agente escribe evento (emit_ui_event)
+GET   /api/v1/agent_events/pending   -- front hace polling
+PATCH /api/v1/agent_events/:id/consume
+```
+
+**API (Rails)** — por construir:
+```text
+POST  /api/v1/agents/chat            -- entrada web → agente
+```
+
+**Agente (Python)** — ya construido:
+- Tool `emit_ui_event(type, payload)`
+
+**Agente (Python)** — por construir:
+- Tool `navigate_to(route)` — escribe evento tipo `navigate` con la ruta destino
+- Handler de `POST /agents/chat`: detecta `source: web`, corre el agente, usa tools web
+- Logica de plan rolling: hereda mes anterior, marca diferencias, propone confirmacion
+
+**Front-end (Ionic React)** — ya construido:
+- Hook `useAgentEvents` (polling)
+- `AgentEventRenderer` con registry de componentes
+- `PlanProposalCard`, `AgentCard`, `ConfirmCard`
+
+**Front-end (Ionic React)** — por construir:
+- Hook `useWebChat(sessionId)` — wrappea `POST /agents/chat` para enviar mensajes y respuestas de eventos
+- Manejo de evento `navigate` en `useAgentEvents` — ejecuta navegacion del router
+- Conectar boton "Comenzar presupuesto" al `useWebChat` en lugar de abrir wizard estatico
+
+##### Criterios de aceptacion
+
+- [ ] `POST /api/v1/agents/chat` recibe mensaje web y corre el agente en modo web
+- [ ] el agente usa `emit_ui_event` (no `send_telegram`) cuando `source == "web"`
+- [ ] el wizard de presupuesto arranca con propuesta calculada, no formulario vacio
+- [ ] el usuario puede ajustar el draft y el agente revalida en la misma sesion
+- [ ] confirmar el plan desde el web guarda `monthly_financial_plan` y navega a `/budgets`
+- [ ] el plan del mes se hereda del anterior; el agente marca las diferencias
+- [ ] si el agente no conoce la ciudad del usuario, la pregunta antes de proponer cifras
+- [ ] el agente nocturno puede emitir propuestas web Y mensajes de Telegram en paralelo
+
+---
+
 ### Contrato nuevo
 
 #### `budget`
 
 Sigue siendo un limite por categoria. No desaparece.
-
-#### `projected transaction`
-
-Sigue representando un evento esperado concreto de cashflow. No desaparece.
 
 #### `monthly_financial_plan`
 
@@ -202,6 +339,9 @@ POST /api/v1/agents/preflight
 - [ ] cuando entra ingreso extra, el sistema aplica `overflow_rule` sin inflar el presupuesto base
 - [ ] el agente hace `preflight` y decide entre flujo normal, wizard o soft nudge
 - [ ] existe estado minimo de completitud para `income_profile`, `debts`, `recurring_expenses`, `strategy` y `monthly_plan`
+- [ ] el canal de eventos agente → front-end esta operativo (tabla `agent_ui_events`, polling, registry)
+- [ ] el wizard de presupuesto arranca con propuesta calculada por el agente, no con campos vacios
+- [ ] el agente conoce rangos de costo de vida por ciudad colombiana y los usa en la propuesta
 - [ ] tests cubren al menos:
   - plan conservador
   - plan expected
@@ -238,29 +378,62 @@ Construir las decisiones de deuda y ahorro encima del `monthly_financial_plan`, 
 
 ## Fase 5 - Motor Conductual
 
-**Estado**: `pendiente`
+**Estado**: `pendiente futuro — no iniciar hasta cerrar Fases 3 y 4`
+
+**Referencia**: `specs/deep-research-report.md` define el modelo completo.
 
 **Objetivo**
 
-Convertir categorias, plan mensual y contexto en intervenciones consistentes.
+Convertir el historial transaccional, el plan mensual y el contexto financiero en un perfil conductual inferido que permita intervenciones personalizadas, no genericas.
+
+### Principios de diseno
+
+- El `behavior_profile` es inferido desde evidencia, no declarado por el usuario ni usado como etiqueta moral.
+- Las intervenciones siguen el framework COM-B: identificar si el gap es de capacidad, oportunidad o motivacion antes de decidir el tipo de nudge.
+- La motivacion autonoma (el usuario quiere) se trata diferente a la controlada (el usuario siente presion); los nudges deben apuntar a reforzar la autonoma.
+- Trazabilidad obligatoria: `trigger → intervencion → respuesta → resultado`.
 
 ### Que se construye
 
-- `behavior_profile` editable y basado en evidencia, no etiquetas moralistas
-- `behavior_snapshot` derivado
-- `behavior_interventions`
-- `behavior_feedback_loops`
-- triggers tipo:
-  - discretionary alto antes de fecha critica
-  - ingreso extra sin regla aplicada
-  - plan mensual desalineado
-  - riesgo en payday
+#### `behavior_profile`
+
+Perfil inferido con seis ejes (segun deep-research-report):
+
+- `money_management_domains` — donde el usuario tiene control vs. donde falla sistematicamente
+- `motivation_quality` — autonoma vs. controlada; determina que tipo de intervencion tiene sentido
+- `self_efficacy_and_control` — percepcion del usuario sobre su capacidad de cambio
+- `monitoring_habit` — frecuencia y profundidad de revision del sistema
+- `credit_reliance` — patron de uso de deuda como herramienta vs. como salida
+- `stress_and_shame_risk` — indicadores de que el dinero genera evitacion en lugar de accion
+
+#### `behavior_snapshot`
+
+Estado derivado del perfil mas el contexto del mes actual. No es editable; se recalcula.
+
+#### `behavior_interventions`
+
+Mapa de triggers con tipo de intervencion recomendada:
+
+| trigger | gap type | intervencion |
+|---|---|---|
+| discretionary alto antes de fecha critica | conductual | friccion util |
+| ingreso extra sin regla aplicada | de politica | if-then sugerido |
+| plan mensual desalineado | informacional | reporte de brecha |
+| patron de evasion (no abre el sistema en dias de tension) | conductual | re-engagement suave |
+
+#### `behavior_feedback_loops`
+
+Cierre del ciclo: el sistema registra si la intervencion fue aceptada, ignorada o revertida, y ajusta la confianza del perfil.
 
 ### Criterios de aceptacion
 
-- [ ] el sistema diferencia entre gap informacional, de politica y conductual
-- [ ] el agente puede aplicar nudges, friccion o refuerzo segun contexto
-- [ ] existe trazabilidad de trigger -> intervencion -> respuesta -> resultado
+- [ ] `behavior_profile` existe como entidad persistida con los seis ejes
+- [ ] el perfil se actualiza desde evidencia transaccional, no desde input manual
+- [ ] el sistema clasifica cada gap como informacional, de politica o conductual antes de intervenir
+- [ ] existe al menos un flujo de if-then planning implementado (ingreso extra → regla aplicada)
+- [ ] el agente diferencia nudges para motivacion autonoma vs. controlada
+- [ ] existe trazabilidad de `trigger → intervencion → respuesta → resultado`
+- [ ] ningun eje del perfil se muestra al usuario como etiqueta; solo se usa para personalizar el agente
 
 ---
 
