@@ -10,6 +10,7 @@ FactoryBot.define do
     cadence           { "monthly" }
     reliability_score { 90 }
     active            { true }
+    notes             { nil }
 
     trait :variable do
       name        { "525" }
@@ -23,5 +24,14 @@ FactoryBot.define do
     trait :inactive do
       active { false }
     end
+  end
+
+  factory :income_source_schedule do
+    income_source
+    ordinal           { 1 }
+    label             { "default" }
+    expected_day_from { 1 }
+    expected_day_to   { 5 }
+    expected_amount   { 3_335_000 }
   end
 end

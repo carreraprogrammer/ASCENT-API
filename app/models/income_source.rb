@@ -3,9 +3,10 @@ class IncomeSource < ApplicationRecord
 
   belongs_to :user
   belongs_to :account, optional: true
+  has_many :schedules, class_name: "IncomeSourceSchedule", dependent: :destroy
 
   CLASSIFICATIONS = %w[base variable seasonal one_time].freeze
-  CADENCES = %w[monthly biweekly irregular].freeze
+  CADENCES = %w[monthly biweekly weekly irregular].freeze
 
   validates :name, presence: true
   validates :expected_day_from, numericality: { in: 1..31 }
@@ -17,6 +18,15 @@ class IncomeSource < ApplicationRecord
   validate  :day_range_valid
 
   scope :active, -> { where(active: true).order(:expected_day_from) }
+
+  def sync_from_schedules!
+    rows = schedules.to_a
+    return if rows.empty?
+
+    self.expected_day_from = rows.map(&:expected_day_from).min
+    self.expected_day_to = rows.map(&:expected_day_to).max
+    self.expected_amount = rows.sum(&:expected_amount)
+  end
 
   private
 
