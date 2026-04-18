@@ -95,7 +95,18 @@ El agente NUNCA menciona "niveles" ni "puntos" explícitamente en nivel 1-2. La 
 
 ### 5.1 `financial_level` en accounts
 
-Un campo simple que indica el nivel actual del usuario. Se actualiza automáticamente cuando se cumplen los prerequisitos.
+Campo cacheado que indica el nivel actual. **No es una fuente de verdad independiente** — siempre se deriva de datos existentes:
+
+```
+financial_context.phase = nil y sin income_sources  → level 1
+financial_context.phase = nil pero hay income data   → level 2-3
+financial_context.phase = 'debt_payoff'              → level 4
+financial_context.phase = 'investing'                → level 5
+financial_context.phase = 'wealth_building'          → level 6
+```
+
+**Fuente de verdad:** `financial_context.phase` + completeness de datos.
+`financial_level` es solo un valor cacheado para queries rápidos (ej: filtrar usuarios por nivel en analytics). Si hay discrepancia, `financial_context.phase` gana siempre.
 
 ```ruby
 add_column :accounts, :financial_level, :integer, null: false, default: 1
