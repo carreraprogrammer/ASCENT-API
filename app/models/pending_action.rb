@@ -3,6 +3,7 @@ class PendingAction < ApplicationRecord
 
   belongs_to :user
   belongs_to :account, optional: true
+  belongs_to :actionable, polymorphic: true, optional: true
 
   TYPES    = %w[budget_planning debt_setup onboarding financial_context_setup income_setup].freeze
   STATUSES = %w[in_progress waiting_response completed cancelled expired].freeze
