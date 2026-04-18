@@ -60,3 +60,24 @@ El backend decide si un intent debe:
 - `question_event_log`
 - prioridad por `confidence`
 - estado `confirmed` separado de `sufficient`
+
+---
+
+## Implementación en el Brain
+
+### Qué hace el Brain antes de responder intents de planeación
+
+- detecta el intent del mensaje: `budgeting`, `monthly_status`, `overflow`
+- llama `POST /api/v1/agents/preflight`
+- decide localmente:
+  - `allow` → flujo normal
+  - `soft_nudge` → responde igual pero cierra con recordatorio breve
+  - `block` → no improvisa, dispara el wizard mensual
+
+### Routing de mensajes a wizard activo
+
+El webhook reenvía mensajes de texto al wizard activo cuando existe un `PendingAction` de:
+- `budget_planning`
+- `financial_context_setup`
+
+Esto evita que respuestas por texto se vayan por error al chat general mientras hay un wizard en curso.

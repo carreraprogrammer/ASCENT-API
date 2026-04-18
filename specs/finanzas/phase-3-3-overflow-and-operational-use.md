@@ -48,3 +48,31 @@ Todavía no:
 - cuando entra ingreso extra, `summary` lo refleja como overflow
 - el overflow no infla el presupuesto base
 - el backend sugiere destino según `overflow_rule`
+
+---
+
+## Implementación en el Brain
+
+### Chat
+
+El chat está instruido para usar `get_summary` en consultas de:
+- presupuesto
+- resumen del mes
+- ingreso extra / overflow
+
+### Nightly
+
+El nightly está instruido para leer `overflow_status` del summary.
+
+### Regla de comportamiento
+
+- ingreso extra ≠ permiso para subir el presupuesto base
+- si `overflow_status.status == available`, el agente nombra:
+  - cuánto extra ya entró
+  - hacia dónde debería ir según el plan
+
+### Lo que el Brain todavía no hace
+
+- aplicación automática del overflow
+- tracking explícito de si el usuario obedeció la regla
+- intervención por patrón histórico de overflow
