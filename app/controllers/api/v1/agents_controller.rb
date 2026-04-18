@@ -7,6 +7,18 @@ module Api
       COLOMBIA_OFFSET = -5 * 3600
       ALLOWED_INTENTS = %w[budgeting monthly_status overflow general].freeze
 
+      # POST /api/v1/agents/chat
+      def chat
+        session_id = SecureRandom.uuid
+        WebChatJob.perform_later(
+          account_id: current_account.id,
+          session_id: session_id,
+          message: params[:message].presence,
+          event_response: params[:event_response]&.to_unsafe_h
+        )
+        render json: { data: { session_id: session_id, status: "processing" } }, status: :accepted
+      end
+
       def preflight
         return unless require_scope!("summary:read")
 

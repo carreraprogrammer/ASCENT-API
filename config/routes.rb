@@ -68,6 +68,12 @@ Rails.application.routes.draw do
 
       get "completeness", to: "completeness#show"
       post "agents/preflight", to: "agents#preflight"
+      post "agents/chat",      to: "agents#chat"
+
+      # Agent UI Events — canal agente → front-end
+      get  "agent_events/pending", to: "agent_ui_events#pending"
+      post "agent_events",         to: "agent_ui_events#create"
+      patch "agent_events/:id/consume", to: "agent_ui_events#consume"
 
       get "summary", to: "summary#show"
 

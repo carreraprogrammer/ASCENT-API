@@ -37,6 +37,19 @@ ActiveRecord::Schema[8.0].define(version: 20260418) do
     t.index ["slug"], name: "index_agent_types_on_slug", unique: true
   end
 
+  create_table "agent_ui_events", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "session_id"
+    t.string "event_type", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "consumed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "consumed_at"], name: "index_agent_ui_events_on_account_id_and_consumed_at"
+    t.index ["account_id"], name: "index_agent_ui_events_on_account_id"
+    t.index ["session_id"], name: "index_agent_ui_events_on_session_id"
+  end
+
   create_table "budgets", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "category_id", null: false
@@ -366,6 +379,7 @@ ActiveRecord::Schema[8.0].define(version: 20260418) do
   end
 
   add_foreign_key "accounts", "users", column: "owner_user_id"
+  add_foreign_key "agent_ui_events", "accounts"
   add_foreign_key "budgets", "accounts"
   add_foreign_key "budgets", "categories"
   add_foreign_key "budgets", "users"
