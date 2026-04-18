@@ -137,6 +137,19 @@ ActiveRecord::Schema[8.0].define(version: 20260415) do
     t.index ["slug"], name: "index_form_schemas_on_slug", unique: true
   end
 
+  create_table "income_source_schedules", force: :cascade do |t|
+    t.bigint "income_source_id", null: false
+    t.integer "ordinal", default: 1, null: false
+    t.string "label"
+    t.integer "expected_day_from", null: false
+    t.integer "expected_day_to", null: false
+    t.integer "expected_amount", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["income_source_id", "ordinal"], name: "index_income_source_schedules_on_source_and_ordinal", unique: true
+    t.index ["income_source_id"], name: "index_income_source_schedules_on_income_source_id"
+  end
+
   create_table "income_sources", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "name", null: false
@@ -153,6 +166,7 @@ ActiveRecord::Schema[8.0].define(version: 20260415) do
     t.integer "reliability_score"
     t.datetime "last_confirmed_at"
     t.string "evidence_source"
+    t.text "notes"
     t.index ["account_id", "active"], name: "index_income_sources_on_account_id_and_active"
     t.index ["account_id", "classification"], name: "index_income_sources_on_account_id_and_classification"
     t.index ["account_id"], name: "index_income_sources_on_account_id"
@@ -365,6 +379,7 @@ ActiveRecord::Schema[8.0].define(version: 20260415) do
   add_foreign_key "delegations", "users"
   add_foreign_key "financial_contexts", "accounts"
   add_foreign_key "financial_contexts", "users"
+  add_foreign_key "income_source_schedules", "income_sources"
   add_foreign_key "income_sources", "accounts"
   add_foreign_key "income_sources", "users"
   add_foreign_key "monthly_financial_plans", "accounts"
