@@ -51,6 +51,7 @@ Rails.application.routes.draw do
       resources :monthly_plans,        only: [ :index, :update ] do
         collection do
           get :current
+          get :propose
           post :generate
         end
         member do

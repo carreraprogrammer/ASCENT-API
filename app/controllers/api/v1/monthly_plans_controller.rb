@@ -14,6 +14,19 @@ module Api
         render json: { data: current_plan }
       end
 
+      def propose
+        return unless require_scope!("budgets:read")
+        proposal = Finanzas::Interactors::ProposeBudget.new.call(
+          account_id:       current_account.id,
+          month:            plan_month,
+          year:             plan_year,
+          include_variable: ActiveModel::Type::Boolean.new.cast(params[:include_variable])
+        )
+        render json: { data: proposal }
+      rescue => e
+        render_unprocessable(e.message)
+      end
+
       def generate
         return unless require_scope!("budgets:create")
         plan = Finanzas::Interactors::GenerateMonthlyFinancialPlan.new.call(
