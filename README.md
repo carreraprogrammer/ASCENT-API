@@ -142,7 +142,7 @@ POST /api/v1/auth/login
   "data": {
     "access_token": "eyJ...",
     "refresh_token": "eyJ...",
-    "expires_in": 900
+    "expires_in": 3600
   }
 }
 ```
@@ -403,7 +403,7 @@ POST   /api/v1/users/:id/assign_role
 ```bash
 DATABASE_URL=postgresql://...
 JWT_SECRET=
-JWT_ACCESS_EXPIRY=900        # 15 minutos
+JWT_ACCESS_EXPIRY=3600       # 1 hora
 JWT_REFRESH_EXPIRY=2592000   # 30 días
 RAILS_ENV=development
 FRONTEND_URL=http://localhost:5173

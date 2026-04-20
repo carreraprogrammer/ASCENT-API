@@ -248,7 +248,7 @@ class JwtService
       user_id: user_id,
       email: email,
       jti: SecureRandom.uuid,
-      exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", 900).to_i,
+      exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", 3600).to_i,
       type: "access"
     }
     JWT.encode(payload, secret, ALGORITHM)

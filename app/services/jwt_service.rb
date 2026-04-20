@@ -1,5 +1,6 @@
 class JwtService
   ALGORITHM = "HS256"
+  DEFAULT_ACCESS_EXPIRY = 3_600
 
   class InvalidToken < StandardError; end
   class ExpiredToken < StandardError; end
@@ -11,7 +12,7 @@ class JwtService
       super_admin: super_admin,
       permissions: permissions || Authorization::Interactors::FetchUserPermissions.new.call(user_id: user_id),
       jti: SecureRandom.uuid,
-      exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", 900).to_i,
+      exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", DEFAULT_ACCESS_EXPIRY).to_i,
       type: "access"
     }
     JWT.encode(payload, secret, ALGORITHM)
