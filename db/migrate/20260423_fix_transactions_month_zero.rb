@@ -4,8 +4,8 @@ class FixTransactionsMonthZero < ActiveRecord::Migration[7.1]
     # parse_date only handling DD/MM and DD/MM/YYYY formats.
     execute <<~SQL
       UPDATE transactions
-      SET month = EXTRACT(MONTH FROM date)::integer,
-          year  = EXTRACT(YEAR  FROM date)::integer
+      SET month = EXTRACT(MONTH FROM date::date)::integer,
+          year  = EXTRACT(YEAR  FROM date::date)::integer
       WHERE month = 0
     SQL
 
