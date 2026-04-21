@@ -26,6 +26,12 @@ RSpec.describe Finanzas::Interactors::CreateTransaction do
     expect(result.month).to eq(3)
   end
 
+  it "sets year/month from an ISO YYYY-MM-DD date" do
+    result = interactor.call(user_id: user.id, account_id: account_id, date: "2026-04-20", concept: "Prueba ISO", amount: 10_000)
+    expect(result.year).to eq(2026)
+    expect(result.month).to eq(4)
+  end
+
   it "raises InvalidTransaction when amount is negative" do
     expect {
       interactor.call(user_id: user.id, account_id: account_id, date: "11/04", concept: "Prueba", amount: -100)

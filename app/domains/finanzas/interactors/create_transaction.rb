@@ -1,8 +1,9 @@
 module Finanzas
   module Interactors
     class CreateTransaction
-      DATE_DDMM = %r{\A\d{2}/\d{2}\z}.freeze
+      DATE_DDMM     = %r{\A\d{2}/\d{2}\z}.freeze
       DATE_DDMMYYYY = %r{\A\d{2}/\d{2}/\d{4}\z}.freeze
+      DATE_ISO      = %r{\A\d{4}-\d{2}-\d{2}\z}.freeze
 
       def initialize(repo: Finanzas::Repositories::TransactionRepository.new)
         @repo = repo
@@ -56,27 +57,31 @@ module Finanzas
 
       private
 
-      # Accepts DD/MM or DD/MM/YYYY — derives year/month for denormalized columns
+      # Accepts DD/MM, DD/MM/YYYY, or YYYY-MM-DD — derives year/month for denormalized columns
       def parse_date(date_str)
-        unless date_str.to_s.match?(DATE_DDMM) || date_str.to_s.match?(DATE_DDMMYYYY)
-          Rails.logger.warn(
-            "[CreateTransaction#parse_date] unexpected date format raw_date=#{date_str.inspect} " \
-            "expected=DD/MM or DD/MM/YYYY"
-          )
-        end
+        str = date_str.to_s
 
-        parts = date_str.to_s.split("/")
-        if parts.length >= 3
-          year = parts[2].to_i
-          month = parts[1].to_i
-        else
+        year, month = if str.match?(DATE_ISO)
+          parts = str.split("-")
+          [ parts[0].to_i, parts[1].to_i ]
+        elsif str.match?(DATE_DDMMYYYY)
+          parts = str.split("/")
+          [ parts[2].to_i, parts[1].to_i ]
+        elsif str.match?(DATE_DDMM)
+          parts = str.split("/")
           colombia_now = Time.now.utc - 5 * 3600
-          year = colombia_now.year
-          month = parts[1].to_i
+          [ colombia_now.year, parts[1].to_i ]
+        else
+          Rails.logger.warn(
+            "[CreateTransaction#parse_date] unexpected date format raw_date=#{str.inspect} " \
+            "expected=YYYY-MM-DD, DD/MM/YYYY, or DD/MM"
+          )
+          colombia_now = Time.now.utc - 5 * 3600
+          [ colombia_now.year, colombia_now.month ]
         end
 
         Rails.logger.info(
-          "[CreateTransaction#parse_date] raw_date=#{date_str.inspect} resolved_year=#{year.inspect} resolved_month=#{month.inspect}"
+          "[CreateTransaction#parse_date] raw_date=#{str.inspect} resolved_year=#{year.inspect} resolved_month=#{month.inspect}"
         )
 
         [ year, month ]
