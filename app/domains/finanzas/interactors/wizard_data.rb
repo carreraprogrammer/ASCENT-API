@@ -58,7 +58,11 @@ module Finanzas
       def build_income_section(sources, suggested_total)
         {
           sources: sources.map { |s|
-            { name: s[:name], monthly_amount: s[:expected_amount].to_i }
+            {
+              name:           s[:name],
+              monthly_amount: s[:expected_amount].to_i,
+              is_variable:    s[:is_variable] == true || %w[variable seasonal].include?(s[:classification].to_s)
+            }
           },
           suggested_total: suggested_total
         }
