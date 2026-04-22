@@ -76,20 +76,20 @@ SYSTEM_CATEGORIES = [
 
 SYSTEM_CATEGORIES.each do |cat_data|
   subcats = cat_data[:subcategories]
-  category = Category.find_or_create_by!(code: cat_data[:code], user_id: nil) do |c|
-    c.name          = cat_data[:name]
-    c.category_type = cat_data[:category_type]
-    c.color         = cat_data[:color]
-    c.icon          = cat_data[:icon]
-    c.is_system     = true
-  end
+  category = Category.find_or_initialize_by(code: cat_data[:code], user_id: nil)
+  category.name          = cat_data[:name]
+  category.category_type = cat_data[:category_type]
+  category.color         = cat_data[:color]
+  category.icon          = cat_data[:icon]
+  category.is_system     = true
+  category.save!
 
   subcats.each do |sub|
-    Subcategory.find_or_create_by!(category: category, code: sub[:code]) do |s|
-      s.name      = sub[:name]
-      s.icon      = sub[:icon]
-      s.is_system = true
-    end
+    record = Subcategory.find_or_initialize_by(category: category, code: sub[:code])
+    record.name      = sub[:name]
+    record.icon      = sub[:icon]
+    record.is_system = true
+    record.save!
   end
 end
 
