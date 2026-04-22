@@ -4,6 +4,7 @@ class RecurringObligation < ApplicationRecord
   belongs_to :user
   belongs_to :account, optional: true
   belongs_to :category, optional: true
+  belongs_to :subcategory, optional: true
 
   # Una obligación puede estar "destinada" a una deuda o meta de ahorro.
   # Cuando el destino se liquida (paid_off / achieved), esta obligación
