@@ -19,13 +19,19 @@ module Finanzas
 
       def upsert_bulk(user_id:, account_id:, month:, year:, budgets:)
         results = budgets.map do |b|
-          record = ::Budget.find_or_initialize_by(
-            account_id: account_id,
+          lookup_attrs = {
+            account_id:  account_id,
             category_id: b[:category_id],
-            month: month.to_i,
-            year: year.to_i
-          )
-          record.user_id = user_id
+            month:       month.to_i,
+            year:        year.to_i
+          }
+          # When a subcategory_id is provided, scope the lookup to that subcategory so
+          # that each subcategory-level budget is tracked independently while the
+          # (account_id, category_id, month, year) legacy constraint is not violated.
+          lookup_attrs[:subcategory_id] = b[:subcategory_id] if b[:subcategory_id].present?
+
+          record = ::Budget.find_or_initialize_by(lookup_attrs)
+          record.user_id      = user_id
           record.amount_limit = b[:amount_limit]
           record.save!
           map_to_entity(record)
@@ -67,15 +73,16 @@ module Finanzas
 
       def map_to_entity(record)
         {
-          id:           record.id,
-          user_id:      record.user_id,
-          category_id:  record.category_id,
-          category_name: record.category&.name,
-          month:        record.month,
-          year:         record.year,
-          amount_limit: record.amount_limit,
-          created_at:   record.created_at,
-          updated_at:   record.updated_at
+          id:             record.id,
+          user_id:        record.user_id,
+          category_id:    record.category_id,
+          category_name:  record.category&.name,
+          subcategory_id: record.subcategory_id,
+          month:          record.month,
+          year:           record.year,
+          amount_limit:   record.amount_limit,
+          created_at:     record.created_at,
+          updated_at:     record.updated_at
         }
       end
     end

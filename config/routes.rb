@@ -35,6 +35,7 @@ Rails.application.routes.draw do
 
       # Finanzas — Core
       resources :categories, only: [ :index, :create, :destroy ]
+      resources :subcategories, only: [ :create ]
       resources :transactions, only: [ :index, :create, :update, :destroy ] do
         collection do
           get :pending
@@ -52,6 +53,7 @@ Rails.application.routes.draw do
         collection do
           get :current
           get :propose
+          get :wizard_data
           post :generate
         end
         member do

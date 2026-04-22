@@ -40,8 +40,10 @@ module Finanzas
           attributes: {
             name: sub.name,
             code: sub.code,
+            icon: sub.icon,
             is_system: sub.system?,
-            category_id: sub.category_id
+            category_id: sub.category_id,
+            user_id: sub.user_id
           }
         }
       end

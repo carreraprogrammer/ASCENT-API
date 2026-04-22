@@ -3,73 +3,73 @@
 SYSTEM_CATEGORIES = [
   {
     name: "Comprometido", code: "committed", category_type: "committed",
-    color: "#EF4444", icon: "lock",
+    color: "#C0392B", icon: "lockClosedOutline",
     subcategories: [
-      { name: "Arriendo",           code: "arriendo" },
-      { name: "Créditos",           code: "creditos" },
-      { name: "Seguros",            code: "seguros" },
-      { name: "Servicios públicos", code: "servicios_publicos" },
-      { name: "Colegiaturas",       code: "colegiaturas" }
+      { name: "Arriendo",           code: "arriendo",          icon: "homeOutline" },
+      { name: "Créditos",           code: "creditos",          icon: "cardOutline" },
+      { name: "Seguros",            code: "seguros",           icon: "shieldOutline" },
+      { name: "Servicios públicos", code: "servicios_publicos", icon: "flashOutline" },
+      { name: "Colegiaturas",       code: "colegiaturas",      icon: "schoolOutline" }
     ]
   },
   {
     name: "Necesario", code: "necessary", category_type: "necessary",
-    color: "#F97316", icon: "shopping-cart",
+    color: "#D4732A", icon: "cartOutline",
     subcategories: [
-      { name: "Mercado",    code: "mercado" },
-      { name: "Gasolina",   code: "gasolina" },
-      { name: "Transporte", code: "transporte" },
-      { name: "Salud",      code: "salud" },
-      { name: "Celular",    code: "celular" }
+      { name: "Mercado",    code: "mercado",    icon: "cartOutline" },
+      { name: "Gasolina",   code: "gasolina",   icon: "carOutline" },
+      { name: "Transporte", code: "transporte", icon: "busOutline" },
+      { name: "Salud",      code: "salud",      icon: "heartOutline" },
+      { name: "Celular",    code: "celular",    icon: "phonePortraitOutline" }
     ]
   },
   {
     name: "Discrecional", code: "discretionary", category_type: "discretionary",
-    color: "#EAB308", icon: "coffee",
+    color: "#C9980A", icon: "pricetagOutline",
     subcategories: [
-      { name: "Restaurantes",   code: "restaurantes" },
-      { name: "Delivery",       code: "delivery" },
-      { name: "Ocio",           code: "ocio" },
-      { name: "Ropa",           code: "ropa" },
-      { name: "Tecnología",     code: "tecnologia" },
-      { name: "Suscripciones",  code: "suscripciones" }
+      { name: "Restaurantes",   code: "restaurantes",  icon: "restaurantOutline" },
+      { name: "Delivery",       code: "delivery",      icon: "fastFoodOutline" },
+      { name: "Ocio",           code: "ocio",          icon: "gameControllerOutline" },
+      { name: "Ropa",           code: "ropa",          icon: "shirtOutline" },
+      { name: "Tecnología",     code: "tecnologia",    icon: "laptopOutline" },
+      { name: "Suscripciones",  code: "suscripciones", icon: "refreshOutline" }
     ]
   },
   {
     name: "Inversión", code: "investment", category_type: "investment",
-    color: "#22C55E", icon: "trending-up",
+    color: "#1A9E4A", icon: "trendingUpOutline",
     subcategories: [
-      { name: "Cursos",             code: "cursos" },
-      { name: "Libros",             code: "libros" },
-      { name: "Suplementos",        code: "suplementos" },
-      { name: "Herramientas",       code: "herramientas" },
-      { name: "Ahorro voluntario",  code: "ahorro_voluntario" }
+      { name: "Cursos",             code: "cursos",           icon: "schoolOutline" },
+      { name: "Libros",             code: "libros",           icon: "bookOutline" },
+      { name: "Suplementos",        code: "suplementos",      icon: "fitnessOutline" },
+      { name: "Herramientas",       code: "herramientas",     icon: "constructOutline" },
+      { name: "Ahorro voluntario",  code: "ahorro_voluntario", icon: "saveOutline" }
     ]
   },
   {
     name: "Social", code: "social", category_type: "social",
-    color: "#A855F7", icon: "users",
+    color: "#8A4FD8", icon: "peopleOutline",
     subcategories: [
-      { name: "Regalos",    code: "regalos" },
-      { name: "Salidas",    code: "salidas" },
-      { name: "Familia",    code: "familia" },
-      { name: "Donaciones", code: "donaciones" }
+      { name: "Regalos",    code: "regalos",    icon: "giftOutline" },
+      { name: "Salidas",    code: "salidas",    icon: "peopleOutline" },
+      { name: "Familia",    code: "familia",    icon: "heartOutline" },
+      { name: "Donaciones", code: "donaciones", icon: "handLeftOutline" }
     ]
   },
   {
     name: "Ingreso", code: "income", category_type: "income",
-    color: "#06B6D4", icon: "dollar-sign",
+    color: "#0E96AD", icon: "cashOutline",
     subcategories: [
-      { name: "Salario",           code: "salario" },
-      { name: "Freelance",         code: "freelance" },
-      { name: "Reembolso",         code: "reembolso" },
-      { name: "Arriendo recibido", code: "arriendo_recibido" },
-      { name: "Otros",             code: "otros_ingreso" }
+      { name: "Salario",           code: "salario",          icon: "briefcaseOutline" },
+      { name: "Freelance",         code: "freelance",        icon: "codeSlashOutline" },
+      { name: "Reembolso",         code: "reembolso",        icon: "returnDownBackOutline" },
+      { name: "Arriendo recibido", code: "arriendo_recibido", icon: "businessOutline" },
+      { name: "Otros",             code: "otros_ingreso",    icon: "addCircleOutline" }
     ]
   },
   {
     name: "Desconocido", code: "unknown", category_type: "unknown",
-    color: "#6B7280", icon: "help-circle",
+    color: "#5B7280", icon: "helpCircleOutline",
     subcategories: []
   }
 ].freeze
@@ -87,6 +87,7 @@ SYSTEM_CATEGORIES.each do |cat_data|
   subcats.each do |sub|
     Subcategory.find_or_create_by!(category: category, code: sub[:code]) do |s|
       s.name      = sub[:name]
+      s.icon      = sub[:icon]
       s.is_system = true
     end
   end
