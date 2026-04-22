@@ -11,7 +11,23 @@ module Api
 
       def current
         return unless require_scope!("budgets:read")
-        render json: { data: current_plan }
+
+        plan = current_plan
+        return render json: { data: nil } unless plan
+
+        render json: { data: build_current_plan_response(plan) }
+      end
+
+      def wizard_data
+        return unless require_scope!("budgets:read")
+
+        data = Finanzas::Interactors::WizardData.new.call(
+          account_id: current_account.id,
+          user_id: current_owner_user_id
+        )
+        render json: { data: data }
+      rescue => e
+        render_unprocessable(e.message)
       end
 
       def propose
@@ -49,7 +65,25 @@ module Api
           account_id: current_account.id
         )
 
-        if params[:budgets].present?
+        if params[:lines].present?
+          # Wizard flow: lines = [{ subcategory_code:, amount: }]
+          # Budget granularity is category-level; we resolve subcategory_code → category_id.
+          # Multiple lines in the same category are aggregated (last-write wins per spec
+          # since the wizard sends one line per subcategory and the upsert key is
+          # (account_id, category_id, month, year)).
+          #
+          # NOTE: A unique constraint on (account_id, subcategory_id, month, year) cannot
+          # be added until Budget gains a subcategory_id column (separate migration task).
+          resolved = resolve_wizard_lines(params[:lines])
+          budget_repo.upsert_bulk(
+            user_id: current_owner_user_id,
+            account_id: current_account.id,
+            month: plan[:month],
+            year: plan[:year],
+            budgets: resolved
+          )
+        elsif params[:budgets].present?
+          # Legacy flow: budgets = [{ category_id:, amount_limit: }]
           budget_repo.upsert_bulk(
             user_id: current_owner_user_id,
             account_id: current_account.id,
@@ -62,6 +96,8 @@ module Api
         render json: { data: plan }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      rescue Finanzas::Errors::InvalidBudgetLine => e
+        render json: { errors: [ { status: "422", detail: e.message } ] }, status: :unprocessable_entity
       rescue => e
         render_unprocessable(e.message)
       end
@@ -106,6 +142,100 @@ module Api
           :overflow_rule, :reward_pct, :investment_target, :debt_strategy,
           overflow_rule_detail: {}, assumptions: {}
         ).to_h.symbolize_keys
+      end
+
+      # Resolves wizard lines ([{ subcategory_code:, amount: }]) into budget attrs
+      # ([{ category_id:, subcategory_id:, amount_limit: }]) suitable for
+      # BudgetRepository#upsert_bulk.
+      #
+      # Now that Budget has a subcategory_id column each line is stored at subcategory
+      # granularity so amounts are NOT aggregated.  The unique index on
+      # (account_id, subcategory_id, month, year) WHERE subcategory_id IS NOT NULL
+      # guarantees idempotency.
+      def resolve_wizard_lines(raw_lines)
+        codes = raw_lines.map { |l| l[:subcategory_code].presence || l["subcategory_code"] }.compact.uniq
+
+        raise Finanzas::Errors::InvalidBudgetLine, "lines must contain subcategory_code" if codes.empty?
+
+        # Single query: fetch all subcategories + their category in one shot (no N+1)
+        subcats = ::Subcategory
+          .joins(:category)
+          .where(code: codes)
+          .select("subcategories.id, subcategories.code, subcategories.category_id, categories.name AS category_name")
+
+        code_to_subcat = subcats.index_by(&:code)
+
+        missing = codes - code_to_subcat.keys
+        if missing.any?
+          raise Finanzas::Errors::InvalidBudgetLine,
+                "Unknown subcategory_code(s): #{missing.join(', ')}"
+        end
+
+        # One budget line per subcategory — upsert key is (account_id, subcategory_id, month, year)
+        raw_lines.map do |line|
+          code   = (line[:subcategory_code] || line["subcategory_code"]).to_s
+          amount = (line[:amount] || line["amount"]).to_i
+          subcat = code_to_subcat[code]
+          {
+            category_id:    subcat.category_id,
+            subcategory_id: subcat.id,
+            amount_limit:   amount
+          }
+        end
+      end
+
+      # Builds the enriched response for GET /monthly_plans/current.
+      # Aggregates confirmed + pending spend per category and computes a linear projection.
+      def build_current_plan_response(plan)
+        month = plan[:month]
+        year  = plan[:year]
+
+        # Fetch budgets for the month — includes category (no N+1)
+        budgets = ::Budget
+          .where(account_id: current_account.id, month: month, year: year)
+          .includes(:category)
+
+        # Fetch spend totals per category in a single query
+        spend_rows = ::Transaction
+          .where(account_id: current_account.id, month: month, year: year, transaction_type: "expense")
+          .where.not(category_id: nil)
+          .select("category_id, status, SUM(amount) AS total")
+          .group(:category_id, :status)
+
+        # Build { category_id => { confirmed: N, pending: N } }
+        spend_by_category = Hash.new { |h, k| h[k] = { confirmed: 0, pending: 0 } }
+        spend_rows.each do |row|
+          spend_by_category[row.category_id][row.status.to_sym] += row.total.to_i
+        end
+
+        # Day-of-month projection: scale confirmed spend to full month
+        today      = Date.today
+        days_in    = Date.new(year, month, -1).day
+        elapsed    = (today.month == month && today.year == year) ? today.day : days_in
+        projection_scale = elapsed > 0 ? days_in.to_f / elapsed : 1.0
+
+        category_rows = budgets.map do |b|
+          cat   = b.category
+          spend = spend_by_category[b.category_id]
+          confirmed_spend = spend[:confirmed]
+          total_spend     = confirmed_spend + spend[:pending]
+          projected       = (confirmed_spend * projection_scale).round
+
+          {
+            code:      cat&.code,
+            name:      cat&.name,
+            color:     cat&.color,
+            budgeted:  b.amount_limit,
+            spent:     total_spend,
+            projected: projected
+          }
+        end
+
+        plan.merge(
+          month_label: "#{year}-#{month.to_s.rjust(2, '0')}",
+          total_income: (plan[:base_budget_income].to_i + plan[:expected_variable_income].to_i),
+          categories: category_rows
+        )
       end
     end
   end

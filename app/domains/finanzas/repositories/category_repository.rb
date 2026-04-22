@@ -66,8 +66,8 @@ module Finanzas
       def map_to_entity(record)
         subcategories = (record.association(:subcategories).loaded? ? record.subcategories : []).map do |s|
           Finanzas::Entities::Subcategory.new(
-            id: s.id, category_id: s.category_id, name: s.name,
-            code: s.code, is_system: s.is_system,
+            id: s.id, category_id: s.category_id, user_id: s.user_id,
+            name: s.name, code: s.code, icon: s.icon, is_system: s.is_system,
             created_at: s.created_at, updated_at: s.updated_at
           )
         end

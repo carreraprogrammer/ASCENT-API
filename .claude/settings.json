@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat src/react-app-env.d.ts)",
+      "Bash(cat src/vite-env.d.ts)"
+    ]
+  }
+}
