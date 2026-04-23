@@ -5,6 +5,7 @@ class Category < ApplicationRecord
   belongs_to :account, optional: true
   has_many :subcategories, dependent: :destroy
   has_many :transactions, dependent: :nullify
+  has_many :planned_expenses, dependent: :restrict_with_exception
 
   TYPES = %w[committed necessary discretionary investment social income unknown].freeze
 

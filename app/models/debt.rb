@@ -41,6 +41,13 @@ class Debt < ApplicationRecord
   def deactivate_obligation_if_resolved
     return unless saved_change_to_status?
     return unless %w[paid_off disputed].include?(status)
-    recurring_obligation&.update(active: false)
+
+    RecurringObligation
+      .where(
+        "(allocatable_type = :type AND allocatable_id = :id) OR (source_type = :type AND source_id = :id)",
+        type: "Debt",
+        id: id
+      )
+      .find_each { |obligation| obligation.update(active: false) }
   end
 end

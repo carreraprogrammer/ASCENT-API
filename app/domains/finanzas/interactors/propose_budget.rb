@@ -50,6 +50,7 @@ module Finanzas
             total:               committed_total,
             by_category:         ctx[:obligations][:by_category]
           },
+          planned_expenses:     ctx[:planned_expenses],
           sinking_funds:        ctx[:sinking_funds],
           categories:           categories,
           available_categories: available,

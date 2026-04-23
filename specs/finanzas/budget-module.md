@@ -127,6 +127,15 @@ La contribución mensual del bolsillo (`monthly_contribution`) entra en el plan 
 **Cómo lo propone el agente:**
 "Tenés una moto Yamaha 350. En Colombia el SOAT promedio para motos de esta cilindrada es ~$420.000 anuales. Si apartás $35.000 cada mes, llegás al año sin sentirlo. ¿Querés crear un bolsillo para el SOAT?"
 
+### Relación con `planned_expenses`
+
+`planned_expenses` y `sinking_funds` no son lo mismo:
+
+- `planned_expenses` lista el gasto futuro previsto y su estado
+- `sinking_funds` modela la reserva acumulativa usada para fondearlo
+
+Puede existir un `planned_expense` sin bolsillo asociado todavía. En esta fase no hay sincronización automática entre ambas entidades.
+
 ---
 
 ## 4. Flujo conversacional de creación del presupuesto (Nivel 4)

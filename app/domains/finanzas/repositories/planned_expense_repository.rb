@@ -1,49 +1,43 @@
 module Finanzas
   module Repositories
-    class RecurringObligationRepository
+    class PlannedExpenseRepository
       SORT_FIELDS = {
         "name" => :name,
-        "amount" => :amount,
-        "due_day" => :due_day,
-        "active" => :active,
+        "amount_estimated" => :amount_estimated,
+        "target_date" => :target_date,
+        "planning_type" => :planning_type,
+        "status" => :status,
         "created_at" => :created_at
       }.freeze
 
-      def for_account(account_id, filters: {}, sort_by: "due_day", sort_dir: "asc")
-        records = ::RecurringObligation.includes(:category, :subcategory).where(account_id: account_id)
+      def for_account(account_id, filters: {}, sort_by: "target_date", sort_dir: "asc")
+        records = ::PlannedExpense.includes(:category, :subcategory).where(account_id: account_id)
         records = apply_filters(records, filters)
         records = apply_sort(records, sort_by, sort_dir)
-        records.map { |r| map_to_entity(r) }
+        records.map { |record| map_to_entity(record) }
       end
 
-      def active_for_account(account_id)
-        for_account(account_id, filters: { active: true }, sort_by: "due_day", sort_dir: "asc")
+      def planned_for_account(account_id)
+        for_account(account_id, filters: { status: "planned" }, sort_by: "target_date", sort_dir: "asc")
       end
 
       def create(attrs)
-        record = ::RecurringObligation.create!(attrs)
+        record = ::PlannedExpense.create!(attrs)
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
       def update(id, attrs, account_id: nil)
-        scope = ::RecurringObligation.where(id: id)
+        scope = ::PlannedExpense.where(id: id)
         scope = scope.where(account_id: account_id) if account_id.present?
         record = scope.first
-        raise ActiveRecord::RecordNotFound, "RecurringObligation #{id} not found" unless record
+        raise ActiveRecord::RecordNotFound, "PlannedExpense #{id} not found" unless record
+
         record.update!(attrs)
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
-      end
-
-      def destroy(id, account_id: nil)
-        scope = ::RecurringObligation.where(id: id)
-        scope = scope.where(account_id: account_id) if account_id.present?
-        record = scope.first
-        raise ActiveRecord::RecordNotFound, "RecurringObligation #{id} not found" unless record
-        record.update!(active: false)
       end
 
       private
@@ -56,13 +50,14 @@ module Finanzas
           filtered = filtered.where("LOWER(name) LIKE ?", query)
         end
 
-        filtered = filtered.where(active: ActiveModel::Type::Boolean.new.cast(filters[:active])) if filters.key?(:active) && !filters[:active].nil?
+        filtered = filtered.where(status: filters[:status]) if filters[:status].present?
+        filtered = filtered.where(planning_type: filters[:planning_type]) if filters[:planning_type].present?
         filtered = filtered.where(category_id: filters[:category_id]) if filters[:category_id].present?
         filtered
       end
 
       def apply_sort(scope, sort_by, sort_dir)
-        field = SORT_FIELDS[sort_by.to_s] || :due_day
+        field = SORT_FIELDS[sort_by.to_s] || :target_date
         direction = sort_dir.to_s.downcase == "desc" ? :desc : :asc
         scope.order(field => direction, created_at: :desc)
       end
@@ -73,22 +68,15 @@ module Finanzas
           user_id:          record.user_id,
           category_id:      record.category_id,
           category_code:    record.category&.code,
-          category_color:   record.category&.color,
           category_name:    record.category&.name,
           subcategory_id:   record.subcategory_id,
           subcategory_name: record.subcategory&.name,
-          subcategory_icon: record.subcategory&.icon,
-          budget_category:  record.budget_category,
           name:             record.name,
-          amount:           record.amount,
-          due_day:          record.due_day,
-          active:           record.active,
+          amount_estimated: record.amount_estimated,
+          target_date:      record.target_date,
+          planning_type:    record.planning_type,
+          status:           record.status,
           notes:            record.notes,
-          ai_analysis:      record.ai_analysis || [],
-          source_type:      record.source_type,
-          source_id:        record.source_id,
-          allocatable_type: record.allocatable_type,
-          allocatable_id:   record.allocatable_id,
           created_at:       record.created_at,
           updated_at:       record.updated_at
         }
