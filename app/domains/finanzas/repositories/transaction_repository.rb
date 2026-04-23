@@ -129,6 +129,7 @@ module Finanzas
         filtered = filtered.where(transaction_type: filters[:transaction_type]) if filters[:transaction_type].present?
         filtered = filtered.where(source: filters[:source]) if filters[:source].present?
         filtered = filtered.where(category_id: filters[:category_id]) if filters[:category_id].present?
+        filtered = filtered.where(subcategory_id: filters[:subcategory_id]) if filters[:subcategory_id].present?
         filtered
       end
 

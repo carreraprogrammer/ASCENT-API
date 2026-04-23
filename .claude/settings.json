@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(cat src/react-app-env.d.ts)",
-      "Bash(cat src/vite-env.d.ts)"
+      "Bash(cat src/vite-env.d.ts)",
+      "Bash(rails runner *)",
+      "Bash(railway ssh *)",
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/organisms/TransactionSlidingCard/**)",
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/organisms/RecurringObligationSlidingCard/**)",
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/pages/TransactionsPage/**)",
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/pages/RecurringObligationsPage/**)"
     ]
   }
 }
