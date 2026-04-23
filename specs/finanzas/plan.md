@@ -269,3 +269,30 @@ Cuando el módulo Finanzas esté estable, el mismo patrón se aplica a:
 **Social**: `social_fragments`, `relationship_debriefs`, `evidence_records`
 
 Cada módulo tiene su propio dominio en `app/domains/` y su propio conjunto de endpoints.
+
+---
+
+## Estado real de esta fase
+
+### Implementado
+
+- `recurring_obligations.source_type/source_id` para relación explícita con entidad estructural
+- `planned_expenses` como fuente de verdad para planeación futura
+- backfill idempotente y conservador para vínculo obligación ↔ deuda
+
+### Expuesto en UI
+
+- vista operable de `planned_expenses` en `/planned-expenses`
+- visualización del vínculo deuda ↔ obligación recurrente en pantallas de deudas y recurrentes
+
+### Disponible para agente
+
+- adapter y tools para listar/crear/actualizar `planned_expenses`
+- prompts ajustados para no confundir gasto futuro con transacción real
+- lectura del vínculo deuda ↔ obligación usando `source_type/source_id`
+
+### Pendiente
+
+- linking manual más rico desde UI para asociar deuda ↔ obligación
+- soporte estructural real para `investments`
+- automatizaciones entre `planned_expenses`, reservas y plan mensual
