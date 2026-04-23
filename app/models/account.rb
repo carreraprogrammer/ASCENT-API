@@ -7,6 +7,7 @@ class Account < ApplicationRecord
   has_many :monthly_financial_plans, dependent: :nullify
   has_many :income_sources, dependent: :nullify
   has_many :recurring_obligations, dependent: :nullify
+  has_many :planned_expenses, dependent: :nullify
   has_many :pending_actions, dependent: :nullify
   has_many :financial_contexts, dependent: :nullify
   has_many :categories, dependent: :nullify

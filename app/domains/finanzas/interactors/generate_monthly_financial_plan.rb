@@ -32,7 +32,7 @@ module Finanzas
         planning_income = mode.to_s == "expected" ? base_income + weighted_variable_income : base_income
 
         recurring_total = @recurring_repo.active_for_account(account_id)
-                                         .reject { |item| item[:allocatable_type] == "Debt" }
+                                         .reject { |item| debt_linked_obligation?(item) }
                                          .sum { |item| item[:amount].to_i }
         debt_minimums_total = @debt_repo.active_for_account(account_id).sum { |debt| debt[:monthly_payment].to_i }
 
@@ -94,6 +94,10 @@ module Finanzas
 
       def round_to_thousands(amount)
         ((amount.to_f / 1000).round * 1000).to_i
+      end
+
+      def debt_linked_obligation?(obligation)
+        obligation[:source_type] == "Debt" || obligation[:allocatable_type] == "Debt"
       end
     end
   end

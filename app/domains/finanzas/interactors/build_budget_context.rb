@@ -21,7 +21,7 @@ module Finanzas
       def call(account_id:, month:, year:)
         income_sources = @income_repo.active_for_account(account_id)
         obligations    = @recurring_repo.active_for_account(account_id)
-                           .reject { |o| o[:allocatable_type] == "Debt" }
+                           .reject { |o| debt_linked_obligation?(o) }
         debts          = @debt_repo.active_for_account(account_id)
         ctx            = @ctx_repo.find_by_account(account_id) || {}
         existing_plan  = @plan_repo.find_for_month(account_id: account_id, month: month, year: year)
@@ -64,6 +64,7 @@ module Finanzas
             obligations_seem_low: obligations_total < (fixed_total * 0.15).round && fixed_total > 0
           },
           spending_history:   build_spending_history(account_id),
+          planned_expenses:   build_planned_expenses(account_id),
           sinking_funds:      build_sinking_funds(account_id),
           budget_categories:  build_budget_categories(account_id)
         }
@@ -143,6 +144,10 @@ module Finanzas
         end
       end
 
+      def build_planned_expenses(account_id)
+        Finanzas::Repositories::PlannedExpenseRepository.new.planned_for_account(account_id)
+      end
+
       def build_budget_categories(account_id)
         ::BudgetCategory.where(account_id: account_id).active.map do |bc|
           {
@@ -154,6 +159,10 @@ module Finanzas
             sort_order:    bc.sort_order
           }
         end
+      end
+
+      def debt_linked_obligation?(obligation)
+        obligation[:source_type] == "Debt" || obligation[:allocatable_type] == "Debt"
       end
     end
   end

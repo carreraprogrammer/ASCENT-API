@@ -261,7 +261,10 @@ POST /api/v1/recurring_obligations
   "name": "Arriendo",
   "amount": 2500000,
   "due_day": 5,
-  "category_id": 3
+  "category_id": 3,
+  "subcategory_id": 12,
+  "source_type": "Debt",
+  "source_id": 7
 }
 ```
 
@@ -269,6 +272,12 @@ POST /api/v1/recurring_obligations
 PATCH  /api/v1/recurring_obligations/:id
 DELETE /api/v1/recurring_obligations/:id   # soft-delete (active=false)
 ```
+
+Regla de verdad:
+
+- `recurring_obligations.amount` sigue siendo la fuente de verdad del impacto mensual en caja
+- `source_type/source_id` solo referencia la entidad estructural de origen
+- `allocatable_type/allocatable_id` se mantiene por compatibilidad legacy
 
 ---
 
@@ -300,6 +309,53 @@ POST /api/v1/debts
 ```
 
 `PATCH /api/v1/debts/:id` — si `current_balance` llega a 0, pasa a `paid_off` automáticamente.
+
+`monthly_payment` se mantiene por compatibilidad y contexto estructural, pero no reemplaza a `recurring_obligations` como fuente de verdad del flujo mensual.
+
+---
+
+### Planned Expenses
+
+Gastos futuros previsibles que influyen en planeación, pero todavía no son transacciones reales ni obligaciones recurrentes mensuales.
+
+```http
+GET  /api/v1/planned_expenses
+POST /api/v1/planned_expenses
+
+{
+  "name": "SOAT moto",
+  "amount_estimated": 420000,
+  "target_date": "2026-12-15",
+  "planning_type": "mandatory_one_off",
+  "status": "planned",
+  "category_id": 3,
+  "subcategory_id": 12,
+  "notes": "Renovacion anual"
+}
+```
+
+```http
+PATCH /api/v1/planned_expenses/:id
+```
+
+Tipos iniciales de `planning_type`:
+
+- `mandatory_one_off`
+- `irregular_maintenance`
+- `wish`
+- `planned_purchase`
+
+Estados iniciales:
+
+- `planned`
+- `executed`
+- `cancelled`
+
+Límites actuales:
+
+- no crea transacciones automáticamente
+- no crea reservas automáticas
+- no reemplaza `debts`, `investments` ni `recurring_obligations`
 
 ---
 

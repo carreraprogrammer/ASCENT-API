@@ -14,6 +14,14 @@ A futuro: accesible a cualquier persona que quiera tomar control de sus finanzas
 
 ## Principios de diseño
 
+### Fuentes de verdad por dimensión
+
+- flujo de caja mensual → `recurring_obligations`
+- estado estructural del pasivo → `debts`
+- estado estructural del activo / construcción → `investments`
+- planeación futura → `planned_expenses`
+- semántica conductual → `category_id` + `subcategory_id`
+
 ### 1. Categorización por agencia, no por tipo contable
 
 La investigación en psicología financiera (Kahneman, Thaler — Mental Accounting) muestra que el cambio de conducta requiere que el usuario pueda distinguir entre gastos que eligió y gastos que no tenía opción. Un sistema que agrupa "arriendo" y "pizza" bajo "Vivienda/Alimentación" no genera esa distinción.
@@ -138,6 +146,33 @@ payoff_date (date),
 status (string),                        -- active | paid_off | paused
 created_at, updated_at
 ```
+
+`monthly_payment` se mantiene por compatibilidad y como dato estructural de la deuda, pero la fuente de verdad del impacto mensual en caja sigue siendo `recurring_obligations`.
+
+### recurring_obligations
+```sql
+id, user_id, account_id,
+category_id, subcategory_id,
+name, amount, due_day, active,
+source_type, source_id,                 -- nullable: Debt | Investment
+allocatable_type, allocatable_id,       -- legacy, compatibilidad
+notes, ai_analysis,
+created_at, updated_at
+```
+
+`source_type` / `source_id` permite relacionar una obligación recurrente con una entidad estructural sin volver esa entidad la fuente primaria del flujo mensual.
+
+### planned_expenses
+```sql
+id, user_id, account_id,
+name, amount_estimated, target_date,
+planning_type, status,
+category_id, subcategory_id,
+notes,
+created_at, updated_at
+```
+
+Fuente de verdad para gastos futuros previsibles que todavía no son transacciones reales ni obligaciones recurrentes mensuales.
 
 ### savings_goals
 ```sql

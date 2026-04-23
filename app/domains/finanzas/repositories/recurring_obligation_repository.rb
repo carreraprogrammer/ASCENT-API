@@ -85,6 +85,8 @@ module Finanzas
           active:           record.active,
           notes:            record.notes,
           ai_analysis:      record.ai_analysis || [],
+          source_type:      record.source_type,
+          source_id:        record.source_id,
           allocatable_type: record.allocatable_type,
           allocatable_id:   record.allocatable_id,
           created_at:       record.created_at,
