@@ -152,7 +152,8 @@ module Api
           status: normalized_presence(params[:status]),
           transaction_type: normalized_presence(params[:transaction_type]),
           source: normalized_presence(params[:source]),
-          category_id: normalized_presence(params[:category_id])
+          category_id: normalized_presence(params[:category_id]),
+          subcategory_id: normalized_presence(params[:subcategory_id])
         }.compact
       end
     end
