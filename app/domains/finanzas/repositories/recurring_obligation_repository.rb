@@ -10,7 +10,7 @@ module Finanzas
       }.freeze
 
       def for_account(account_id, filters: {}, sort_by: "due_day", sort_dir: "asc")
-        records = ::RecurringObligation.where(account_id: account_id)
+        records = ::RecurringObligation.includes(:category, :subcategory).where(account_id: account_id)
         records = apply_filters(records, filters)
         records = apply_sort(records, sort_by, sort_dir)
         records.map { |r| map_to_entity(r) }
@@ -72,7 +72,12 @@ module Finanzas
           id:               record.id,
           user_id:          record.user_id,
           category_id:      record.category_id,
+          category_code:    record.category&.code,
+          category_color:   record.category&.color,
+          category_name:    record.category&.name,
           subcategory_id:   record.subcategory_id,
+          subcategory_name: record.subcategory&.name,
+          subcategory_icon: record.subcategory&.icon,
           budget_category:  record.budget_category,
           name:             record.name,
           amount:           record.amount,
