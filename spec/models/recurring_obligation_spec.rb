@@ -55,5 +55,25 @@ RSpec.describe RecurringObligation, type: :model do
       expect(obligation).not_to be_valid
       expect(obligation.errors[:base]).to include("source reference conflicts with allocatable reference")
     end
+
+    it "clears legacy allocatable references when the explicit source link is removed" do
+      debt = create(:debt)
+      obligation = described_class.create!(
+        user: debt.user,
+        account: debt.account,
+        name: "CrediExpress",
+        amount: debt.monthly_payment,
+        due_day: 10,
+        source_type: "Debt",
+        source_id: debt.id
+      )
+
+      obligation.update!(source_type: nil, source_id: nil)
+
+      expect(obligation.reload.source_type).to be_nil
+      expect(obligation.source_id).to be_nil
+      expect(obligation.allocatable_type).to be_nil
+      expect(obligation.allocatable_id).to be_nil
+    end
   end
 end
