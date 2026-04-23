@@ -125,3 +125,60 @@ Valores iniciales:
 - no hay integración total con `monthly_plan`
 - no hay cleanup destructivo de campos legacy
 - no reemplaza `sinking_funds`; una reserva puede existir o no, independientemente del gasto planificado
+
+## Uso desde backend
+
+- endpoint `GET /api/v1/planned_expenses`
+- endpoint `POST /api/v1/planned_expenses`
+- endpoint `PATCH /api/v1/planned_expenses/:id`
+- persistencia mínima en `PlannedExpense`
+- validación de coherencia entre `category_id` y `subcategory_id`
+
+## Uso desde UI
+
+Superficie mínima actual:
+
+- ruta `/planned-expenses`
+- listado con nombre, monto estimado, fecha objetivo, tipo, estado y clasificación
+- modal para crear
+- modal para editar
+- cambio de estado vía edición (`planned`, `executed`, `cancelled`)
+
+## Uso desde el agente
+
+Capacidad mínima actual del Brain:
+
+- `get_planned_expenses`
+- `create_planned_expense`
+- `update_planned_expense`
+
+Regla operativa documentada en prompts:
+
+- si el gasto es futuro, previsible y todavía no ocurrió, no se registra como transacción
+- si no es un compromiso mensual fijo, no se mete en `recurring_obligations`
+- debe clasificarse con `category_id` y `subcategory_id`
+
+## Estado real de la fase
+
+### Implementado
+
+- backend de `planned_expenses`
+- relación explícita `recurring_obligations.source_type/source_id`
+- backfill conservador para obligaciones ligadas a deuda
+
+### Expuesto en UI
+
+- página de `planned_expenses`
+- visibilidad del vínculo deuda ↔ obligación recurrente en deudas y recurrentes
+
+### Disponible para agente
+
+- tools y adapter para listar/crear/actualizar `planned_expenses`
+- lectura del vínculo deuda ↔ obligación por `source_type/source_id`
+
+### Pendiente futuro
+
+- linking manual más completo entre deuda y obligación desde UI
+- integración profunda con `monthly_plan`
+- automatización opcional entre `planned_expenses` y `sinking_funds`
+- soporte estructural real para `investments`
