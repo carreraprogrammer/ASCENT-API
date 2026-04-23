@@ -47,6 +47,16 @@ class RecurringObligation < ApplicationRecord
   private
 
   def synchronize_source_references
+    if clearing_source_reference? && allocatable_type.in?(SOURCE_TYPES) && allocatable_id.present?
+      self.allocatable_type = nil
+      self.allocatable_id = nil
+    end
+
+    if clearing_allocatable_reference? && source_type.in?(SOURCE_TYPES) && source_id.present?
+      self.source_type = nil
+      self.source_id = nil
+    end
+
     if source_type.blank? && source_id.blank? && allocatable_type.in?(SOURCE_TYPES) && allocatable_id.present?
       self.source_type = allocatable_type
       self.source_id = allocatable_id
@@ -84,5 +94,13 @@ class RecurringObligation < ApplicationRecord
     return if Debt.exists?(id: source_id)
 
     errors.add(:source_id, "must reference an existing debt")
+  end
+
+  def clearing_source_reference?
+    source_type.blank? && source_id.blank? && (will_save_change_to_source_type? || will_save_change_to_source_id?)
+  end
+
+  def clearing_allocatable_reference?
+    allocatable_type.blank? && allocatable_id.blank? && (will_save_change_to_allocatable_type? || will_save_change_to_allocatable_id?)
   end
 end

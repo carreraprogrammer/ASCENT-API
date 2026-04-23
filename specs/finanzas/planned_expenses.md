@@ -143,6 +143,7 @@ Superficie mínima actual:
 - modal para crear
 - modal para editar
 - cambio de estado vía edición (`planned`, `executed`, `cancelled`)
+- acciones rápidas en la card para marcar `executed` o `cancelled` sin abrir el formulario
 
 ## Uso desde el agente
 
@@ -175,6 +176,7 @@ Regla operativa documentada en prompts:
 
 - tools y adapter para listar/crear/actualizar `planned_expenses`
 - lectura del vínculo deuda ↔ obligación por `source_type/source_id`
+- unlink explícito de deuda ↔ obligación vía `update_recurring_obligation` con `source_type=null` y `source_id=null`
 
 ### Pendiente futuro
 
@@ -182,3 +184,19 @@ Regla operativa documentada en prompts:
 - integración profunda con `monthly_plan`
 - automatización opcional entre `planned_expenses` y `sinking_funds`
 - soporte estructural real para `investments`
+
+## Reglas operativas del sistema
+
+- si ya ocurrió, es `transaction`
+- si impacta todos los meses la caja, es `recurring_obligation`
+- si describe estado estructural del pasivo, es `debt`
+- si es un gasto futuro previsible que todavía no ocurrió y no es mensual, es `planned_expense`
+
+## Phase Closure Checklist
+
+- backend de `planned_expenses` operativo
+- UI de `planned_expenses` operable con create/edit/status
+- vínculo deuda ↔ obligación visible
+- vínculo deuda ↔ obligación operable desde UI
+- fallback legacy `allocatable_*` todavía soportado
+- agente capaz de leer, crear y actualizar esta fase del dominio

@@ -284,15 +284,37 @@ Cada módulo tiene su propio dominio en `app/domains/` y su propio conjunto de e
 
 - vista operable de `planned_expenses` en `/planned-expenses`
 - visualización del vínculo deuda ↔ obligación recurrente en pantallas de deudas y recurrentes
+- operación mínima del vínculo deuda ↔ obligación desde la pantalla de deudas
 
 ### Disponible para agente
 
 - adapter y tools para listar/crear/actualizar `planned_expenses`
 - prompts ajustados para no confundir gasto futuro con transacción real
 - lectura del vínculo deuda ↔ obligación usando `source_type/source_id`
+- capacidad explícita de quitar vínculo deuda ↔ obligación usando `update_recurring_obligation`
 
 ### Pendiente
 
 - linking manual más rico desde UI para asociar deuda ↔ obligación
 - soporte estructural real para `investments`
 - automatizaciones entre `planned_expenses`, reservas y plan mensual
+
+### Legacy-compatible
+
+- `allocatable_type/allocatable_id` siguen vivos
+- `source_type/source_id` es la referencia explícita preferida
+- limpiar `source_*` limpia también el fallback legacy para evitar rehidratación accidental del vínculo
+
+### Reglas operativas
+
+- `transactions` registra hechos ya ocurridos
+- `recurring_obligations` registra impacto mensual fijo en caja
+- `debts` registra estado estructural del pasivo
+- `planned_expenses` registra planeación futura no ejecutada
+
+### Phase Closure Checklist
+
+- `planned_expenses` existe en backend, UI y agente
+- la relación deuda ↔ obligación es visible y operable
+- el contrato entre API, UI y agente acepta unlink explícito
+- el fallback legacy sigue soportado sin ser la vía preferida
