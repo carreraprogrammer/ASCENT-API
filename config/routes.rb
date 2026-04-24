@@ -80,6 +80,10 @@ Rails.application.routes.draw do
       post "agent_events",         to: "agent_ui_events#create"
       patch "agent_events/:id/consume", to: "agent_ui_events#consume"
 
+      # Agent Insights — recomendaciones diarias con guardrail
+      get  "agent_insights/current", to: "agent_insights#current"
+      post "agent_insights",         to: "agent_insights#create"
+
       get "summary",        to: "summary#show"
       get "budget_context", to: "budget_context#show"
 

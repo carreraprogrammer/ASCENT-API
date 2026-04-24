@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260503) do
+ActiveRecord::Schema[8.0].define(version: 20260504) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,6 +25,23 @@ ActiveRecord::Schema[8.0].define(version: 20260503) do
     t.integer "financial_level", default: 1, null: false
     t.index ["owner_user_id"], name: "index_accounts_on_owner_user_id"
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
+  end
+
+  create_table "agent_insights", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "period_month", null: false
+    t.integer "period_year", null: false
+    t.datetime "generated_at", null: false
+    t.jsonb "key_metrics_snapshot", default: {}, null: false
+    t.jsonb "recommendations", default: {}, null: false
+    t.text "reasoning"
+    t.jsonb "signals", default: [], null: false
+    t.integer "safe_to_deploy_amount"
+    t.string "trigger_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "period_year", "period_month"], name: "index_agent_insights_on_account_period"
+    t.index ["account_id"], name: "index_agent_insights_on_account_id"
   end
 
   create_table "agent_types", force: :cascade do |t|
@@ -459,6 +476,7 @@ ActiveRecord::Schema[8.0].define(version: 20260503) do
   end
 
   add_foreign_key "accounts", "users", column: "owner_user_id"
+  add_foreign_key "agent_insights", "accounts"
   add_foreign_key "agent_ui_events", "accounts"
   add_foreign_key "budget_categories", "accounts"
   add_foreign_key "budgets", "accounts"
