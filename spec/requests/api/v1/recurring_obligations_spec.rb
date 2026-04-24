@@ -68,12 +68,9 @@ RSpec.describe "Recurring Obligations API" do
       expect(JSON.parse(response.body)["data"]["amount"]).to eq(250_000)
     end
 
-    it "clears both source and legacy allocatable references when unlinking a debt" do
+    it "clears source reference when unlinking a debt" do
       debt = create(:debt, user: user, account: user.default_account)
-      obligation.update!(
-        source_type: "Debt",
-        source_id: debt.id
-      )
+      obligation.update!(source_type: "Debt", source_id: debt.id)
 
       patch "/api/v1/recurring_obligations/#{obligation.id}",
             params: { source_type: nil, source_id: nil }, headers: headers
@@ -82,10 +79,8 @@ RSpec.describe "Recurring Obligations API" do
       data = JSON.parse(response.body)["data"]
       expect(data["source_type"]).to be_nil
       expect(data["source_id"]).to be_nil
-      expect(data["allocatable_type"]).to be_nil
-      expect(data["allocatable_id"]).to be_nil
-      expect(obligation.reload.allocatable_type).to be_nil
-      expect(obligation.allocatable_id).to be_nil
+      expect(obligation.reload.source_type).to be_nil
+      expect(obligation.source_id).to be_nil
     end
   end
 

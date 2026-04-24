@@ -97,7 +97,7 @@ module Finanzas
       end
 
       def debt_linked_obligation?(obligation)
-        obligation[:source_type] == "Debt" || obligation[:allocatable_type] == "Debt"
+        obligation[:source_type] == "Debt"
       end
     end
   end
