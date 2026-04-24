@@ -103,6 +103,7 @@ La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2
 - ⬜ Matching estructural transacción → deuda / planned_expense / recurrente
 - ⬜ Reglas cruzadas deuda ↔ recurrente hardened
 - ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural
+- ⬜ Medios de pago y modelo de tarjeta de crédito (ver [payment-sources-credit-card.md](./payment-sources-credit-card.md))
 
 El detalle funcional y los criterios de cierre de ese bloque viven en:
 
@@ -377,6 +378,36 @@ POST /api/v1/agents/preflight
   - ingreso base + ingreso variable
   - falta de `monthly_plan`
   - overflow rule aplicada correctamente
+
+---
+
+## Fase 3.5 - Medios de Pago y Tarjetas de Crédito
+
+**Estado**: `spec definido — pendiente de implementar`
+
+**Objetivo**
+
+Resolver la duplicación de gastos con tarjeta de crédito. Hoy el sistema registra las compras individuales y también el pago mensual al banco como un segundo gasto. Esta fase introduce el campo `payment_source` en transactions y el concepto de `credit_card_status: pending | settled` para manejar el ciclo completo de compra → pago sin duplicar.
+
+**Spec completo:** [payment-sources-credit-card.md](./payment-sources-credit-card.md)
+
+### Qué se construye
+
+- Migración: `payment_source` y `credit_card_status` en `transactions`
+- UI: botones de medio de pago en el registro de transacción
+- Chat agent: extracción de medio de pago en el flujo de registro
+- Agente nocturno: distinción entre email de compra y email de abono
+- Flujo de liquidación FIFO al recibir un pago
+- `LiquidityProjection`: crédito pendiente como obligación futura
+- Dashboard: sección de crédito pendiente en Zona 3
+
+### Criterios de aceptación
+
+- [x] una compra con `payment_source: credit_card` no cuenta dos veces cuando llega el abono
+- [x] el agente nocturno no crea gasto nuevo al capturar un email de pago a tarjeta
+- [x] el pool de crédito pendiente refleja el total real de compras no saldadas
+- [x] el flujo de liquidación marca transacciones como `settled` en orden FIFO
+- [x] el `safe_to_deploy` considera el crédito pendiente como obligación si el corte cae en el próximo ciclo
 
 ---
 

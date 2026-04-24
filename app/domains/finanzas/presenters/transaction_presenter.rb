@@ -29,6 +29,8 @@ module Finanzas
             clarification_requested_at: transaction.clarification_requested_at,
             clarification_resolved_at: transaction.clarification_resolved_at,
             metadata: transaction.metadata,
+            payment_source: transaction.payment_source,
+            credit_card_status: transaction.credit_card_status,
             created_at: transaction.created_at,
             updated_at: transaction.updated_at
           },

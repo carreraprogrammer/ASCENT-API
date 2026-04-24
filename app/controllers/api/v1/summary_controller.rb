@@ -14,28 +14,34 @@ module Api
         year    = (params[:year]  || now_col.year).to_i
         account_id = current_account.id
 
-        balance         = txn_repo.balance(account_id: account_id, month: month, year: year)
-        budgets         = budget_repo.for_month(account_id: account_id, month: month, year: year)
-        debts           = debt_repo.all_for_account(account_id)
-        ctx             = ctx_repo.find_by_account(account_id)
-        plan            = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
-        income_sources  = income_source_repo.active_for_account(account_id)
-        liquidity       = Finanzas::Interactors::LiquidityProjection.new.call(
-                            plan:           plan,
-                            balance:        balance,
-                            income_sources: income_sources,
-                            today:          now_col.to_date
-                          )
+        balance              = txn_repo.balance(account_id: account_id, month: month, year: year)
+        budgets              = budget_repo.for_month(account_id: account_id, month: month, year: year)
+        debts                = debt_repo.all_for_account(account_id)
+        ctx                  = ctx_repo.find_by_account(account_id)
+        plan                 = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
+        income_sources       = income_source_repo.active_for_account(account_id)
+        credit_card_pending  = ::Transaction
+                                 .where(account_id: account_id, payment_source: "credit_card",
+                                        credit_card_status: "pending")
+                                 .sum(:amount)
+        liquidity            = Finanzas::Interactors::LiquidityProjection.new.call(
+                                 plan:                plan,
+                                 balance:             balance,
+                                 income_sources:      income_sources,
+                                 credit_card_pending: credit_card_pending,
+                                 today:               now_col.to_date
+                               )
 
         render json: {
-          period:            { month: month, year: year },
-          balance:           balance,
-          burn_rate:         build_burn_rate(account_id, month, year, budgets, now_col),
-          debts:             build_debts_summary(debts),
-          monthly_plan:      build_monthly_plan_summary(plan),
-          overflow_status:   build_overflow_status(plan, balance, ctx, debts),
-          financial_context: build_context_summary(ctx, plan, debts, liquidity),
-          liquidity:         liquidity
+          period:               { month: month, year: year },
+          balance:              balance,
+          burn_rate:            build_burn_rate(account_id, month, year, budgets, now_col),
+          debts:                build_debts_summary(debts),
+          monthly_plan:         build_monthly_plan_summary(plan),
+          overflow_status:      build_overflow_status(plan, balance, ctx, debts),
+          financial_context:    build_context_summary(ctx, plan, debts, liquidity),
+          liquidity:            liquidity,
+          credit_card_pending:  credit_card_pending
         }
       end
 

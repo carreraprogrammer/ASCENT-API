@@ -41,6 +41,7 @@ Rails.application.routes.draw do
           get :pending
           get :balance
           post :batch
+          post :settle_credit_card
         end
       end
 

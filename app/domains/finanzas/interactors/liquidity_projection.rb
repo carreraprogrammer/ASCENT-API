@@ -8,12 +8,13 @@ module Finanzas
     # No hace queries — opera sobre los hashes que el SummaryController ya cargó.
     # Todos los valores son enteros en COP.
     class LiquidityProjection
-      # @param plan              [Hash, nil]  plan mensual vigente (puede ser nil)
-      # @param balance           [Hash]       balance del período {income_confirmed:, expense_confirmed:, ...}
-      # @param income_sources    [Array<Hash>] fuentes de ingreso activas de la cuenta (opcional)
-      # @param today             [Date, nil]  fecha actual (opcional, por defecto Date.today)
-      # @return                  [Hash, nil]  proyección de liquidez, o nil si no hay plan
-      def call(plan:, balance:, income_sources: [], today: nil)
+      # @param plan                  [Hash, nil]    plan mensual vigente (puede ser nil)
+      # @param balance               [Hash]         balance del período {income_confirmed:, expense_confirmed:, ...}
+      # @param income_sources        [Array<Hash>]  fuentes de ingreso activas de la cuenta (opcional)
+      # @param credit_card_pending   [Integer]      total de compras con tarjeta de crédito sin pagar al banco
+      # @param today                 [Date, nil]    fecha actual (opcional, por defecto Date.today)
+      # @return                      [Hash, nil]    proyección de liquidez, o nil si no hay plan
+      def call(plan:, balance:, income_sources: [], credit_card_pending: 0, today: nil)
         return nil unless plan
 
         confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
@@ -23,10 +24,11 @@ module Finanzas
         today_day = (today || Date.today).day
         pending_income = pending_variable_income(income_sources, today_day)
 
-        # Obligaciones que se van a ejecutar al inicio del próximo ciclo:
-        # recurring_obligations_total ya excluye mínimos de deuda (son cuentas separadas en el plan)
+        # Obligaciones del próximo ciclo: recurrentes + mínimos de deuda + crédito pendiente.
+        # El crédito pendiente es lo que se le debe al banco por compras aún no pagadas.
         next_cycle_obligations = plan[:recurring_obligations_total].to_i +
-                                 plan[:debt_minimums_total].to_i
+                                 plan[:debt_minimums_total].to_i +
+                                 credit_card_pending.to_i
 
         protected_buffer       = plan[:protected_buffer_amount].to_i
 
@@ -39,6 +41,7 @@ module Finanzas
           pending_income:         pending_income,
           projected_eom_balance:  projected_eom_balance,
           next_cycle_obligations: next_cycle_obligations,
+          credit_card_pending:    credit_card_pending.to_i,
           protected_buffer:       protected_buffer,
           free_after_obligations: free_after_obligations,
           safe_to_deploy:         safe_to_deploy,
