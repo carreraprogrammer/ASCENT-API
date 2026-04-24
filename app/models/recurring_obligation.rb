@@ -23,6 +23,7 @@ class RecurringObligation < ApplicationRecord
 
   validate :source_reference_must_be_complete
   validate :debt_source_must_exist
+  validate :debt_source_must_use_credit_subcategory
 
   scope :active, -> { where(active: true).order(:due_day) }
 
@@ -50,5 +51,12 @@ class RecurringObligation < ApplicationRecord
     return if Debt.exists?(id: source_id)
 
     errors.add(:source_id, "must reference an existing debt")
+  end
+
+  def debt_source_must_use_credit_subcategory
+    return unless source_type == DEBT_SOURCE_TYPE && source_id.present?
+    return if subcategory&.code == "creditos"
+
+    errors.add(:base, "debt links require the 'Créditos' subcategory")
   end
 end

@@ -76,6 +76,7 @@ module Finanzas
           category_color:   record.category&.color,
           category_name:    record.category&.name,
           subcategory_id:   record.subcategory_id,
+          subcategory_code: record.subcategory&.code,
           subcategory_name: record.subcategory&.name,
           subcategory_icon: record.subcategory&.icon,
           budget_category:  record.budget_category,

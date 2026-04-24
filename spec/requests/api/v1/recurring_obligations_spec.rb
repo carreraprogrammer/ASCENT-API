@@ -70,7 +70,8 @@ RSpec.describe "Recurring Obligations API" do
 
     it "clears source reference when unlinking a debt" do
       debt = create(:debt, user: user, account: user.default_account)
-      obligation.update!(source_type: "Debt", source_id: debt.id)
+      credit_subcategory = create(:subcategory, category: category, code: "creditos", name: "Créditos")
+      obligation.update!(subcategory: credit_subcategory, source_type: "Debt", source_id: debt.id)
 
       patch "/api/v1/recurring_obligations/#{obligation.id}",
             params: { source_type: nil, source_id: nil }, headers: headers
@@ -81,6 +82,18 @@ RSpec.describe "Recurring Obligations API" do
       expect(data["source_id"]).to be_nil
       expect(obligation.reload.source_type).to be_nil
       expect(obligation.source_id).to be_nil
+    end
+
+    it "rejects linking a debt when the obligation is not a credit" do
+      debt = create(:debt, user: user, account: user.default_account)
+      non_credit_subcategory = create(:subcategory, category: category, code: "arriendo", name: "Arriendo")
+      obligation.update!(subcategory: non_credit_subcategory)
+
+      patch "/api/v1/recurring_obligations/#{obligation.id}",
+            params: { source_type: "Debt", source_id: debt.id }, headers: headers
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body).dig("errors", 0, "detail")).to include("debt links require the 'Créditos' subcategory")
     end
   end
 
