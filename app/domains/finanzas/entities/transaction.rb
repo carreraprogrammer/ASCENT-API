@@ -5,7 +5,8 @@ module Finanzas
                   :transaction_type, :category_id, :subcategory_id,
                   :source, :status, :clarification_requested_at,
                   :clarification_resolved_at, :metadata, :source_event_id,
-                  :year, :month, :created_at, :updated_at
+                  :year, :month, :payment_source, :credit_card_status,
+                  :created_at, :updated_at
 
       def initialize(attrs = {})
         @id                          = attrs[:id]
@@ -25,6 +26,8 @@ module Finanzas
         @source_event_id             = attrs[:source_event_id]
         @year                        = attrs[:year]
         @month                       = attrs[:month]
+        @payment_source              = attrs[:payment_source]
+        @credit_card_status          = attrs[:credit_card_status]
         @created_at                  = attrs[:created_at]
         @updated_at                  = attrs[:updated_at]
       end

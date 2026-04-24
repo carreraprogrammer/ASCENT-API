@@ -163,6 +163,8 @@ module Finanzas
           source_event_id: record.source_event_id,
           year: record.year,
           month: record.month,
+          payment_source: record.payment_source,
+          credit_card_status: record.credit_card_status,
           created_at: record.created_at,
           updated_at: record.updated_at
         )
