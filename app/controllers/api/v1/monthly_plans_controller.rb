@@ -23,7 +23,9 @@ module Api
 
         data = Finanzas::Interactors::WizardData.new.call(
           account_id: current_account.id,
-          user_id: current_owner_user_id
+          user_id: current_owner_user_id,
+          month: plan_month,
+          year: plan_year
         )
         render json: { data: data }
       rescue => e
