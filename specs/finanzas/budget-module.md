@@ -334,6 +334,11 @@ Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GE
 - Los `planned_expenses` obligatorios deben entrar al plan como necesidad de fondeo, no como campo opcional aislado
 - Cada `planned_expense` relevante debe poder traducirse a su propio bolsillo
 - La capa de resumen final debe explicar qué viene de fuente fija, qué es sugerencia histórica y qué es editable
+- El presupuesto mide desvío, pero no debe convertir automáticamente todo `exceso` en señal negativa
+- `Créditos` puede mostrar exceso positivo si el gasto extra parece reducir deuda
+- `Inversión` puede mostrar exceso neutral si hay que revisar liquidez antes de juzgarlo
+- `Discrecional` sí debe seguir tratándose como la señal más sensible de presión sobre el plan
+- La UI visible debe exponer `señales positivas`, `señales neutras` y `señales de atención`; la interpretación compleja queda en reglas + IA, no en un cálculo rígido
 
 ---
 
