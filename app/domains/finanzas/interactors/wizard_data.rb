@@ -31,7 +31,7 @@ module Finanzas
         @category_repo = category_repo
       end
 
-      def call(account_id:, user_id:)
+      def call(account_id:, user_id:, month: Date.current.month, year: Date.current.year)
         income_sources  = @income_repo.active_for_account(account_id)
         suggested_total = income_sources.sum { |s| s[:expected_amount].to_i }
 
@@ -39,12 +39,15 @@ module Finanzas
         all_categories  = @category_repo.all_for_account(account_id)
 
         # Recurring obligations rolled up at two granularities (no N+1)
-        recurring_by_category   = fetch_recurring_by_category(account_id)
+        recurring_by_category    = fetch_recurring_by_category(account_id)
         recurring_by_subcategory = fetch_recurring_by_subcategory(account_id)
         planned_by_subcategory   = fetch_planned_by_subcategory(account_id)
 
         # Last-3-months average spend by subcategory_id (medium confidence)
         avg_by_subcategory = fetch_avg_by_subcategory(account_id)
+
+        # Existing confirmed budget for this month — highest priority when editing
+        confirmed_by_subcategory = fetch_confirmed_budget_by_subcategory(account_id, month, year)
 
         income_section = build_income_section(income_sources, suggested_total)
         category_rows  = build_category_rows(
@@ -53,7 +56,8 @@ module Finanzas
           recurring_by_subcategory,
           planned_by_subcategory,
           avg_by_subcategory,
-          suggested_total
+          suggested_total,
+          confirmed_by_subcategory
         )
 
         { income: income_section, categories: category_rows }
@@ -88,7 +92,8 @@ module Finanzas
         recurring_by_subcategory,
         planned_by_subcategory,
         avg_by_subcategory,
-        income
+        income,
+        confirmed_by_subcategory = {}
       )
         rows = []
 
@@ -106,7 +111,8 @@ module Finanzas
             planned_by_subcategory,
             avg_by_subcategory,
             income,
-            pct
+            pct,
+            confirmed_by_subcategory
           )
 
           suggested_total = sub_rows.sum { |s| s[:suggested_amount] }
@@ -131,7 +137,8 @@ module Finanzas
         planned_by_subcategory,
         avg_by_subcategory,
         income,
-        benchmark_pct
+        benchmark_pct,
+        confirmed_by_subcategory = {}
       )
         subcategories = category.subcategories
         return [] if subcategories.empty?
@@ -142,10 +149,22 @@ module Finanzas
         direct_recurring_covered = 0
 
         subcategories.each do |sub|
+          confirmed_amount = confirmed_by_subcategory[sub.id]
           recurring_amount = recurring_by_subcategory[sub.id].to_i
           planned_amount   = planned_by_subcategory[sub.id].to_i
 
-          if recurring_amount > 0
+          if confirmed_amount
+            direct_recurring_covered += recurring_amount if recurring_amount > 0
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: confirmed_amount,
+              confidence: "confirmed",
+              source: "confirmed_budget",
+              locked: false,
+              source_of_truth: "budgets",
+              edit_hint: "Monto del plan confirmado para este mes."
+            )
+          elsif recurring_amount > 0
             direct_recurring_covered += recurring_amount
             rows << build_subcategory_row(
               sub,
@@ -299,6 +318,15 @@ module Finanzas
           months = [ row.month_count.to_i, 1 ].max
           hash[row.subcategory_id] = (row.total.to_f / months).round
         end
+      end
+
+      # Returns { subcategory_id => amount_limit } for confirmed budgets in the given month/year.
+      def fetch_confirmed_budget_by_subcategory(account_id, month, year)
+        ::Budget
+          .where(account_id: account_id, month: month, year: year)
+          .where.not(subcategory_id: nil)
+          .pluck(:subcategory_id, :amount_limit)
+          .to_h
       end
 
       def monthly_planned_contribution(expense)
