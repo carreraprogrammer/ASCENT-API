@@ -60,6 +60,8 @@ La infraestructura del Brain esta cerrada. Lo que queda pendiente ya no es "tene
 
 **Estado**: `prioridad maxima`
 
+**Subfase activa**: [Fase 3.4 — Living Budget Integration](./phase-3-4-living-budget-integration.md)
+
 **Tesis**
 
 El sistema ya sabe registrar movimientos, pero todavia no sabe convertir ingresos estructurales en un plan mensual confiable. Hoy existe `budgets` e `income_sources`; lo que falta es la capa que decide:
@@ -78,6 +80,20 @@ Corregir la confusion entre:
 - `financial_context`
 
 La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2` y pasa a vivir en una entidad propia.
+
+### Prioridad inmediata dentro de Fase 3
+
+El siguiente bloque de trabajo debe ejecutarse en este orden:
+
+1. dejar el wizard de planeacion mensual correcto
+2. conectar `planned_expenses` con `sinking_funds`
+3. agregar matching estructural al registrar transacciones
+4. endurecer reglas cruzadas deuda ↔ recurrente
+5. alinear backend, UI y agente con el mismo contrato
+
+El detalle funcional y los criterios de cierre de ese bloque viven en:
+
+- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
 
 ### Que se construye
 

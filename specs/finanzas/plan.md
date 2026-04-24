@@ -260,6 +260,25 @@ El agente recibe el `summary` completo y tiene contexto para razonar sobre:
 
 ---
 
+## Siguiente bloque prioritario
+
+La siguiente fase de ejecución no consiste en abrir módulos nuevos, sino en conectarlos correctamente.
+
+Prioridad explícita:
+
+1. dejar el wizard de planeación mensual correcto
+2. hacer que el wizard lea fuentes de verdad en vez de duplicarlas
+3. conectar `planned_expenses` con `sinking_funds`
+4. permitir matching estructural de transacciones
+5. endurecer reglas cruzadas entre `debts` y `recurring_obligations`
+6. alinear backend, UI y agente con el mismo contrato operativo
+
+Spec operativo de esta fase:
+
+- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+
+---
+
 ## Roadmap de módulos futuros
 
 Cuando el módulo Finanzas esté estable, el mismo patrón se aplica a:

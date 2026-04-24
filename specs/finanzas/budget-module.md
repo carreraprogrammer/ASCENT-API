@@ -290,6 +290,18 @@ Al confirmar, el plan guarda:
 
 ## 7. Revisión de las fases de implementación
 
+### Nota de ejecución 2026-04-23
+
+Este documento sigue describiendo bien el modelo de presupuesto, pero la siguiente ejecución ya no debe arrancar por "más categorías dinámicas". La prioridad práctica cambió:
+
+- primero dejar el wizard correcto frente a las fuentes de verdad ya existentes
+- luego conectar `planned_expenses` con `sinking_funds`
+- luego agregar matching estructural de transacciones
+
+Plan operativo actual:
+
+- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+
 ### Fase 1 — Cimientos ✅ COMPLETADA
 Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GET /api/v1/budget_context`
 
@@ -314,6 +326,14 @@ Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GE
 - Comparativa categoría vs gasto real del mes
 - Alertas cuando una categoría supera el límite
 - Rollover automático mes a mes
+
+### Ajustes funcionales ya decididos para la siguiente ejecución
+
+- El paso de ingresos del wizard no debe duplicar información ya definida en `income_sources`
+- Las líneas fijas como arriendo, cuotas y suscripciones no se editan desde el wizard; se muestran bloqueadas y remiten a `recurring_obligations`
+- Los `planned_expenses` obligatorios deben entrar al plan como necesidad de fondeo, no como campo opcional aislado
+- Cada `planned_expense` relevante debe poder traducirse a su propio bolsillo
+- La capa de resumen final debe explicar qué viene de fuente fija, qué es sugerencia histórica y qué es editable
 
 ---
 

@@ -16,6 +16,24 @@ RSpec.describe "Monthly Plans Wizard API" do
     create(:subcategory, :system, category: system_category,
            name: "Restaurantes", code: "restaurantes", icon: "restaurantOutline")
   end
+  let!(:necessary_category) do
+    create(:category, :system,
+           name: "Necesario", code: "necessary", category_type: "necessary",
+           color: "#2F7D32", icon: "leafOutline")
+  end
+  let!(:vehicle_subcategory) do
+    create(:subcategory, :system, category: necessary_category,
+           name: "Moto", code: "moto", icon: "carSportOutline")
+  end
+  let!(:committed_category) do
+    create(:category, :system,
+           name: "Comprometido", code: "committed", category_type: "committed",
+           color: "#6B4EFF", icon: "homeOutline")
+  end
+  let!(:rent_subcategory) do
+    create(:subcategory, :system, category: committed_category,
+           name: "Arriendo", code: "arriendo", icon: "homeOutline")
+  end
 
   # ── GET /api/v1/monthly_plans/wizard_data ─────────────────────────────────
 
@@ -38,6 +56,8 @@ RSpec.describe "Monthly Plans Wizard API" do
         expect(data["income"]).to be_a(Hash)
         expect(data["income"]["suggested_total"]).to eq(5_000_000)
         expect(data["income"]["sources"]).to be_an(Array)
+        expect(data["income"]["can_edit_in_wizard"]).to eq(false)
+        expect(data["income"]["source_of_truth"]).to eq("income_sources")
       end
 
       it "returns categories array excluding unknown when no custom subcategories" do
@@ -77,6 +97,71 @@ RSpec.describe "Monthly Plans Wizard API" do
           sub = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
           expect(sub).not_to be_nil
           expect(sub["confidence"]).to eq("medium")
+        end
+      end
+
+      context "with a recurring obligation directly linked to a subcategory" do
+        before do
+          create(
+            :recurring_obligation,
+            user: user,
+            account: account,
+            category: committed_category,
+            subcategory: rent_subcategory,
+            name: "Arriendo apartamento",
+            amount: 1_200_000,
+            due_day: 5
+          )
+        end
+
+        it "returns the line as locked from recurring_obligations" do
+          get "/api/v1/monthly_plans/wizard_data", headers: headers
+
+          expect(response).to have_http_status(:ok)
+          data = JSON.parse(response.body)["data"]
+          cat  = data["categories"].find { |c| c["code"] == "committed" }
+          sub  = cat["subcategories"].find { |s| s["code"] == "arriendo" }
+
+          expect(sub["suggested_amount"]).to eq(1_200_000)
+          expect(sub["source"]).to eq("recurring")
+          expect(sub["locked"]).to eq(true)
+          expect(sub["source_of_truth"]).to eq("recurring_obligations")
+        end
+      end
+
+      context "with a mandatory planned expense" do
+        let(:target_date) { Date.current.beginning_of_month + 3.months }
+
+        before do
+          create(
+            :planned_expense,
+            user: user,
+            account: account,
+            category: necessary_category,
+            subcategory: vehicle_subcategory,
+            name: "SOAT moto",
+            amount_estimated: 420_000,
+            target_date: target_date,
+            planning_type: "mandatory_one_off",
+            status: "planned"
+          )
+        end
+
+        it "returns a monthly suggestion sourced from planned_expenses" do
+          get "/api/v1/monthly_plans/wizard_data", headers: headers
+
+          expect(response).to have_http_status(:ok)
+          data = JSON.parse(response.body)["data"]
+          cat  = data["categories"].find { |c| c["code"] == "necessary" }
+          sub  = cat["subcategories"].find { |s| s["code"] == "moto" }
+
+          months = ((target_date.year * 12 + target_date.month) - (Date.current.year * 12 + Date.current.month) + 1)
+          expected_monthly = (420_000.to_f / months).ceil
+
+          expect(sub["suggested_amount"]).to eq(expected_monthly)
+          expect(sub["source"]).to eq("planned_expense")
+          expect(sub["locked"]).to eq(false)
+          expect(sub["source_of_truth"]).to eq("planned_expenses")
         end
       end
 
