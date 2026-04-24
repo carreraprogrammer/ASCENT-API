@@ -237,6 +237,7 @@ module Api
             sub_confirmed = sub_spend[:confirmed]
             sub_total     = sub_confirmed + sub_spend[:pending]
             sub_projected = (sub_confirmed * projection_scale).round
+            sub_signal    = build_budget_signal(category: cat, subcategory: sub, budgeted: b.amount_limit, spent: sub_total)
 
             {
               id:        b.subcategory_id,
@@ -245,9 +246,19 @@ module Api
               icon:      sub&.icon,
               budgeted:  b.amount_limit,
               spent:     sub_total,
-              projected: sub_projected
+              projected: sub_projected,
+              signal_kind:   sub_signal[:kind],
+              signal_label:  sub_signal[:label],
+              signal_detail: sub_signal[:detail]
             }
           end
+
+          category_signal = build_category_signal(
+            category: cat,
+            budgeted: cat_budgeted,
+            spent: cat_total,
+            subcategories: subcategory_rows
+          )
 
           {
             code:          cat&.code,
@@ -257,6 +268,9 @@ module Api
             budgeted:      cat_budgeted,
             spent:         cat_total,
             projected:     cat_projected,
+            signal_kind:   category_signal[:kind],
+            signal_label:  category_signal[:label],
+            signal_detail: category_signal[:detail],
             subcategories: subcategory_rows
           }
         end
@@ -266,6 +280,86 @@ module Api
           total_income: (plan[:base_budget_income].to_i + plan[:expected_variable_income].to_i),
           categories: category_rows
         )
+      end
+
+      def build_category_signal(category:, budgeted:, spent:, subcategories:)
+        positive_count = subcategories.count { |row| row[:signal_kind] == "positive" }
+        attention_count = subcategories.count { |row| row[:signal_kind] == "attention" }
+        ratio = budgeted.to_i > 0 ? spent.to_f / budgeted.to_i : 0
+        over_budget = budgeted.to_i > 0 && spent.to_i > budgeted.to_i
+
+        if spent.to_i <= 0
+          signal("neutral", "Sin movimiento", "Todavía no hay gasto real en esta parte del plan.")
+        elsif attention_count.positive?
+          signal(
+            "attention",
+            "Requiere atención",
+            positive_count.positive? ?
+              "Hay líneas que presionan el plan y otras que mejoran tu posición. Conviene revisar el detalle." :
+              "Hay líneas dentro de esta categoría que sí están presionando el margen del mes."
+          )
+        elsif over_budget && positive_count.positive?
+          signal("positive", "Sobre el plan, con mejora útil", "Parte del exceso parece mejorar deuda o construcción, no solo consumo.")
+        elsif over_budget && discretionary_category?(category)
+          signal("attention", "Sobre el plan", "Este exceso sí parece presionar el margen disponible del mes.")
+        elsif over_budget && investment_category?(category)
+          signal("neutral", "Sobre el plan, revisar liquidez", "Invertir más puede ser bueno, pero conviene revisar cómo afecta tu caja.")
+        elsif over_budget
+          signal("neutral", "Sobre el plan", "Se salió del plan, pero necesita contexto antes de juzgarse como un error.")
+        elsif positive_count.positive?
+          signal("positive", "Buen avance", "Hay movimientos en esta categoría que fortalecen tu posición financiera.")
+        elsif ratio >= 0.85 && discretionary_category?(category)
+          signal("attention", "Cerca del límite", "Queda poco margen en esta categoría y conviene mirarla de cerca.")
+        elsif ratio >= 0.85
+          signal("neutral", "Cerca del límite", "Todavía va dentro del plan, pero ya queda poco margen.")
+        else
+          signal("neutral", "En ritmo", "Esta categoría va dentro del plan del mes.")
+        end
+      end
+
+      def build_budget_signal(category:, subcategory:, budgeted:, spent:)
+        ratio = budgeted.to_i > 0 ? spent.to_f / budgeted.to_i : 0
+        over_budget = budgeted.to_i > 0 && spent.to_i > budgeted.to_i
+
+        if spent.to_i <= 0
+          signal("neutral", "Sin movimiento", "Todavía no hay gasto real en esta línea.")
+        elsif over_budget && debt_like_subcategory?(subcategory)
+          signal("positive", "Sobre el plan, pero reduce deuda", "Este gasto parece un abono extra a deuda. Se salió del plan, pero puede mejorar tu pasivo.")
+        elsif over_budget && investment_category?(category)
+          signal("neutral", "Sobre el plan, revisar liquidez", "Invertir más puede ser bueno, pero conviene revisar cómo afecta tu caja del mes.")
+        elsif over_budget && discretionary_category?(category)
+          signal("attention", "Sobre el plan", "Este exceso sí presiona tu margen disponible del mes.")
+        elsif over_budget
+          signal("neutral", "Sobre el plan", "Esta línea se salió del plan y necesita contexto antes de juzgarla.")
+        elsif ratio >= 0.85 && discretionary_category?(category)
+          signal("attention", "Cerca del límite", "Queda poco margen en esta línea y conviene mirarla de cerca.")
+        elsif debt_like_subcategory?(subcategory)
+          signal("positive", "Pago en ritmo", "Esta línea sostiene o mejora tu salida de deuda dentro del plan.")
+        elsif investment_category?(category) && spent.to_i.positive?
+          signal("positive", "Construcción en ritmo", "Esta línea está aportando dentro del plan y suma a tu construcción.")
+        elsif ratio >= 0.85
+          signal("neutral", "Cerca del límite", "Todavía va dentro del plan, pero ya queda poco margen.")
+        else
+          signal("neutral", "En ritmo", "Esta línea va dentro del plan del mes.")
+        end
+      end
+
+      def signal(kind, label, detail)
+        { kind: kind, label: label, detail: detail }
+      end
+
+      def debt_like_subcategory?(subcategory)
+        text = [subcategory&.code, subcategory&.name].compact.join(" ").downcase
+        text.match?(/credit|crédito|credito|deuda|pr[eé]stamo|prestamo|loan|tarjeta/)
+      end
+
+      def investment_category?(category)
+        category&.category_type == "investment" || category&.code == "investment"
+      end
+
+      def discretionary_category?(category)
+        category&.category_type == "discretionary" ||
+          %w[discretionary social dining_out personal_care].include?(category&.code)
       end
     end
   end
