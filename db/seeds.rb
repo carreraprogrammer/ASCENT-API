@@ -20,6 +20,7 @@ SYSTEM_CATEGORIES = [
       { name: "Gasolina",   code: "gasolina",   icon: "carOutline" },
       { name: "Transporte", code: "transporte", icon: "busOutline" },
       { name: "Salud",      code: "salud",      icon: "heartOutline" },
+      { name: "Ejercicio",  code: "ejercicio",  icon: "barbellOutline" },
       { name: "Celular",    code: "celular",    icon: "phonePortraitOutline" }
     ]
   },
