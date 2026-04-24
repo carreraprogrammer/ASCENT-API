@@ -7,7 +7,7 @@ class Debt < ApplicationRecord
   # Una deuda puede tener una sola obligación recurrente asociada
   # (la cuota mensual que sale del flujo de caja).
   # Cuando la deuda se paga, la obligación se desactiva automáticamente.
-  has_one :recurring_obligation, as: :allocatable
+  has_one :recurring_obligation, -> { where(source_type: "Debt") }, foreign_key: :source_id
 
   TYPES    = %w[credit_card personal_loan family mortgage].freeze
   STATUSES = %w[active paid_off paused disputed].freeze
@@ -43,11 +43,7 @@ class Debt < ApplicationRecord
     return unless %w[paid_off disputed].include?(status)
 
     RecurringObligation
-      .where(
-        "(allocatable_type = :type AND allocatable_id = :id) OR (source_type = :type AND source_id = :id)",
-        type: "Debt",
-        id: id
-      )
+      .where(source_type: "Debt", source_id: id)
       .find_each { |obligation| obligation.update(active: false) }
   end
 end
