@@ -20,6 +20,12 @@ module Api
         ctx             = ctx_repo.find_by_account(account_id)
         plan            = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
         income_sources  = income_source_repo.active_for_account(account_id)
+        liquidity       = Finanzas::Interactors::LiquidityProjection.new.call(
+                            plan:           plan,
+                            balance:        balance,
+                            income_sources: income_sources,
+                            today:          now_col.to_date
+                          )
 
         render json: {
           period:            { month: month, year: year },
@@ -28,13 +34,8 @@ module Api
           debts:             build_debts_summary(debts),
           monthly_plan:      build_monthly_plan_summary(plan),
           overflow_status:   build_overflow_status(plan, balance, ctx, debts),
-          financial_context: build_context_summary(ctx, plan, debts),
-          liquidity:         Finanzas::Interactors::LiquidityProjection.new.call(
-                               plan:           plan,
-                               balance:        balance,
-                               income_sources: income_sources,
-                               today:          now_col.to_date
-                             )
+          financial_context: build_context_summary(ctx, plan, debts, liquidity),
+          liquidity:         liquidity
         }
       end
 
@@ -168,9 +169,11 @@ module Api
         }
       end
 
-      def build_context_summary(ctx, plan, debts)
+      def build_context_summary(ctx, plan, debts, liquidity = nil)
         return nil unless ctx
 
+        # monthly_surplus_estimate se mantiene para referencia histórica (calculado desde el plan).
+        # La recomendación de acción usa safe_to_deploy de liquidity — nunca el surplus teórico.
         surplus = if plan
           plan[:base_budget_income].to_i -
             plan[:recurring_obligations_total].to_i -
@@ -179,8 +182,9 @@ module Api
             plan[:discretionary_limit].to_i
         end
 
-        active_debts = debts.select { |d| d[:status] == "active" }
-        recommended_action = build_recommended_action(ctx, active_debts, surplus)
+        safe_to_deploy = liquidity&.dig(:safe_to_deploy).to_i
+        active_debts   = debts.select { |d| d[:status] == "active" }
+        recommended_action = build_recommended_action(ctx, active_debts, safe_to_deploy)
 
         {
           phase:                    ctx[:phase],
@@ -191,9 +195,12 @@ module Api
         }
       end
 
-      def build_recommended_action(ctx, active_debts, surplus)
+      def build_recommended_action(ctx, active_debts, safe_to_deploy)
         return nil if active_debts.empty?
-        return nil if surplus.nil?
+
+        if safe_to_deploy <= 0
+          return "Cubre tus obligaciones del próximo ciclo primero. No hay margen para mover dinero ahora."
+        end
 
         case ctx[:phase]
         when "debt_payoff"
@@ -202,9 +209,9 @@ module Api
             active_debts.max_by { |d| d[:interest_rate] }
           return nil unless target
 
-          abono = [surplus, target[:current_balance]].min
+          abono  = [safe_to_deploy, target[:current_balance]].min
           months = abono > 0 ? (target[:current_balance].to_f / abono).ceil : "?"
-          "Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
+          "Tienes #{format_cop(safe_to_deploy)} disponibles para mover. Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
         else
           nil
         end
