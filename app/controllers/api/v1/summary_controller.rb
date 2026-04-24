@@ -14,11 +14,12 @@ module Api
         year    = (params[:year]  || now_col.year).to_i
         account_id = current_account.id
 
-        balance  = txn_repo.balance(account_id: account_id, month: month, year: year)
-        budgets  = budget_repo.for_month(account_id: account_id, month: month, year: year)
-        debts    = debt_repo.all_for_account(account_id)
-        ctx      = ctx_repo.find_by_account(account_id)
-        plan     = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
+        balance         = txn_repo.balance(account_id: account_id, month: month, year: year)
+        budgets         = budget_repo.for_month(account_id: account_id, month: month, year: year)
+        debts           = debt_repo.all_for_account(account_id)
+        ctx             = ctx_repo.find_by_account(account_id)
+        plan            = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
+        income_sources  = income_source_repo.active_for_account(account_id)
 
         render json: {
           period:            { month: month, year: year },
@@ -28,7 +29,12 @@ module Api
           monthly_plan:      build_monthly_plan_summary(plan),
           overflow_status:   build_overflow_status(plan, balance, ctx, debts),
           financial_context: build_context_summary(ctx, plan, debts),
-          liquidity:         Finanzas::Interactors::LiquidityProjection.new.call(plan: plan, balance: balance)
+          liquidity:         Finanzas::Interactors::LiquidityProjection.new.call(
+                               plan:           plan,
+                               balance:        balance,
+                               income_sources: income_sources,
+                               today:          now_col.to_date
+                             )
         }
       end
 
@@ -274,6 +280,10 @@ module Api
 
       def plan_repo
         @plan_repo ||= Finanzas::Repositories::MonthlyFinancialPlanRepository.new
+      end
+
+      def income_source_repo
+        @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
       end
     end
   end

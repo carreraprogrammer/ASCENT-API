@@ -8,18 +8,20 @@ module Finanzas
     # No hace queries — opera sobre los hashes que el SummaryController ya cargó.
     # Todos los valores son enteros en COP.
     class LiquidityProjection
-      # @param plan    [Hash, nil]  plan mensual vigente (puede ser nil)
-      # @param balance [Hash]       balance del período {income_confirmed:, expense_confirmed:, ...}
-      # @return        [Hash, nil]  proyección de liquidez, o nil si no hay plan
-      def call(plan:, balance:)
+      # @param plan              [Hash, nil]  plan mensual vigente (puede ser nil)
+      # @param balance           [Hash]       balance del período {income_confirmed:, expense_confirmed:, ...}
+      # @param income_sources    [Array<Hash>] fuentes de ingreso activas de la cuenta (opcional)
+      # @param today             [Date, nil]  fecha actual (opcional, por defecto Date.today)
+      # @return                  [Hash, nil]  proyección de liquidez, o nil si no hay plan
+      def call(plan:, balance:, income_sources: [], today: nil)
         return nil unless plan
 
-        confirmed_balance      = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
-        total_planned_income   = plan[:base_budget_income].to_i + plan[:expected_variable_income].to_i
-        income_confirmed       = balance[:income_confirmed].to_i
+        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
 
-        # Ingreso que aún no ha llegado este mes (0 si ya llegó todo o más)
-        pending_income         = [ total_planned_income - income_confirmed, 0 ].max
+        # Ingreso variable pendiente: suma de fuentes activas de clasificación variable
+        # cuyo expected_day_from sea posterior al día de hoy (aún no deberían haber llegado).
+        today_day = (today || Date.today).day
+        pending_income = pending_variable_income(income_sources, today_day)
 
         # Obligaciones que se van a ejecutar al inicio del próximo ciclo:
         # recurring_obligations_total ya excluye mínimos de deuda (son cuentas separadas en el plan)
@@ -45,6 +47,22 @@ module Finanzas
       end
 
       private
+
+      # Suma el expected_amount de las fuentes de ingreso variable activas que
+      # todavía no deberían haber llegado según su calendario (expected_day_from > hoy).
+      #
+      # Una fuente es "variable" si su classification es 'variable' O su flag is_variable
+      # es true (ambos campos existen en el modelo; el criterio es OR para cubrir ambas
+      # convenciones de datos).
+      def pending_variable_income(income_sources, today_day)
+        Array(income_sources)
+          .select { |src| src[:active] && variable_source?(src) && src[:expected_day_from].to_i > today_day }
+          .sum { |src| src[:expected_amount].to_i }
+      end
+
+      def variable_source?(src)
+        src[:classification] == "variable" || src[:is_variable] == true
+      end
 
       def classify_status(free_after_obligations, protected_buffer)
         if free_after_obligations <= 0
