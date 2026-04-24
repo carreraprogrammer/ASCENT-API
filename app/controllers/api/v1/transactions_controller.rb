@@ -137,6 +137,22 @@ module Api
         render json: { data: results, errors: errors }, status: :created
       end
 
+      def settle_credit_card
+        return unless require_scope!("transactions:update")
+        amount = params[:amount].to_i
+        if amount <= 0
+          return render json: { errors: [ { status: "422", detail: "amount must be positive" } ] },
+                        status: :unprocessable_entity
+        end
+        result = Finanzas::Interactors::SettleCreditCardPayments.new.call(
+          account_id: current_account.id,
+          amount: amount
+        )
+        render json: { data: result }
+      rescue Finanzas::Errors::InvalidTransaction => e
+        render json: { errors: [ { status: "422", detail: e.message } ] }, status: :unprocessable_entity
+      end
+
       def destroy
         return unless require_scope!("transactions:delete")
         Finanzas::Interactors::DestroyTransaction.new.call(id: params[:id], account_id: current_account.id)
@@ -152,7 +168,7 @@ module Api
         p = params.permit(
           :date, :concept, :product, :amount, :transaction_type,
           :category_id, :subcategory_id, :category_code, :subcategory_code,
-          :source, :status, metadata: {}
+          :source, :status, :payment_source, :credit_card_status, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
@@ -162,7 +178,7 @@ module Api
           p = txn.permit(
             :date, :concept, :product, :amount, :transaction_type,
             :category_id, :subcategory_id, :category_code, :subcategory_code,
-            :source, :status, metadata: {}
+            :source, :status, :payment_source, :credit_card_status, metadata: {}
           ).to_h.symbolize_keys
           category_repo.resolve_codes(p, account_id: current_account.id)
         end
@@ -172,7 +188,7 @@ module Api
         p = params.permit(
           :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
           :concept, :product, :amount, :date, :source, :clarification_resolved_at,
-          metadata: {}
+          :payment_source, :credit_card_status, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end

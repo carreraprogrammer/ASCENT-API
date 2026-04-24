@@ -13,7 +13,8 @@ module Finanzas
 
       def call(user_id:, account_id:, date:, concept:, amount:, transaction_type: "expense",
                product: nil, category_id: nil, subcategory_id: nil,
-               source: "manual", status: "confirmed", metadata: {})
+               source: "manual", status: "confirmed", metadata: {},
+               payment_source: nil, credit_card_status: nil)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -36,6 +37,13 @@ module Finanzas
 
         year, month = parse_date(date)
 
+        # Auto-set credit_card_status to pending when payment_source is credit_card
+        resolved_cc_status = if payment_source == "credit_card"
+          credit_card_status || "pending"
+        else
+          nil
+        end
+
         @repo.create(
           user_id: user_id,
           account_id: account_id,
@@ -51,7 +59,9 @@ module Finanzas
           source_event_id: source_event_id,
           metadata: metadata,
           year: year,
-          month: month
+          month: month,
+          payment_source: payment_source,
+          credit_card_status: resolved_cc_status
         )
       end
 

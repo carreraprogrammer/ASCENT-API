@@ -11,7 +11,7 @@ module Finanzas
 
         permitted = attrs.slice(:status, :category_id, :subcategory_id, :concept,
                                 :product, :amount, :date, :source, :metadata,
-                                :clarification_resolved_at)
+                                :clarification_resolved_at, :payment_source, :credit_card_status)
 
         Rails.logger.info(
           "[UpdateTransaction] id=#{id.inspect} account_id=#{account_id.inspect} " \
