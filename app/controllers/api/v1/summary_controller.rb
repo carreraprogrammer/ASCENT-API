@@ -27,7 +27,8 @@ module Api
           debts:             build_debts_summary(debts),
           monthly_plan:      build_monthly_plan_summary(plan),
           overflow_status:   build_overflow_status(plan, balance, ctx, debts),
-          financial_context: build_context_summary(ctx, plan, debts)
+          financial_context: build_context_summary(ctx, plan, debts),
+          liquidity:         Finanzas::Interactors::LiquidityProjection.new.call(plan: plan, balance: balance)
         }
       end
 
@@ -45,20 +46,35 @@ module Api
         spent_by_cat = ::Transaction
           .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
           .where(status: %w[confirmed pending])
+          .where.not(category_id: nil)
           .group(:category_id)
           .sum(:amount)
 
-        categories = budgets.map do |b|
-          spent     = spent_by_cat[b[:category_id]].to_i
-          budget    = b[:amount_limit]
+        # Agrupar presupuestos por categoría sumando sus subcategorías.
+        # budgets puede tener N filas por categoría (una por subcategoría) cuando el wizard
+        # guarda a nivel subcategoría. Si comparamos el presupuesto individual de cada
+        # subcategoría contra el gasto total de la categoría obtenemos porcentajes absurdos.
+        budget_by_cat = budgets
+          .reject { |b| b[:category_id].nil? }
+          .group_by { |b| b[:category_id] }
+          .transform_values do |rows|
+            {
+              category_name: rows.first[:category_name],
+              amount_limit:  rows.sum { |b| b[:amount_limit].to_i }
+            }
+          end
+
+        categories = budget_by_cat.map do |cat_id, cat|
+          spent     = spent_by_cat[cat_id].to_i
+          budget    = cat[:amount_limit]
           projected = days_elapsed > 0 ? (spent.to_f / days_elapsed * days_in_month).round : 0
           pct       = budget > 0 ? (projected.to_f / budget * 100).round : 0
           on_track  = projected <= budget
-          alert     = !on_track ? "⚠️ #{b[:category_name]}: vas a #{format_cop(projected)} proyectados vs presupuesto de #{format_cop(budget)}" : nil
+          alert     = !on_track ? "⚠️ #{cat[:category_name]}: vas a #{format_cop(projected)} proyectados vs presupuesto de #{format_cop(budget)}" : nil
 
           {
-            category:    b[:category_name],
-            category_id: b[:category_id],
+            category:    cat[:category_name],
+            category_id: cat_id,
             budget:      budget,
             spent:       spent,
             projected:   projected,
