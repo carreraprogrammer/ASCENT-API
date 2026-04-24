@@ -25,7 +25,7 @@ module Api
 
       def destroy
         return unless require_scope!("transactions:delete")
-        Finanzas::Repositories::CategoryRepository.new.destroy(id: params[:id], account_id: current_account.id)
+        Finanzas::Repositories::CategoryRepository.new.destroy(params[:id], account_id: current_account.id)
         head :no_content
       rescue Finanzas::Errors::CategoryNotFound => e
         render json: { errors: [ { status: "404", title: "Not Found", detail: e.message } ] },

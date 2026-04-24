@@ -8,30 +8,30 @@ RSpec.describe Finanzas::Interactors::UpdateTransaction do
   let(:transaction) { create(:transaction, user: user, status: "pending") }
 
   it "updates status to confirmed" do
-    result = interactor.call(id: transaction.id, user_id: user.id, status: "confirmed")
+    result = interactor.call(id: transaction.id, account_id: user.default_account.id, status: "confirmed")
     expect(result.status).to eq("confirmed")
   end
 
   it "updates category_id" do
-    result = interactor.call(id: transaction.id, user_id: user.id, category_id: category.id)
+    result = interactor.call(id: transaction.id, account_id: user.default_account.id, category_id: category.id)
     expect(result.category_id).to eq(category.id)
   end
 
   it "raises TransactionNotFound for unknown id" do
     expect {
-      interactor.call(id: 999999, user_id: user.id, status: "confirmed")
+      interactor.call(id: 999999, account_id: user.default_account.id, status: "confirmed")
     }.to raise_error(Finanzas::Errors::TransactionNotFound)
   end
 
   it "raises TransactionNotFound when transaction belongs to another user" do
     expect {
-      interactor.call(id: transaction.id, user_id: other_user.id, status: "confirmed")
+      interactor.call(id: transaction.id, account_id: other_user.default_account.id, status: "confirmed")
     }.to raise_error(Finanzas::Errors::TransactionNotFound)
   end
 
   it "raises InvalidTransaction when updating amount to zero" do
     expect {
-      interactor.call(id: transaction.id, user_id: user.id, amount: 0)
+      interactor.call(id: transaction.id, account_id: user.default_account.id, amount: 0)
     }.to raise_error(Finanzas::Errors::InvalidTransaction)
   end
 end

@@ -5,8 +5,8 @@ module Finanzas
         @repo = repo
       end
 
-      def call(id:)
-        @repo.destroy(id)
+      def call(id:, account_id: nil)
+        @repo.destroy(id, account_id: account_id)
       end
     end
   end

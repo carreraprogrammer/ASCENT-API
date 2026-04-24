@@ -12,18 +12,18 @@ RSpec.describe Finanzas::Interactors::ListTransactions do
   end
 
   it "returns only transactions for the given month and year" do
-    result = interactor.call(user_id: user.id, month: 4, year: 2026)
+    result = interactor.call(account_id: user.default_account.id, month: 4, year: 2026)
     expect(result.length).to eq(1)
     expect(result.first.concept).to eq("Abril gasto")
   end
 
   it "does not return transactions from other users" do
-    result = interactor.call(user_id: user.id, month: 4, year: 2026)
-    expect(result.map(&:user_id)).to all(eq(user.id))
+    result = interactor.call(account_id: user.default_account.id, month: 4, year: 2026)
+    expect(result.map(&:account_id)).to all(eq(user.default_account.id))
   end
 
   it "returns empty array when no transactions for that month" do
-    result = interactor.call(user_id: user.id, month: 1, year: 2026)
+    result = interactor.call(account_id: user.default_account.id, month: 1, year: 2026)
     expect(result).to be_empty
   end
 end

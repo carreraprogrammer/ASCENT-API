@@ -7,6 +7,7 @@ RSpec.describe Finanzas::Interactors::CreateCategory do
   it "creates a category and returns an entity" do
     result = interactor.call(
       user_id: user.id,
+      account_id: user.default_account.id,
       name: "Mi categoría",
       code: "mi_categoria",
       category_type: "discretionary"
@@ -18,7 +19,7 @@ RSpec.describe Finanzas::Interactors::CreateCategory do
 
   it "raises InvalidCategory with invalid category_type" do
     expect {
-      interactor.call(user_id: user.id, name: "X", code: "x", category_type: "invalid_type")
+      interactor.call(user_id: user.id, account_id: user.default_account.id, name: "X", code: "x", category_type: "invalid_type")
     }.to raise_error(Finanzas::Errors::InvalidCategory)
   end
 end

@@ -56,9 +56,10 @@ module Api
       end
 
       def recurring_filters
+        active_filter = params.key?(:active) ? normalized_boolean_filter(params[:active]) : true
         {
           q: normalized_presence(params[:q]),
-          active: normalized_boolean_filter(params[:active]),
+          active: active_filter,
           category_id: normalized_presence(params[:category_id])
         }.compact
       end
