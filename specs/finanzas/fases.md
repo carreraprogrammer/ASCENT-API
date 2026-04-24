@@ -58,7 +58,7 @@ La infraestructura del Brain esta cerrada. Lo que queda pendiente ya no es "tene
 
 ## Fase 3 - Planeacion Mensual y Completitud Contextual
 
-**Estado**: `prioridad maxima`
+**Estado**: `en progreso — núcleo completo, integración pendiente`
 
 **Subfase activa**: [Fase 3.4 — Living Budget Integration](./phase-3-4-living-budget-integration.md)
 
@@ -81,15 +81,28 @@ Corregir la confusion entre:
 
 La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2` y pasa a vivir en una entidad propia.
 
-### Prioridad inmediata dentro de Fase 3
+### Completado dentro de Fase 3 (2026-04-24)
 
-El siguiente bloque de trabajo debe ejecutarse en este orden:
+- ✅ `monthly_financial_plans` como entidad operativa del mes
+- ✅ `income_sources` con classification / cadence / reliability_score
+- ✅ Completeness state (5 dimensiones) — `/api/v1/completeness`
+- ✅ Preflight del agente — `/api/v1/agents/preflight`
+- ✅ Wizard de plan mensual con propuesta calculada (no formulario vacío)
+- ✅ `LiquidityProjection` interactor — `safe_to_deploy` como guardrail universal
+- ✅ Fix `pending_income` para ingresos variables sin confirmar
+- ✅ Fix `burn_rate` aggregation (agrupación por categoría, no subcategoría)
+- ✅ `safe_to_deploy` como techo de `recommended_action` — nunca recomienda más de lo disponible
+- ✅ `AgentInsights` — generación diaria con drift checker, Haiku validity gate, Sonnet structured output
+- ✅ Dashboard reestructurado (3 zonas: Hero + Snapshot + Detalle) con recharts
+- ✅ UI consume `agent_insights` en el Hero con fallback y botón on-demand
 
-1. dejar el wizard de planeacion mensual correcto
-2. conectar `planned_expenses` con `sinking_funds`
-3. agregar matching estructural al registrar transacciones
-4. endurecer reglas cruzadas deuda ↔ recurrente
-5. alinear backend, UI y agente con el mismo contrato
+### Pendiente dentro de Fase 3
+
+- ⬜ Plan rolling — heredar plan anterior como borrador en el mes siguiente
+- ⬜ `savings_goals` con `monthly_contribution_needed` conectados al plan
+- ⬜ Matching estructural transacción → deuda / planned_expense / recurrente
+- ⬜ Reglas cruzadas deuda ↔ recurrente hardened
+- ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural
 
 El detalle funcional y los criterios de cierre de ese bloque viven en:
 
@@ -367,7 +380,7 @@ POST /api/v1/agents/preflight
 
 ---
 
-## Fase 4 - Deudas y Metas Guiadas por el Plan
+## Fase 4 - Deudas, Metas y Gamificación Guiadas por el Plan
 
 **Estado**: `parcial`
 
@@ -382,6 +395,15 @@ Construir las decisiones de deuda y ahorro encima del `monthly_financial_plan`, 
 - integracion de `overflow_rule` con deuda, ahorro e inversion
 - sugerencias de aceleracion de deuda basadas en excedente real del plan
 
+### Que se construye (actualizado 2026-04-24)
+
+- `savings_goals` con `monthly_contribution_needed` calculado
+- Sistema de milestones y setbacks contextual al plan (ver [gamification.md](./gamification.md))
+- Chat agent: flujo completo para "deuda liquidada" — marca paid_off, desactiva recurrente, crea milestone
+- Nightly agent: detección automática de milestones desde comparación de snapshots
+- Integración de milestones en `agent_insights.signals`
+- UI: badge del último logro en Hero del Dashboard
+
 ### Criterios de aceptacion
 
 - [ ] `POST /api/v1/savings_goals` calcula `monthly_contribution_needed`
@@ -389,6 +411,10 @@ Construir las decisiones de deuda y ahorro encima del `monthly_financial_plan`, 
 - [ ] si el plan del mes define overflow a deuda, el summary lo refleja
 - [ ] si el plan del mes define overflow a ahorro, el summary lo refleja
 - [ ] el agente nocturno menciona desalineaciones entre plan mensual y ejecucion real
+- [ ] existe tabla `user_milestones` con hitos únicos y recurrentes
+- [ ] el chat agent detecta "liquidé una deuda" y ejecuta el flujo completo (paid_off + recurrente + milestone)
+- [ ] los milestones aparecen como signals en el insight diario
+- [ ] el agente presenta setbacks como información, nunca como reproche
 
 ---
 
@@ -488,13 +514,14 @@ El modulo Finanzas se considera realmente completo cuando:
 
 - [x] Fase 1 esta cerrada
 - [x] Fase 2 esta cerrada en infraestructura y operacion conversacional
-- [ ] Fase 3 elimina por completo la dependencia de ingresos legacy en planeacion
-- [ ] existe `monthly_financial_plan` como contrato operativo del mes
+- [x] `monthly_financial_plan` existe como contrato operativo del mes
+- [x] el agente usa completitud contextual antes de abrir wizard o recomendar acciones
+- [x] el summary distingue con claridad entre base budget income, projected cashflow, budget limits y overflow handling
+- [x] `safe_to_deploy` es el guardrail universal — ninguna recomendacion supera lo disponible
+- [x] el agente genera insights diarios con drift checker y Sonnet estructurado
+- [ ] Fase 3 elimina por completo la dependencia de ingresos legacy en planeacion (plan rolling pendiente)
 - [ ] el presupuesto base puede construirse sin depender de ingresos variables
-- [ ] el agente usa completitud contextual antes de abrir wizard o recomendar acciones
-- [ ] el summary distingue con claridad entre:
-  - base budget income
-  - projected cashflow
-  - budget limits
-  - overflow handling
-- [ ] deudas, ahorro y coaching ya consumen el plan mensual
+- [ ] `savings_goals` conectados al plan con aporte mensual calculado
+- [ ] deudas, ahorro y gamificacion consumen el plan mensual como fuente de verdad
+- [ ] milestones y setbacks registrados y accesibles para el agente
+- [ ] el agente puede narrar progreso contextual: "2/5 deudas liquidadas, ritmo actual: 8 meses para el objetivo"
