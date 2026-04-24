@@ -104,7 +104,7 @@ end
 
 ## FASE 2 — Frontend dashboard restructurado
 
-### 2.1 Tipos TypeScript ⬜
+### 2.1 Tipos TypeScript ✅
 **Archivo:** `src/types/finance.types.ts`
 
 Nueva interface:
@@ -128,7 +128,7 @@ liquidity?: LiquidityProjection | null;
 
 ---
 
-### 2.2 Instalar recharts ⬜
+### 2.2 Instalar recharts ✅
 ```bash
 npm install recharts
 ```
@@ -136,7 +136,7 @@ Verificar que no conflictúe con el bundle de Ionic antes de usarlo en component
 
 ---
 
-### 2.3 Restructurar DashboardPage ⬜
+### 2.3 Restructurar DashboardPage ✅
 **Archivo:** `src/components/pages/DashboardPage/DashboardPage.tsx`
 
 **Tres zonas:**
@@ -162,7 +162,7 @@ Los 6 metricCards actuales se eliminan — su información queda absorbida en la
 
 ---
 
-### 2.4 Estilos DashboardPage ⬜
+### 2.4 Estilos DashboardPage ✅
 **Archivo:** `src/components/pages/DashboardPage/DashboardPage.module.css`
 
 Clases nuevas: `heroCard`, `heroValue`, `pressureBar`, `pressureBarFill`, `kpiRow`, `kpiBlock`, `chartPanel`. Reutilizar clases existentes de `FinancePage.module.css` donde aplique.
