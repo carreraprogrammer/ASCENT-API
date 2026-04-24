@@ -242,6 +242,7 @@ module Api
               id:        b.subcategory_id,
               code:      sub&.code,
               name:      sub&.name,
+              icon:      sub&.icon,
               budgeted:  b.amount_limit,
               spent:     sub_total,
               projected: sub_projected
@@ -252,6 +253,7 @@ module Api
             code:          cat&.code,
             name:          cat&.name,
             color:         cat&.color,
+            icon:          cat&.icon,
             budgeted:      cat_budgeted,
             spent:         cat_total,
             projected:     cat_projected,
