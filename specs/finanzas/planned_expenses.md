@@ -185,6 +185,18 @@ Regla operativa documentada en prompts:
 - automatización opcional entre `planned_expenses` y `sinking_funds`
 - soporte estructural real para `investments`
 
+### Prioridad siguiente
+
+La siguiente ejecución debe hacer que `planned_expenses` deje de ser solo un CRUD y entre al loop vivo del plan mensual:
+
+- cálculo de aporte mensual sugerido dentro del wizard
+- traducción clara hacia `sinking_funds`
+- uso por el agente como gasto futuro a fondear, no como transacción real
+
+Ver:
+
+- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+
 ## Reglas operativas del sistema
 
 - si ya ocurrió, es `transaction`

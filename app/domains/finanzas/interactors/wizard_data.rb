@@ -12,6 +12,7 @@ module Finanzas
     #   low    – benchmark: income × category_pct / subcategory_count_in_category
     class WizardData
       HISTORY_MONTHS = 3
+      PLANNED_EXPENSE_TYPES = %w[mandatory_one_off irregular_maintenance].freeze
 
       # Benchmark percentages by category_type (of total income)
       BENCHMARKS = {
@@ -40,13 +41,19 @@ module Finanzas
         # Recurring obligations rolled up at two granularities (no N+1)
         recurring_by_category   = fetch_recurring_by_category(account_id)
         recurring_by_subcategory = fetch_recurring_by_subcategory(account_id)
+        planned_by_subcategory   = fetch_planned_by_subcategory(account_id)
 
         # Last-3-months average spend by subcategory_id (medium confidence)
         avg_by_subcategory = fetch_avg_by_subcategory(account_id)
 
         income_section = build_income_section(income_sources, suggested_total)
         category_rows  = build_category_rows(
-          all_categories, recurring_by_category, recurring_by_subcategory, avg_by_subcategory, suggested_total
+          all_categories,
+          recurring_by_category,
+          recurring_by_subcategory,
+          planned_by_subcategory,
+          avg_by_subcategory,
+          suggested_total
         )
 
         { income: income_section, categories: category_rows }
@@ -65,13 +72,24 @@ module Finanzas
               is_variable:    s[:is_variable] == true || %w[variable seasonal].include?(s[:classification].to_s)
             }
           },
-          suggested_total: suggested_total
+          suggested_total: suggested_total,
+          source_of_truth: "income_sources",
+          can_edit_in_wizard: false,
+          needs_setup: sources.empty?,
+          edit_hint: "Edita ingresos en la sección de ingresos, no dentro del wizard."
         }
       end
 
       # ── Categories & subcategories ────────────────────────────────────────
 
-      def build_category_rows(categories, recurring_by_category, recurring_by_subcategory, avg_by_subcategory, income)
+      def build_category_rows(
+        categories,
+        recurring_by_category,
+        recurring_by_subcategory,
+        planned_by_subcategory,
+        avg_by_subcategory,
+        income
+      )
         rows = []
 
         categories.each do |cat|
@@ -82,7 +100,13 @@ module Finanzas
           pct = BENCHMARKS[cat.code] || BENCHMARKS[cat.category_type]
 
           sub_rows = build_subcategory_rows(
-            cat, recurring_by_category, recurring_by_subcategory, avg_by_subcategory, income, pct
+            cat,
+            recurring_by_category,
+            recurring_by_subcategory,
+            planned_by_subcategory,
+            avg_by_subcategory,
+            income,
+            pct
           )
 
           suggested_total = sub_rows.sum { |s| s[:suggested_amount] }
@@ -100,95 +124,126 @@ module Finanzas
         rows
       end
 
-      def build_subcategory_rows(category, recurring_by_category, recurring_by_subcategory, avg_by_subcategory, income, benchmark_pct)
+      def build_subcategory_rows(
+        category,
+        recurring_by_category,
+        recurring_by_subcategory,
+        planned_by_subcategory,
+        avg_by_subcategory,
+        income,
+        benchmark_pct
+      )
         subcategories = category.subcategories
         return [] if subcategories.empty?
 
         category_recurring_total = recurring_by_category[category.id].to_i
-
-        with_history    = subcategories.select { |s| avg_by_subcategory.key?(s.id) }
-        without_history = subcategories.reject { |s| avg_by_subcategory.key?(s.id) }
-
         rows = []
+        pending = []
+        direct_recurring_covered = 0
 
-        # Medium confidence: transaction history available
-        with_history.each do |sub|
-          rows << {
-            code:             sub.code,
-            name:             sub.name,
-            icon:             sub.icon,
-            suggested_amount: avg_by_subcategory[sub.id],
-            confidence:       "medium",
-            source:           "history"
-          }
+        subcategories.each do |sub|
+          recurring_amount = recurring_by_subcategory[sub.id].to_i
+          planned_amount   = planned_by_subcategory[sub.id].to_i
+
+          if recurring_amount > 0
+            direct_recurring_covered += recurring_amount
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: recurring_amount,
+              confidence: "high",
+              source: "recurring",
+              locked: true,
+              source_of_truth: "recurring_obligations",
+              edit_hint: "Se edita desde gastos recurrentes."
+            )
+          elsif planned_amount > 0
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: planned_amount,
+              confidence: "high",
+              source: "planned_expense",
+              locked: false,
+              source_of_truth: "planned_expenses",
+              edit_hint: "Se calcula desde gastos planeados obligatorios."
+            )
+          elsif avg_by_subcategory.key?(sub.id)
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: avg_by_subcategory[sub.id],
+              confidence: "medium",
+              source: "history",
+              locked: false,
+              source_of_truth: "transactions",
+              edit_hint: "Se estima por historial reciente."
+            )
+          else
+            pending << sub
+          end
         end
 
-        if without_history.any?
-          history_covered = with_history.sum { |s| avg_by_subcategory[s.id] }
+        return rows if pending.empty?
 
-          # Subcategories with a directly-linked recurring obligation — high precision
-          with_direct_recurring    = without_history.select { |s| recurring_by_subcategory.key?(s.id) }
-          without_direct_recurring = without_history.reject { |s| recurring_by_subcategory.key?(s.id) }
+        remaining_recurring = [ category_recurring_total - direct_recurring_covered, 0 ].max
 
-          with_direct_recurring.each do |sub|
-            rows << {
-              code:             sub.code,
-              name:             sub.name,
-              icon:             sub.icon,
-              suggested_amount: recurring_by_subcategory[sub.id],
-              confidence:       "high",
-              source:           "recurring"
-            }
+        if remaining_recurring > 0
+          per_sub = (remaining_recurring.to_f / pending.size).round
+          pending.each do |sub|
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: per_sub,
+              confidence: "high",
+              source: "recurring",
+              locked: false,
+              source_of_truth: "recurring_obligations",
+              edit_hint: "Monto sugerido por gastos recurrentes de esta categoría."
+            )
           end
+        elsif benchmark_pct && income > 0
+          benchmark_total = (income * benchmark_pct).round
+          already_covered = rows.sum { |row| row[:suggested_amount] }
+          remaining_benchmark = [ benchmark_total - already_covered, 0 ].max
+          per_sub = (remaining_benchmark.to_f / pending.size).round
 
-          direct_recurring_covered = with_direct_recurring.sum { |s| recurring_by_subcategory[s.id] }
-          remaining_recurring = [ category_recurring_total - history_covered - direct_recurring_covered, 0 ].max
-
-          if without_direct_recurring.any?
-            if remaining_recurring > 0
-              # Category-level recurring remainder distributed evenly
-              per_sub = (remaining_recurring.to_f / without_direct_recurring.size).round
-              without_direct_recurring.each do |sub|
-                rows << {
-                  code:             sub.code,
-                  name:             sub.name,
-                  icon:             sub.icon,
-                  suggested_amount: per_sub,
-                  confidence:       "high",
-                  source:           "recurring"
-                }
-              end
-            elsif benchmark_pct && income > 0
-              benchmark_total = (income * benchmark_pct).round
-              remaining_benchmark = [ benchmark_total - history_covered - category_recurring_total, 0 ].max
-              per_sub = (remaining_benchmark.to_f / without_direct_recurring.size).round
-
-              without_direct_recurring.each do |sub|
-                rows << {
-                  code:             sub.code,
-                  name:             sub.name,
-                  icon:             sub.icon,
-                  suggested_amount: [ per_sub, 0 ].max,
-                  confidence:       "low",
-                  source:           "benchmark"
-                }
-              end
-            else
-              without_direct_recurring.each do |sub|
-                rows << {
-                  code:             sub.code,
-                  name:             sub.name,
-                  icon:             sub.icon,
-                  suggested_amount: 0,
-                  confidence:       "low",
-                  source:           "benchmark"
-                }
-              end
-            end
+          pending.each do |sub|
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: [ per_sub, 0 ].max,
+              confidence: "low",
+              source: "benchmark",
+              locked: false,
+              source_of_truth: "benchmarks",
+              edit_hint: "Es una referencia inicial; puedes ajustarla."
+            )
+          end
+        else
+          pending.each do |sub|
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: 0,
+              confidence: "low",
+              source: "benchmark",
+              locked: false,
+              source_of_truth: "benchmarks",
+              edit_hint: "Sin historial ni fuente estructural; define un monto inicial."
+            )
           end
         end
 
         rows
+      end
+
+      def build_subcategory_row(subcategory, suggested_amount:, confidence:, source:, locked:, source_of_truth:, edit_hint:)
+        {
+          code:             subcategory.code,
+          name:             subcategory.name,
+          icon:             subcategory.icon,
+          suggested_amount: suggested_amount,
+          confidence:       confidence,
+          source:           source,
+          locked:           locked,
+          source_of_truth:  source_of_truth,
+          edit_hint:        edit_hint
+        }
       end
 
       # ── DB Queries ────────────────────────────────────────────────────────
@@ -211,6 +266,19 @@ module Finanzas
           .sum(:amount)
       end
 
+      # Returns { subcategory_id => suggested_monthly_contribution } for
+      # planned expenses that should influence this month's funding.
+      def fetch_planned_by_subcategory(account_id)
+        planned = ::PlannedExpense
+          .where(account_id: account_id, status: "planned", planning_type: PLANNED_EXPENSE_TYPES)
+          .where("target_date >= ?", Date.current.beginning_of_month)
+          .where.not(subcategory_id: nil)
+
+        planned.each_with_object(Hash.new(0)) do |expense, hash|
+          hash[expense.subcategory_id] += monthly_planned_contribution(expense)
+        end
+      end
+
       # Returns { subcategory_id => avg_monthly_amount } from the last HISTORY_MONTHS.
       # Only includes confirmed expense transactions with a subcategory assigned.
       def fetch_avg_by_subcategory(account_id)
@@ -231,6 +299,18 @@ module Finanzas
           months = [ row.month_count.to_i, 1 ].max
           hash[row.subcategory_id] = (row.total.to_f / months).round
         end
+      end
+
+      def monthly_planned_contribution(expense)
+        months = months_until_target(expense.target_date)
+        (expense.amount_estimated.to_f / months).ceil
+      end
+
+      def months_until_target(target_date)
+        today = Date.current.beginning_of_month
+        target = target_date.to_date.beginning_of_month
+        delta = (target.year * 12 + target.month) - (today.year * 12 + today.month) + 1
+        [ delta, 1 ].max
       end
     end
   end
