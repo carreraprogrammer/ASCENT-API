@@ -29,6 +29,19 @@ La prioridad de esta fase no es agregar más módulos. Es conectar bien los exis
 - ingresos estructurales → `income_sources`
 - semántica conductual → `category_id` + `subcategory_id`
 
+## Restricción adicional de experiencia
+
+La iteración de UI de esta fase no puede resolver ruido informativo agregando motion llamativa. Cualquier cambio visual futuro debe seguir la guía:
+
+- [mobile-motion-and-feedback.md](./mobile-motion-and-feedback.md)
+
+En esta fase, el objetivo del wizard y del presupuesto activo es:
+
+- menos ruido
+- más continuidad espacial
+- feedback claro
+- nada de animación decorativa que compita con montos o señales financieras
+
 ---
 
 ## Problemas a resolver
