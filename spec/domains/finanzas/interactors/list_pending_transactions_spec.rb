@@ -12,7 +12,7 @@ RSpec.describe Finanzas::Interactors::ListPendingTransactions do
   end
 
   it "returns only pending transactions" do
-    result = interactor.call(user_id: user.id)
+    result = interactor.call(account_id: user.default_account.id)
     expect(result.length).to eq(2)
     expect(result.map(&:status)).to all(eq("pending"))
   end

@@ -19,7 +19,13 @@ module Api
           errors: [ { status: "401", code: "unauthorized", detail: "Token inválido o expirado" } ]
         }, status: :unauthorized and return
       rescue JwtService::InvalidToken, Auth::Errors::InvalidToken
-        authenticate_service_account_request!(token)
+        begin
+          authenticate_service_account_request!(token)
+        rescue AuthenticationError
+          render json: {
+            errors: [ { status: "401", code: "unauthorized", detail: "Token inválido o expirado" } ]
+          }, status: :unauthorized and return
+        end
       rescue ActiveRecord::RecordNotFound
         render json: {
           errors: [ { status: "404", code: "account_not_found", detail: "Cuenta no encontrada" } ]

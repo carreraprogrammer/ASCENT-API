@@ -187,27 +187,31 @@ module Api
       end
 
       # Builds the enriched response for GET /monthly_plans/current.
-      # Aggregates confirmed + pending spend per category and computes a linear projection.
+      # Groups subcategory-level budgets by category and computes spend + projection per subcategory.
       def build_current_plan_response(plan)
         month = plan[:month]
         year  = plan[:year]
 
-        # Fetch budgets for the month — includes category (no N+1)
+        # Fetch budgets for the month — includes category + subcategory (no N+1)
         budgets = ::Budget
           .where(account_id: current_account.id, month: month, year: year)
-          .includes(:category)
+          .includes(:category, :subcategory)
 
-        # Fetch spend totals per category in a single query
+        # Fetch spend totals per (category, subcategory, status) in one query
         spend_rows = ::Transaction
           .where(account_id: current_account.id, month: month, year: year, transaction_type: "expense")
           .where.not(category_id: nil)
-          .select("category_id, status, SUM(amount) AS total")
-          .group(:category_id, :status)
+          .select("category_id, subcategory_id, status, SUM(amount) AS total")
+          .group(:category_id, :subcategory_id, :status)
 
-        # Build { category_id => { confirmed: N, pending: N } }
-        spend_by_category = Hash.new { |h, k| h[k] = { confirmed: 0, pending: 0 } }
+        # { [category_id, subcategory_id] => { confirmed: N, pending: N } }
+        spend_by_sub = Hash.new { |h, k| h[k] = { confirmed: 0, pending: 0 } }
+        # { category_id => { confirmed: N, pending: N } }
+        spend_by_cat = Hash.new { |h, k| h[k] = { confirmed: 0, pending: 0 } }
+
         spend_rows.each do |row|
-          spend_by_category[row.category_id][row.status.to_sym] += row.total.to_i
+          spend_by_sub[[row.category_id, row.subcategory_id]][row.status.to_sym] += row.total.to_i
+          spend_by_cat[row.category_id][row.status.to_sym] += row.total.to_i
         end
 
         # Day-of-month projection: scale confirmed spend to full month
@@ -216,20 +220,42 @@ module Api
         elapsed    = (today.month == month && today.year == year) ? today.day : days_in
         projection_scale = elapsed > 0 ? days_in.to_f / elapsed : 1.0
 
-        category_rows = budgets.map do |b|
-          cat   = b.category
-          spend = spend_by_category[b.category_id]
-          confirmed_spend = spend[:confirmed]
-          total_spend     = confirmed_spend + spend[:pending]
-          projected       = (confirmed_spend * projection_scale).round
+        # Group budgets by category
+        by_category = budgets.group_by(&:category_id)
+
+        category_rows = by_category.map do |cat_id, cat_budgets|
+          cat = cat_budgets.first.category
+          cat_spend = spend_by_cat[cat_id]
+          cat_confirmed = cat_spend[:confirmed]
+          cat_total     = cat_confirmed + cat_spend[:pending]
+          cat_projected = (cat_confirmed * projection_scale).round
+          cat_budgeted  = cat_budgets.sum(&:amount_limit)
+
+          subcategory_rows = cat_budgets.map do |b|
+            sub   = b.subcategory
+            sub_spend = spend_by_sub[[cat_id, b.subcategory_id]]
+            sub_confirmed = sub_spend[:confirmed]
+            sub_total     = sub_confirmed + sub_spend[:pending]
+            sub_projected = (sub_confirmed * projection_scale).round
+
+            {
+              id:        b.subcategory_id,
+              code:      sub&.code,
+              name:      sub&.name,
+              budgeted:  b.amount_limit,
+              spent:     sub_total,
+              projected: sub_projected
+            }
+          end
 
           {
-            code:      cat&.code,
-            name:      cat&.name,
-            color:     cat&.color,
-            budgeted:  b.amount_limit,
-            spent:     total_spend,
-            projected: projected
+            code:          cat&.code,
+            name:          cat&.name,
+            color:         cat&.color,
+            budgeted:      cat_budgeted,
+            spent:         cat_total,
+            projected:     cat_projected,
+            subcategories: subcategory_rows
           }
         end
 

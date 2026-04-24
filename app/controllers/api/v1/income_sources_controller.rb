@@ -67,9 +67,10 @@ module Api
       end
 
       def income_source_filters
+        active_filter = params.key?(:active) ? normalized_boolean_filter(params[:active]) : true
         {
           q: normalized_presence(params[:q]),
-          active: normalized_boolean_filter(params[:active]),
+          active: active_filter,
           is_variable: normalized_boolean_filter(params[:is_variable])
         }.compact
       end
