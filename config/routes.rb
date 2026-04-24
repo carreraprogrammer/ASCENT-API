@@ -40,6 +40,7 @@ Rails.application.routes.draw do
         collection do
           get :pending
           get :balance
+          post :batch
         end
       end
 

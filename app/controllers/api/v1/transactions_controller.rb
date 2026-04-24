@@ -113,6 +113,30 @@ module Api
                status: :unprocessable_entity
       end
 
+      def batch
+        return unless require_scope!("transactions:create")
+        results = []
+        errors  = []
+
+        batch_transaction_params.each_with_index do |txn_params, index|
+          transaction = Finanzas::Interactors::CreateTransaction.new.call(
+            user_id: current_owner_user_id,
+            account_id: current_account.id,
+            **txn_params
+          )
+          results << Finanzas::Presenters::TransactionPresenter.single(transaction)
+        rescue Finanzas::Errors::DuplicateTransaction => e
+          errors << { index: index, status: "409", detail: e.message, existing_id: e.existing_id }
+        rescue Finanzas::Errors::InvalidTransaction => e
+          errors << { index: index, status: "422", detail: e.message }
+        end
+
+        Rails.logger.info(
+          "[TransactionsController#batch] created=#{results.size} errors=#{errors.size} account_id=#{current_account&.id}"
+        )
+        render json: { data: results, errors: errors }, status: :created
+      end
+
       def destroy
         return unless require_scope!("transactions:delete")
         Finanzas::Interactors::DestroyTransaction.new.call(id: params[:id], account_id: current_account.id)
@@ -131,6 +155,17 @@ module Api
           :source, :status, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
+      end
+
+      def batch_transaction_params
+        params.require(:transactions).map do |txn|
+          p = txn.permit(
+            :date, :concept, :product, :amount, :transaction_type,
+            :category_id, :subcategory_id, :category_code, :subcategory_code,
+            :source, :status, metadata: {}
+          ).to_h.symbolize_keys
+          category_repo.resolve_codes(p, account_id: current_account.id)
+        end
       end
 
       def transaction_update_params
