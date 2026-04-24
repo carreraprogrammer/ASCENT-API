@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260422) do
+ActiveRecord::Schema[8.0].define(version: 20260503) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -74,9 +74,11 @@ ActiveRecord::Schema[8.0].define(version: 20260422) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "account_id"
+    t.integer "subcategory_id"
+    t.index ["account_id", "subcategory_id", "month", "year"], name: "index_budgets_on_account_subcategory_month_year", unique: true, where: "(subcategory_id IS NOT NULL)"
     t.index ["account_id"], name: "index_budgets_on_account_id"
     t.index ["category_id"], name: "index_budgets_on_category_id"
-    t.index ["user_id", "category_id", "month", "year"], name: "index_budgets_on_user_id_and_category_id_and_month_and_year", unique: true
+    t.index ["subcategory_id"], name: "index_budgets_on_subcategory_id"
     t.index ["user_id"], name: "index_budgets_on_user_id"
   end
 
@@ -258,6 +260,28 @@ ActiveRecord::Schema[8.0].define(version: 20260422) do
     t.index ["resource", "action"], name: "index_permissions_on_resource_and_action", unique: true
   end
 
+  create_table "planned_expenses", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "account_id"
+    t.bigint "category_id", null: false
+    t.bigint "subcategory_id", null: false
+    t.string "name", null: false
+    t.integer "amount_estimated", default: 0, null: false
+    t.date "target_date", null: false
+    t.string "planning_type", null: false
+    t.string "status", default: "planned", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "planning_type"], name: "index_planned_expenses_on_account_id_and_planning_type"
+    t.index ["account_id", "status"], name: "index_planned_expenses_on_account_id_and_status"
+    t.index ["account_id", "target_date"], name: "index_planned_expenses_on_account_id_and_target_date"
+    t.index ["account_id"], name: "index_planned_expenses_on_account_id"
+    t.index ["category_id"], name: "index_planned_expenses_on_category_id"
+    t.index ["subcategory_id"], name: "index_planned_expenses_on_subcategory_id"
+    t.index ["user_id"], name: "index_planned_expenses_on_user_id"
+  end
+
   create_table "recurring_obligations", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "category_id"
@@ -267,17 +291,19 @@ ActiveRecord::Schema[8.0].define(version: 20260422) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "allocatable_type"
-    t.bigint "allocatable_id"
     t.text "notes"
     t.jsonb "ai_analysis", default: [], null: false
     t.bigint "account_id"
     t.string "budget_category"
+    t.bigint "subcategory_id"
+    t.string "source_type"
+    t.bigint "source_id"
     t.index ["account_id", "active"], name: "index_recurring_obligations_on_account_id_and_active"
     t.index ["account_id", "budget_category"], name: "index_recurring_obligations_on_account_budget_category"
     t.index ["account_id"], name: "index_recurring_obligations_on_account_id"
-    t.index ["allocatable_type", "allocatable_id"], name: "index_recurring_obligations_on_allocatable"
     t.index ["category_id"], name: "index_recurring_obligations_on_category_id"
+    t.index ["source_type", "source_id"], name: "index_recurring_obligations_on_source"
+    t.index ["subcategory_id"], name: "index_recurring_obligations_on_subcategory_id"
     t.index ["user_id", "active"], name: "index_recurring_obligations_on_user_id_and_active"
     t.index ["user_id"], name: "index_recurring_obligations_on_user_id"
   end
@@ -341,8 +367,11 @@ ActiveRecord::Schema[8.0].define(version: 20260422) do
     t.boolean "is_system", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "icon", limit: 50
+    t.integer "user_id"
     t.index ["category_id", "code"], name: "index_subcategories_on_category_id_and_code"
     t.index ["category_id"], name: "index_subcategories_on_category_id"
+    t.index ["user_id"], name: "index_subcategories_on_user_id"
   end
 
   create_table "telegram_updates", force: :cascade do |t|
@@ -434,6 +463,7 @@ ActiveRecord::Schema[8.0].define(version: 20260422) do
   add_foreign_key "budget_categories", "accounts"
   add_foreign_key "budgets", "accounts"
   add_foreign_key "budgets", "categories"
+  add_foreign_key "budgets", "subcategories"
   add_foreign_key "budgets", "users"
   add_foreign_key "categories", "accounts"
   add_foreign_key "categories", "users"
@@ -452,14 +482,20 @@ ActiveRecord::Schema[8.0].define(version: 20260422) do
   add_foreign_key "monthly_financial_plans", "users"
   add_foreign_key "pending_actions", "accounts"
   add_foreign_key "pending_actions", "users"
+  add_foreign_key "planned_expenses", "accounts"
+  add_foreign_key "planned_expenses", "categories"
+  add_foreign_key "planned_expenses", "subcategories"
+  add_foreign_key "planned_expenses", "users"
   add_foreign_key "recurring_obligations", "accounts"
   add_foreign_key "recurring_obligations", "categories"
+  add_foreign_key "recurring_obligations", "subcategories"
   add_foreign_key "recurring_obligations", "users"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
   add_foreign_key "sinking_funds", "accounts"
   add_foreign_key "sinking_funds", "users"
   add_foreign_key "subcategories", "categories"
+  add_foreign_key "subcategories", "users"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "subcategories"
