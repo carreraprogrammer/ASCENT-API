@@ -344,6 +344,20 @@ Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GE
 
 ## 8. Pendientes UI
 
+### Guía visual y motion vigente
+
+La capa visual del módulo de presupuesto ya no debe tomar decisiones aisladas sobre animación o transiciones. La guía vigente para futuras iteraciones está en:
+
+- [mobile-motion-and-feedback.md](./mobile-motion-and-feedback.md)
+
+Reglas especialmente relevantes para presupuesto:
+
+- la hero del plan activo debe seguir estable y calmada
+- `Ver detalle` debe apoyarse en continuidad espacial, no en espectáculo
+- accordions de categoría sí son un lugar válido para motion funcional
+- los montos nunca deben usar animaciones protagónicas
+- la interpretación positiva / neutra / de atención se apoya primero en copy, color e icono; la motion es secundaria
+
 ### 8.1 La card del agente no sigue el estilo de la aplicación
 
 **Problema:** `AgentEventRenderer` usa card flotante con colores hardcodeados en lugar de `IonModal` y CSS variables del sistema de diseño.
