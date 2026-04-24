@@ -181,7 +181,7 @@ El agente corre diariamente pero solo actualiza recomendaciones cuando el estado
 
 ---
 
-### 3.1 Migración `agent_insights` ⬜
+### 3.1 Migración `agent_insights` ✅
 **Repo:** daniel15k-api
 
 ```ruby
@@ -205,7 +205,7 @@ add_index :agent_insights, [:account_id, :period_year, :period_month],
 
 ---
 
-### 3.2 Endpoints API ⬜
+### 3.2 Endpoints API ✅
 **Archivo:** `app/controllers/api/v1/agent_insights_controller.rb`
 
 - `GET /api/v1/agent_insights/current?month=&year=` — devuelve el insight vigente del período
@@ -213,7 +213,7 @@ add_index :agent_insights, [:account_id, :period_year, :period_month],
 
 ---
 
-### 3.3 Interactor `InsightDriftChecker` ⬜
+### 3.3 Interactor `InsightDriftChecker` ✅
 **Archivo:** `app/domains/finanzas/interactors/insight_drift_checker.rb`
 
 Ruby puro, sin LLM. Recibe estado actual + insight anterior, retorna `{ should_refresh: bool, reason: string }`.
@@ -230,7 +230,7 @@ return { should_refresh: true, reason: "deploy_drift" }   if safe_to_deploy_drif
 
 ---
 
-### 3.4 Skill del agente `generate_insight` ⬜
+### 3.4 Skill del agente `generate_insight` ✅
 **Repo:** daniel15k-agents
 
 Recibe: summary completo + liquidity + insight anterior.
@@ -258,7 +258,7 @@ Output estructurado:
 
 ---
 
-### 3.5 Cron job diario ⬜
+### 3.5 Cron job diario ✅
 **Repo:** daniel15k-agents
 
 Hora: 2am Colombia (UTC-5 → 7am UTC)
@@ -276,7 +276,7 @@ Para cada cuenta activa:
 
 ---
 
-### 3.6 UI consume agent_insights ⬜
+### 3.6 UI consume agent_insights ✅
 **Archivo:** `src/components/pages/DashboardPage/DashboardPage.tsx`
 
 La recomendación en Zona 1 (Hero) viene de `agent_insights.recommendations.primary_action`.
