@@ -87,7 +87,7 @@ Requiere que el `SummaryController` cargue `income_sources` y los pase al intera
 
 ---
 
-### 1.4 Integrar `safe_to_deploy` como guardrail en recomendaciones ⬜
+### 1.4 Integrar `safe_to_deploy` como guardrail en recomendaciones ✅
 **Archivo:** `app/controllers/api/v1/summary_controller.rb`
 
 **Cambio:** `build_recommended_action` recibe `safe_to_deploy` de `LiquidityProjection` y lo usa como techo del abono recomendado. Si `safe_to_deploy == 0`, la recomendación es "Cubre tus obligaciones del próximo ciclo primero. No hay margen para mover."
