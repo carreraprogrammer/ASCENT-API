@@ -70,7 +70,7 @@ Integrado en `GET /api/v1/summary` como campo `liquidity`.
 
 ---
 
-### 1.3 Fix `pending_income` en LiquidityProjection ⬜
+### 1.3 Fix `pending_income` en LiquidityProjection ✅
 **Archivo:** `app/domains/finanzas/interactors/liquidity_projection.rb`
 
 **Problema:** La fórmula actual da $0 cuando el income confirmado ya supera el total planeado, aunque haya ingresos variables que aún no llegaron.
