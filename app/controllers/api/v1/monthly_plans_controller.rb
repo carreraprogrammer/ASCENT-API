@@ -6,7 +6,13 @@ module Api
 
       def index
         return unless require_scope!("budgets:read")
-        render json: { data: current_plan }
+
+        result = repo.list_history(
+          account_id: current_account.id,
+          page: (params[:page] || 1).to_i,
+          per_page: (params[:per_page] || 12).to_i
+        )
+        render json: result
       end
 
       def current
@@ -102,6 +108,20 @@ module Api
         render json: { errors: [ { status: "422", detail: e.message } ] }, status: :unprocessable_entity
       rescue => e
         render_unprocessable(e.message)
+      end
+
+      def close
+        return unless require_scope!("budgets:update")
+
+        plan = Finanzas::Interactors::CloseMonthlyPlan.new.call(
+          account_id: current_account.id,
+          plan_id: params[:id].to_i
+        )
+        render json: { data: plan }
+      rescue Finanzas::Errors::PlanNotFound => e
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      rescue Finanzas::Errors::PlanNotConfirmed => e
+        render json: { errors: [ { status: "422", detail: e.message } ] }, status: :unprocessable_entity
       end
 
       def update

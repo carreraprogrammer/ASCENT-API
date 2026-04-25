@@ -6,6 +6,29 @@ module Finanzas
         record && map_to_entity(record)
       end
 
+      def list_history(account_id:, page: 1, per_page: 12)
+        page = page.to_i
+        per_page = per_page.to_i
+        page = 1 if page < 1
+        per_page = 12 if per_page < 1
+
+        records = ::MonthlyFinancialPlan
+          .where(account_id: account_id)
+          .order(year: :desc, month: :desc)
+        total = records.count
+        paged = records.offset((page - 1) * per_page).limit(per_page)
+
+        {
+          data: paged.map { |record| map_to_entity(record) },
+          meta: {
+            total: total,
+            page: page,
+            per_page: per_page,
+            total_pages: (total.to_f / per_page).ceil
+          }
+        }
+      end
+
       def upsert(user_id:, account_id:, month:, year:, attrs:)
         record = ::MonthlyFinancialPlan.find_or_initialize_by(
           account_id: account_id,
@@ -27,6 +50,28 @@ module Finanzas
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
+      end
+
+      def close(id, snapshot:, income_actual:, expense_actual:, account_id:)
+        record = ::MonthlyFinancialPlan.find_by(id: id, account_id: account_id)
+        raise ActiveRecord::RecordNotFound, "MonthlyFinancialPlan #{id} not found" unless record
+
+        record.update!(
+          execution_snapshot: snapshot,
+          income_actual: income_actual,
+          expense_actual: expense_actual,
+          closed_at: Time.current
+        )
+        map_to_entity(record)
+      end
+
+      def last_closed(account_id:, limit: 3)
+        ::MonthlyFinancialPlan
+          .where(account_id: account_id)
+          .where.not(closed_at: nil)
+          .order(year: :desc, month: :desc)
+          .limit(limit)
+          .map { |record| map_to_entity(record) }
       end
 
       private
@@ -53,6 +98,10 @@ module Finanzas
           debt_strategy:              record.debt_strategy,
           assumptions:                record.assumptions || {},
           confirmed_at:               record.confirmed_at,
+          income_actual:              record.income_actual,
+          expense_actual:             record.expense_actual,
+          execution_snapshot:         record.execution_snapshot || {},
+          closed_at:                  record.closed_at,
           created_at:                 record.created_at,
           updated_at:                 record.updated_at
         }

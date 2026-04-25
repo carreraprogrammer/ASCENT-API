@@ -57,4 +57,54 @@ RSpec.describe "Monthly Plans API" do
       expect(Budget.find_by(account: user.default_account, category: category, month: 4, year: 2026)&.amount_limit).to eq(600_000)
     end
   end
+
+  describe "POST /api/v1/monthly_plans/:id/close" do
+    let!(:category) { create(:category, :discretionary, :system, account: user.default_account) }
+    let!(:plan) do
+      create(
+        :monthly_financial_plan,
+        user: user,
+        account: user.default_account,
+        month: 4,
+        year: 2026,
+        status: "confirmed",
+        confirmed_at: Time.current
+      )
+    end
+
+    before do
+      Budget.create!(
+        user: user,
+        account: user.default_account,
+        category: category,
+        month: 4,
+        year: 2026,
+        amount_limit: 600_000
+      )
+      create(:transaction, :income, user: user, account: user.default_account, month: 4, year: 2026, amount: 6_400_000)
+      create(:transaction, user: user, account: user.default_account, category: category, month: 4, year: 2026, amount: 700_000)
+      create(:transaction, :pending, user: user, account: user.default_account, category: category, month: 4, year: 2026, amount: 200_000)
+    end
+
+    it "closes a confirmed plan with actuals and an execution snapshot" do
+      post "/api/v1/monthly_plans/#{plan.id}/close", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)["data"]
+      snapshot = data["execution_snapshot"]
+      category_snapshot = snapshot["categories"].first
+
+      expect(data["income_actual"]).to eq(6_400_000)
+      expect(data["expense_actual"]).to eq(700_000)
+      expect(data["closed_at"]).to be_present
+      expect(snapshot["overflow_amount"]).to eq(1_900_000)
+      expect(category_snapshot).to include(
+        "code" => "discretionary",
+        "budgeted" => 600_000,
+        "actual" => 700_000,
+        "variance" => 100_000,
+        "variance_pct" => 17
+      )
+    end
+  end
 end
