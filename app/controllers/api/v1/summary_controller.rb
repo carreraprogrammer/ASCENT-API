@@ -32,6 +32,14 @@ module Api
                                  today:               now_col.to_date
                                )
 
+        savings_goals = ::SavingsGoal
+          .where(account_id: account_id, status: "active")
+          .order(priority: :asc)
+          .map { |g| { name: g.name, target_amount: g.target_amount,
+                       current_amount: g.current_amount,
+                       monthly_contribution_needed: g.monthly_contribution_needed,
+                       target_date: g.target_date, status: g.status } }
+
         render json: {
           period:               { month: month, year: year },
           balance:              balance,
@@ -41,7 +49,8 @@ module Api
           overflow_status:      build_overflow_status(plan, balance, ctx, debts),
           financial_context:    build_context_summary(ctx, plan, debts, liquidity),
           liquidity:            liquidity,
-          credit_card_pending:  credit_card_pending
+          credit_card_pending:  credit_card_pending,
+          savings_goals:        savings_goals
         }
       end
 
