@@ -1,6 +1,6 @@
 # Historial de Planes y Ejecución Mensual
 
-> Estado: Spec definido — listo para implementar.
+> Estado: Backend implementado y desplegado. Front-end y ProposeBudget pendientes.
 > Última actualización: 2026-04-25
 
 ---
@@ -300,14 +300,14 @@ POST /api/v1/monthly_plans/:id/close          # NUEVO — cierra el mes y guarda
 | Componente | Estado |
 |-----------|--------|
 | Spec documentado | ✅ |
-| Migración: 4 campos nuevos en `monthly_financial_plans` | ⬜ |
-| `CloseMonthlyPlan` interactor | ⬜ |
-| `MonthlyFinancialPlanRepository`: `list_history`, `close`, `last_closed` | ⬜ |
-| `MonthlyPlansController#index` — historial paginado | ⬜ |
-| `MonthlyPlansController#close` — acción nueva | ⬜ |
-| Routes: `POST /monthly_plans/:id/close` | ⬜ |
+| Migración: 4 campos nuevos en `monthly_financial_plans` | ✅ |
+| `CloseMonthlyPlan` interactor | ✅ |
+| `MonthlyFinancialPlanRepository`: `list_history`, `close`, `last_closed` | ✅ |
+| `MonthlyPlansController#index` — historial paginado | ✅ |
+| `MonthlyPlansController#close` — acción nueva | ✅ |
+| Routes: `POST /monthly_plans/:id/close` | ✅ |
+| Errores: `PlanNotFound`, `PlanNotConfirmed` | ✅ |
 | `ProposeBudget`: lee historial, genera `historical_patterns` | ⬜ |
-| Errores: `PlanNotFound`, `PlanNotConfirmed` | ⬜ |
 | Front-end: lista de historial de planes | ⬜ |
 | Front-end: detalle plan con plan vs actual | ⬜ |
 | Front-end: botón "Cerrar mes" en plan confirmado | ⬜ |

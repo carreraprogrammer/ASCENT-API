@@ -81,7 +81,7 @@ Corregir la confusion entre:
 
 La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2` y pasa a vivir en una entidad propia.
 
-### Completado dentro de Fase 3 (2026-04-24)
+### Completado dentro de Fase 3 (2026-04-25)
 
 - ✅ `monthly_financial_plans` como entidad operativa del mes
 - ✅ `income_sources` con classification / cadence / reliability_score
@@ -95,15 +95,18 @@ La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2
 - ✅ `AgentInsights` — generación diaria con drift checker, Haiku validity gate, Sonnet structured output
 - ✅ Dashboard reestructurado (3 zonas: Hero + Snapshot + Detalle) con recharts
 - ✅ UI consume `agent_insights` en el Hero con fallback y botón on-demand
+- ✅ TransactionsPage hero: barra apilada por tipo conductual + spotlight inteligente
+- ✅ Historial de planes: migración + `CloseMonthlyPlan` + `GET /monthly_plans` paginado + `POST /monthly_plans/:id/close`
 
 ### Pendiente dentro de Fase 3
 
-- ⬜ **Historial de planes y ejecución mensual** (ver [plan-history-and-execution.md](./plan-history-and-execution.md))
-  - Migración: `income_actual`, `expense_actual`, `execution_snapshot`, `closed_at`
-  - `CloseMonthlyPlan` interactor — calcula actuals vs plan, idempotente
-  - `GET /monthly_plans` como historial paginado real
-  - `POST /monthly_plans/:id/close` — cierre de mes
-  - `ProposeBudget` usa últimos 3 planes cerrados para detectar patrones
+- 🔶 **Historial de planes y ejecución mensual** (ver [plan-history-and-execution.md](./plan-history-and-execution.md))
+  - ✅ Migración: `income_actual`, `expense_actual`, `execution_snapshot`, `closed_at`
+  - ✅ `CloseMonthlyPlan` interactor — calcula actuals vs plan, idempotente
+  - ✅ `GET /monthly_plans` como historial paginado real
+  - ✅ `POST /monthly_plans/:id/close` — cierre de mes
+  - ⬜ `ProposeBudget` usa últimos 3 planes cerrados para detectar patrones
+  - ⬜ Front-end: lista de historial + detalle plan vs actual + botón "Cerrar mes"
 - ⬜ Plan rolling — heredar plan anterior como borrador en el mes siguiente
 - ⬜ `savings_goals` con `monthly_contribution_needed` conectados al plan
 - ⬜ Matching estructural transacción → deuda / planned_expense / recurrente
