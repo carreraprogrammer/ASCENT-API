@@ -58,7 +58,7 @@ module Finanzas
       end
 
       def needs_attention?(dimension)
-        %w[missing partial stale conflicting].include?(dimension[:status])
+        %w[missing partial stale conflicting pending_confirmation].include?(dimension[:status])
       end
 
       def blocking_message(intent, dimensions)
