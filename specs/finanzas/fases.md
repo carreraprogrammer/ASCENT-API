@@ -98,6 +98,12 @@ La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2
 
 ### Pendiente dentro de Fase 3
 
+- ⬜ **Historial de planes y ejecución mensual** (ver [plan-history-and-execution.md](./plan-history-and-execution.md))
+  - Migración: `income_actual`, `expense_actual`, `execution_snapshot`, `closed_at`
+  - `CloseMonthlyPlan` interactor — calcula actuals vs plan, idempotente
+  - `GET /monthly_plans` como historial paginado real
+  - `POST /monthly_plans/:id/close` — cierre de mes
+  - `ProposeBudget` usa últimos 3 planes cerrados para detectar patrones
 - ⬜ Plan rolling — heredar plan anterior como borrador en el mes siguiente
 - ⬜ `savings_goals` con `monthly_contribution_needed` conectados al plan
 - ⬜ Matching estructural transacción → deuda / planned_expense / recurrente
