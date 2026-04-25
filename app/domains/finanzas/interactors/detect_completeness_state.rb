@@ -32,6 +32,7 @@ module Finanzas
           missing: dimensions.filter_map { |name, data| name if data[:status] == "missing" },
           partial: dimensions.filter_map { |name, data| name if data[:status] == "partial" },
           stale: dimensions.filter_map { |name, data| name if data[:status] == "stale" },
+          pending_confirmation: dimensions.filter_map { |name, data| name if data[:status] == "pending_confirmation" },
           conflicting: dimensions.filter_map { |name, data| name if data[:status] == "conflicting" }
         }
       end
@@ -190,8 +191,14 @@ module Finanzas
           observed: { status: nil }
         } unless plan
 
+        assumptions = plan[:assumptions] || {}
+        inherited_from = assumptions["inherited_from"] || assumptions[:inherited_from]
+        rolling_changes = assumptions["rolling_changes"] || assumptions[:rolling_changes]
+
         status =
-          if plan[:status] == "confirmed"
+          if plan[:status] == "draft" && inherited_from.present?
+            "pending_confirmation"
+          elsif plan[:status] == "confirmed"
             "sufficient"
           elsif stale_date?(plan[:updated_at], STALE_PLAN_DAYS)
             "stale"
@@ -203,6 +210,8 @@ module Finanzas
           case status
           when "sufficient"
             "El plan mensual está confirmado."
+          when "pending_confirmation"
+            "El plan heredado del mes anterior está listo para confirmar."
           when "stale"
             "Existe un borrador del plan mensual, pero está desactualizado."
           else
@@ -217,7 +226,9 @@ module Finanzas
             status: plan[:status],
             mode: plan[:mode],
             confirmed_at: plan[:confirmed_at],
-            updated_at: plan[:updated_at]
+            updated_at: plan[:updated_at],
+            inherited_from: inherited_from,
+            rolling_changes: rolling_changes
           }
         }
       end
