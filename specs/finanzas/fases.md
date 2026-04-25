@@ -202,17 +202,17 @@ El wizard deja de preguntar por quincenas hardcodeadas y pasa a confirmar:
 
 El web app tiene su propio canal con el agente, independiente de Telegram. El agente es el mismo cerebro; lo que cambia es el canal de entrada y las herramientas de salida que usa.
 
-##### Dirección estratégica: web-first, Telegram como canal secundario
+##### Dirección estratégica: mobile-first, Telegram como canal transitorio
 
-El objetivo a mediano plazo es que la app web sea el canal principal de captura y conversación, eliminando la dependencia de Telegram. Telegram seguirá funcionando mientras se construye la paridad, pero no es el destino.
+La app es Ionic React — nace como móvil, se instala como PWA en Android/iOS y se comporta como app nativa. El objetivo es que la app móvil sea el canal principal de captura y conversación, eliminando la dependencia de Telegram.
 
-**Por qué:** Telegram resuelve bien la captura rápida hoy, pero introduce una dependencia externa que complica onboarding, distribución y la experiencia de nuevos usuarios. Un chat nativo dentro de la app + un widget de acceso rápido en el home screen resuelve el mismo problema sin esa dependencia.
+**Por qué:** Telegram resuelve bien la captura rápida hoy, pero introduce una dependencia externa que complica onboarding, distribución y la experiencia de nuevos usuarios. Un chat nativo dentro de la app móvil + un widget de acceso rápido en el home screen resuelve el mismo problema sin esa dependencia — y con mejor contexto visual.
 
 **Estrategia de migración:**
-1. Construir chat nativo en la app web con paridad funcional con Telegram
-2. Agregar quick capture como ruta dedicada (`/quick`) — mínima fricción, optimizada para registro rápido
-3. PWA manifest shortcut → aparece como acción en el ícono del home screen en Android/iOS
-4. Una vez que el canal web tiene paridad, el agente nocturno puede operar sin depender de que el usuario tenga Telegram configurado
+1. Construir chat nativo en la app móvil con paridad funcional con Telegram
+2. Agregar quick capture como ruta dedicada (`/quick`) — pantalla mínima, optimizada para registro en 2 segundos
+3. PWA manifest shortcut → aparece como acción larga en el ícono del home screen (Android) o acceso directo (iOS)
+4. Una vez que el canal móvil tiene paridad, el agente nocturno puede operar sin depender de que el usuario tenga Telegram configurado
 
 **Nota sobre scraping bancario (Belvo):** evaluado y descartado por ahora. El scraping introduce riesgos de seguridad (credenciales bancarias en un tercero), fragilidad operativa (se rompe sin aviso cuando el banco cambia su UI), y el problema de categorización persiste igual — las transacciones bancarias son abstractas y requieren inferencia del agente de todas formas. Revisitar cuando Open Banking madure en Colombia (~2027).
 
@@ -220,11 +220,11 @@ El objetivo a mediano plazo es que la app web sea el canal principal de captura 
 
 El wizard de presupuesto no es un formulario — es una conversacion guiada por el agente renderizada como componentes estructurados. El usuario no habla con texto: interactua con tarjetas, formularios y propuestas que el agente genera dinamicamente.
 
-Telegram y web son canales separados que convergen en el mismo agente. Web es el canal destino:
+Telegram y móvil son canales separados que convergen en el mismo agente. La app móvil es el canal destino:
 
 ```
 Telegram  →  webhook        →  agente  →  send_telegram (texto + inline_keyboard)  [transitorio]
-Web       →  /agents/chat   →  agente  →  emit_ui_event (componentes estructurados) [destino]
+Móvil     →  /agents/chat   →  agente  →  emit_ui_event (componentes estructurados) [destino]
 ```
 
 ##### Canal de salida: herramientas del agente para web
