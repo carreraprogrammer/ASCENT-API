@@ -97,18 +97,13 @@ La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2
 - ✅ UI consume `agent_insights` en el Hero con fallback y botón on-demand
 - ✅ TransactionsPage hero: barra apilada por tipo conductual + spotlight inteligente
 - ✅ Historial de planes: migración + `CloseMonthlyPlan` + `GET /monthly_plans` paginado + `POST /monthly_plans/:id/close`
+- ✅ `ProposeBudget` usa últimos 3 planes cerrados para detectar patrones (`consistently_over`, `income_overestimated`)
+- ✅ Plan rolling — hereda plan anterior como draft con umbral 10%; nudge `pending_confirmation` en Dashboard
+- ✅ `savings_goals` CRUD con `monthly_contribution_needed` calculado automáticamente
+- ✅ `summary` incluye `savings_goals` activos
 
 ### Pendiente dentro de Fase 3
 
-- 🔶 **Historial de planes y ejecución mensual** (ver [plan-history-and-execution.md](./plan-history-and-execution.md))
-  - ✅ Migración: `income_actual`, `expense_actual`, `execution_snapshot`, `closed_at`
-  - ✅ `CloseMonthlyPlan` interactor — calcula actuals vs plan, idempotente
-  - ✅ `GET /monthly_plans` como historial paginado real
-  - ✅ `POST /monthly_plans/:id/close` — cierre de mes
-  - ⬜ `ProposeBudget` usa últimos 3 planes cerrados para detectar patrones
-  - ⬜ Front-end: lista de historial + detalle plan vs actual + botón "Cerrar mes"
-- ⬜ Plan rolling — heredar plan anterior como borrador en el mes siguiente
-- ⬜ `savings_goals` con `monthly_contribution_needed` conectados al plan
 - ⬜ Matching estructural transacción → deuda / planned_expense / recurrente
 - ⬜ Reglas cruzadas deuda ↔ recurrente hardened
 - ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural
@@ -435,26 +430,32 @@ Construir las decisiones de deuda y ahorro encima del `monthly_financial_plan`, 
 - integracion de `overflow_rule` con deuda, ahorro e inversion
 - sugerencias de aceleracion de deuda basadas en excedente real del plan
 
-### Que se construye (actualizado 2026-04-24)
+### Completado dentro de Fase 4 (2026-04-25)
 
-- `savings_goals` con `monthly_contribution_needed` calculado
-- Sistema de milestones y setbacks contextual al plan (ver [gamification.md](./gamification.md))
-- Chat agent: flujo completo para "deuda liquidada" — marca paid_off, desactiva recurrente, crea milestone
-- Nightly agent: detección automática de milestones desde comparación de snapshots
-- Integración de milestones en `agent_insights.signals`
-- UI: badge del último logro en Hero del Dashboard
+- ✅ `savings_goals` CRUD con `monthly_contribution_needed` calculado
+- ✅ `user_milestones` — endpoints idempotentes + whitelist de 35 códigos
+- ✅ `summary` incluye `savings_goals` activos
+- ✅ Chat agent: flujo "deuda liquidada" — marca paid_off + crea milestone + celebra + redirige pago liberado
+- ✅ Nightly agent: `create_milestone` tool + detección automática (balance positivo, discretionary bajo presupuesto, overflow, plan no confirmado)
+- ✅ UI: badge último logro (dorado) + contador metas activas en Hero del Dashboard
+
+### Pendiente dentro de Fase 4
+
+- ⬜ Flujo deuda liquidada completo: desactivar la obligación recurrente vinculada (`source_type=Debt, source_id=X`)
+- ⬜ Milestones en `agent_insights.signals` — el generador diario no los consume todavía
+- ⬜ Narrativa de progreso contextual: "2/5 deudas liquidadas, ritmo actual: 8 meses para el objetivo"
 
 ### Criterios de aceptacion
 
-- [ ] `POST /api/v1/savings_goals` calcula `monthly_contribution_needed`
-- [ ] el summary incluye `savings_goals`
+- [x] `POST /api/v1/savings_goals` calcula `monthly_contribution_needed`
+- [x] el summary incluye `savings_goals`
 - [ ] si el plan del mes define overflow a deuda, el summary lo refleja
 - [ ] si el plan del mes define overflow a ahorro, el summary lo refleja
 - [ ] el agente nocturno menciona desalineaciones entre plan mensual y ejecucion real
-- [ ] existe tabla `user_milestones` con hitos únicos y recurrentes
+- [x] existe tabla `user_milestones` con hitos únicos y recurrentes
 - [ ] el chat agent detecta "liquidé una deuda" y ejecuta el flujo completo (paid_off + recurrente + milestone)
 - [ ] los milestones aparecen como signals en el insight diario
-- [ ] el agente presenta setbacks como información, nunca como reproche
+- [x] el agente presenta setbacks como información, nunca como reproche
 
 ---
 
