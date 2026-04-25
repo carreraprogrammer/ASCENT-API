@@ -6,6 +6,15 @@ module Finanzas
         record && map_to_entity(record)
       end
 
+      def find_last_confirmed(account_id:)
+        record = ::MonthlyFinancialPlan
+          .where(account_id: account_id, status: "confirmed")
+          .where.not(confirmed_at: nil)
+          .order(year: :desc, month: :desc)
+          .first
+        record && map_to_entity(record)
+      end
+
       def list_history(account_id:, page: 1, per_page: 12)
         page = page.to_i
         per_page = per_page.to_i
@@ -35,6 +44,7 @@ module Finanzas
           month: month.to_i,
           year: year.to_i
         )
+        record.update!(status: "superseded") if replacing_confirmed_plan?(record, attrs)
         record.user_id = user_id
         record.assign_attributes(attrs)
         record.save!
@@ -75,6 +85,12 @@ module Finanzas
       end
 
       private
+
+      def replacing_confirmed_plan?(record, attrs)
+        record.persisted? &&
+          record.status == "confirmed" &&
+          attrs[:status].to_s != "confirmed"
+      end
 
       def map_to_entity(record)
         {
