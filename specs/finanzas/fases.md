@@ -202,15 +202,29 @@ El wizard deja de preguntar por quincenas hardcodeadas y pasa a confirmar:
 
 El web app tiene su propio canal con el agente, independiente de Telegram. El agente es el mismo cerebro; lo que cambia es el canal de entrada y las herramientas de salida que usa.
 
+##### Dirección estratégica: web-first, Telegram como canal secundario
+
+El objetivo a mediano plazo es que la app web sea el canal principal de captura y conversación, eliminando la dependencia de Telegram. Telegram seguirá funcionando mientras se construye la paridad, pero no es el destino.
+
+**Por qué:** Telegram resuelve bien la captura rápida hoy, pero introduce una dependencia externa que complica onboarding, distribución y la experiencia de nuevos usuarios. Un chat nativo dentro de la app + un widget de acceso rápido en el home screen resuelve el mismo problema sin esa dependencia.
+
+**Estrategia de migración:**
+1. Construir chat nativo en la app web con paridad funcional con Telegram
+2. Agregar quick capture como ruta dedicada (`/quick`) — mínima fricción, optimizada para registro rápido
+3. PWA manifest shortcut → aparece como acción en el ícono del home screen en Android/iOS
+4. Una vez que el canal web tiene paridad, el agente nocturno puede operar sin depender de que el usuario tenga Telegram configurado
+
+**Nota sobre scraping bancario (Belvo):** evaluado y descartado por ahora. El scraping introduce riesgos de seguridad (credenciales bancarias en un tercero), fragilidad operativa (se rompe sin aviso cuando el banco cambia su UI), y el problema de categorización persiste igual — las transacciones bancarias son abstractas y requieren inferencia del agente de todas formas. Revisitar cuando Open Banking madure en Colombia (~2027).
+
 ##### Principio de diseno
 
 El wizard de presupuesto no es un formulario — es una conversacion guiada por el agente renderizada como componentes estructurados. El usuario no habla con texto: interactua con tarjetas, formularios y propuestas que el agente genera dinamicamente.
 
-Telegram y web son canales separados que convergen en el mismo agente:
+Telegram y web son canales separados que convergen en el mismo agente. Web es el canal destino:
 
 ```
-Telegram  →  webhook        →  agente  →  send_telegram (texto + inline_keyboard)
-Web       →  /agents/chat   →  agente  →  emit_ui_event (componentes estructurados)
+Telegram  →  webhook        →  agente  →  send_telegram (texto + inline_keyboard)  [transitorio]
+Web       →  /agents/chat   →  agente  →  emit_ui_event (componentes estructurados) [destino]
 ```
 
 ##### Canal de salida: herramientas del agente para web
@@ -324,6 +338,9 @@ POST  /api/v1/agents/chat            -- entrada web → agente
 - Hook `useWebChat(sessionId)` — wrappea `POST /agents/chat` para enviar mensajes y respuestas de eventos
 - Manejo de evento `navigate` en `useAgentEvents` — ejecuta navegacion del router
 - Conectar boton "Comenzar presupuesto" al `useWebChat` en lugar de abrir wizard estatico
+- Chat nativo en la app — UI de conversación con historial, input y renderizado de eventos del agente
+- Ruta `/quick` — pantalla mínima de captura rápida, sin navegación, optimizada para registro en 2 segundos
+- PWA manifest shortcut "Registrar" → deep-link a `/quick`, aparece en home screen Android/iOS
 
 ##### Criterios de aceptacion
 
@@ -334,7 +351,9 @@ POST  /api/v1/agents/chat            -- entrada web → agente
 - [ ] confirmar el plan desde el web guarda `monthly_financial_plan` y navega a `/budgets`
 - [ ] el plan del mes se hereda del anterior; el agente marca las diferencias
 - [ ] si el agente no conoce la ciudad del usuario, la pregunta antes de proponer cifras
-- [ ] el agente nocturno puede emitir propuestas web Y mensajes de Telegram en paralelo
+- [ ] existe ruta `/quick` con captura mínima sin fricción
+- [ ] PWA shortcut en manifest abre `/quick` directamente desde el home screen
+- [ ] el chat nativo tiene paridad funcional con Telegram para registro de transacciones
 
 ---
 
