@@ -16,8 +16,12 @@ module Finanzas
         "savings_emergency"    => { min: 100_000,  max: 500_000,   hint: "Fondo de emergencia (3-6 meses de gastos)" },
       }.freeze
 
-      def initialize(ctx_builder: Finanzas::Interactors::BuildBudgetContext.new)
+      def initialize(
+        ctx_builder: Finanzas::Interactors::BuildBudgetContext.new,
+        plan_repo: Finanzas::Repositories::MonthlyFinancialPlanRepository.new
+      )
         @ctx_builder = ctx_builder
+        @plan_repo = plan_repo
       end
 
       def call(account_id:, month:, year:, include_variable: false)
@@ -33,6 +37,8 @@ module Finanzas
         has_history       = ctx[:spending_history].any?
 
         categories, available = build_categories(ctx, free_margin, has_history)
+        closed_plans = @plan_repo.last_closed(account_id: account_id, limit: 3)
+        historical_patterns = extract_patterns(closed_plans)
 
         {
           income: {
@@ -58,6 +64,7 @@ module Finanzas
           has_history:          has_history,
           mode:                 has_history ? "data_driven" : "provisional",
           warnings:             build_warnings(ctx, free_margin, has_history),
+          historical_patterns:  historical_patterns,
           existing_plan:        ctx[:existing_plan],
           month:                month,
           year:                 year
@@ -152,6 +159,76 @@ module Finanzas
           w << "Las obligaciones parecen bajas (menos del 15% del ingreso)" if ctx[:gaps][:obligations_seem_low]
           w << "Sin historial de gastos — los montos son estimados. Revisá el plan después del primer mes." if !has_history
         end
+      end
+
+      def extract_patterns(closed_plans)
+        return [] if closed_plans.blank?
+
+        category_patterns(closed_plans) + income_patterns(closed_plans)
+      end
+
+      def category_patterns(closed_plans)
+        category_rows = Hash.new { |hash, code| hash[code] = { name: nil, variances: [] } }
+
+        closed_plans.each do |plan|
+          categories = plan.dig(:execution_snapshot, "categories") ||
+                       plan.dig(:execution_snapshot, :categories) ||
+                       []
+
+          categories.each do |category|
+            code = category["code"] || category[:code]
+            next if code.blank?
+
+            variance_pct = category["variance_pct"] || category[:variance_pct]
+            next if variance_pct.nil?
+
+            row = category_rows[code.to_s]
+            row[:name] ||= category["name"] || category[:name]
+            row[:variances] << variance_pct.to_i
+          end
+        end
+
+        category_rows.filter_map do |code, row|
+          over_count = row[:variances].count { |variance| variance > 15 }
+          next if over_count < 2
+
+          avg_variance_pct = average(row[:variances])
+          {
+            pattern: "consistently_over",
+            category_code: code,
+            category_name: row[:name],
+            avg_variance_pct: avg_variance_pct,
+            months_checked: row[:variances].size,
+            suggestion: "En los últimos #{row[:variances].size} meses esta categoría superó el plan de forma recurrente; revisá subir el límite o ajustar el gasto."
+          }
+        end
+      end
+
+      def income_patterns(closed_plans)
+        shortfalls = closed_plans.filter_map do |plan|
+          base_budget_income = plan[:base_budget_income].to_i
+          income_actual = plan[:income_actual].to_i
+          next if base_budget_income <= 0
+          next unless income_actual < (base_budget_income * 0.95)
+
+          base_budget_income - income_actual
+        end
+
+        return [] if shortfalls.size < 2
+
+        [
+          {
+            pattern: "income_overestimated",
+            category_code: nil,
+            avg_shortfall: average(shortfalls),
+            months_checked: closed_plans.size,
+            suggestion: "Tu ingreso real quedó por debajo del plan en #{shortfalls.size} de los últimos #{closed_plans.size} meses; conviene planear con una base más conservadora."
+          }
+        ]
+      end
+
+      def average(values)
+        (values.sum.to_f / values.size).round
       end
 
       def round_to_thousands(amount)
