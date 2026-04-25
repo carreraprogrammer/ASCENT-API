@@ -8,6 +8,8 @@ module Finanzas
     class InvalidSubcategory < StandardError; end
     class SubcategoryNotFound < StandardError; end
     class InvalidBudgetLine < StandardError; end
+    class PlanNotFound < StandardError; end
+    class PlanNotConfirmed < StandardError; end
     class DuplicateTransaction < StandardError
       attr_reader :existing_id
       def initialize(msg = nil, existing_id: nil)

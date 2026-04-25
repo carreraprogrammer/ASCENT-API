@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260505) do
+ActiveRecord::Schema[8.0].define(version: 20260506) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -243,6 +243,10 @@ ActiveRecord::Schema[8.0].define(version: 20260505) do
     t.datetime "confirmed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "income_actual", default: 0, null: false
+    t.integer "expense_actual", default: 0, null: false
+    t.jsonb "execution_snapshot", default: {}, null: false
+    t.datetime "closed_at"
     t.index ["account_id", "year", "month"], name: "index_monthly_financial_plans_on_account_and_period", unique: true
     t.index ["account_id"], name: "index_monthly_financial_plans_on_account_id"
     t.index ["user_id"], name: "index_monthly_financial_plans_on_user_id"

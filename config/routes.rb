@@ -60,6 +60,7 @@ Rails.application.routes.draw do
         end
         member do
           post :confirm
+          post :close
         end
       end
       resources :income_sources,       only: [ :index, :create, :update, :destroy ]
