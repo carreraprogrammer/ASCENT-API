@@ -284,7 +284,36 @@ class PlanNotConfirmed < StandardError; end
 
 ---
 
-## 9. Endpoints resultantes
+## 9. Confirmación explícita al inicio de mes
+
+> Estado: pendiente — implementar después de que ProposeBudget con historical_patterns esté completo.
+
+El plan rolling no debe activarse silenciosamente. Si el sistema hereda el plan anterior sin que el usuario lo apruebe, el agente opera sobre un plan que nadie confirmó.
+
+### Flujo
+
+1. Al inicio del mes, si no existe plan `confirmed` para el mes actual, el sistema genera el borrador rolling en background (`status: "draft"`).
+2. `completeness` detecta que hay un plan `draft` sin confirmar y expone `monthly_plan: "pending_confirmation"`.
+3. El Dashboard muestra un banner bloqueante con los `rolling_changes` del plan: _"Tu plan de mayo está listo — hereda abril con 2 cambios. Confirmá antes de continuar."_
+4. El agente, ante cualquier pregunta financiera, antepone: _"Todavía no confirmaste el plan de mayo, ¿lo revisamos?"_
+
+### Qué se construye
+
+- `MonthlyFinancialPlan::STATUSES` ya incluye `draft` — no se necesita status nuevo.
+- `completeness` agrega lógica: si existe plan `draft` para el mes actual → `monthly_plan: "pending_confirmation"`.
+- Dashboard: banner que consume `completeness[:monthly_plan] == "pending_confirmation"`, muestra `rolling_changes` del plan y botón "Revisar plan".
+- Agente: preflight detecta plan sin confirmar y lo menciona antes de responder intents financieros.
+
+### Criterios de aceptación
+
+- [ ] Si hay plan `draft` para el mes actual, `completeness` reporta `monthly_plan: "pending_confirmation"`
+- [ ] El dashboard muestra el banner con los cambios respecto al mes anterior
+- [ ] El agente antepone el nudge de confirmación en intents financieros si el plan no está confirmado
+- [ ] Confirmar el plan desde el banner funciona igual que desde el wizard
+
+---
+
+## 10. Endpoints resultantes
 
 ```
 GET  /api/v1/monthly_plans                    # historial paginado (CAMBIA de solo-current)
