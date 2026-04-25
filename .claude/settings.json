@@ -8,7 +8,21 @@
       "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/organisms/TransactionSlidingCard/**)",
       "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/organisms/RecurringObligationSlidingCard/**)",
       "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/pages/TransactionsPage/**)",
-      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/pages/RecurringObligationsPage/**)"
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/pages/RecurringObligationsPage/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(git commit -m ' *)",
+      "Bash(brew services *)",
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/DANIEL\\\\ 15K/daniel15k-web/src/components/pages/BudgetsPage/**)",
+      "Read(//Users/danielcarrera/Documents/Claude/Projects/**)",
+      "Bash(RAILS_ENV=development bundle exec rails runner 'u = User.find_by\\(email: \"carreraprogrammer@gmail.com\"\\); a = u&.default_account; puts \"User: #{u&.email} id=#{u&.id}\"; puts \"Account: #{a&.name} id=#{a&.id}\"')",
+      "Bash(railway service *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,'=',v[:80] if len\\(v\\)>80 else v\\) for k,v in d.items\\(\\) if 'database' in k.lower\\(\\) or 'pg' in k.lower\\(\\) or 'postgres' in k.lower\\(\\)]\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('DATABASE_PUBLIC_URL',''\\) or d.get\\('DATABASE_URL',''\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,'=',v\\) for k,v in d.items\\(\\) if 'url' in k.lower\\(\\) or 'host' in k.lower\\(\\) or 'public' in k.lower\\(\\)]\")",
+      "Bash(python3 -c \" import json, httpx, os TOKEN = '$\\(railway variables --json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if any\\(x in k.lower\\(\\) for x in ['chart','recharts','d3','victory','nivo','apex','high']\\)]\")",
+      "Bash(git commit *)",
+      "Bash(git log *)"
     ]
   }
 }
