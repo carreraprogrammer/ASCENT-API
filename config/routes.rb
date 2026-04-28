@@ -67,6 +67,7 @@ Rails.application.routes.draw do
       resources :recurring_obligations, only: [ :index, :create, :update, :destroy ]
       resources :planned_expenses,     only: [ :index, :create, :update ]
       resources :savings_goals,        only: [ :index, :create, :update, :destroy ]
+      resources :sinking_funds,        only: [ :index, :create, :update, :destroy ]
       resources :milestones,           only: [ :index, :create ]
 
       resources :pending_actions, only: [ :create, :update ] do

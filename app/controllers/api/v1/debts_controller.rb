@@ -20,7 +20,7 @@ module Api
       def create
         return unless require_scope!("debts:update")
         debt = repo.create(allowed_create_params.merge(user_id: current_owner_user_id, account_id: current_account.id))
-        render json: { data: debt }, status: :created
+        render json: { data: debt, meta: debt_create_meta(debt) }, status: :created
       rescue => e
         render_unprocessable(e.message)
       end
@@ -51,6 +51,27 @@ module Api
 
       def repo
         @repo ||= Finanzas::Repositories::DebtRepository.new
+      end
+
+      def debt_create_meta(debt)
+        has_recurring = ::RecurringObligation.exists?(
+          account_id: current_account.id,
+          source_type: "Debt",
+          source_id: debt[:id],
+          active: true
+        )
+        return {} if has_recurring
+
+        {
+          missing_recurring_obligation: true,
+          suggested_recurring: {
+            name:         debt[:name],
+            amount:       debt[:monthly_payment],
+            source_type:  "Debt",
+            source_id:    debt[:id],
+            hint:         "Esta deuda no tiene una obligación recurrente vinculada. Crearla asegura que el flujo mensual refleje este pago."
+          }
+        }
       end
 
       def allowed_create_params

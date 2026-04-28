@@ -49,8 +49,8 @@ module Finanzas
         # Existing confirmed budget for this month — highest priority when editing
         confirmed_by_subcategory = fetch_confirmed_budget_by_subcategory(account_id, month, year)
 
-        income_section = build_income_section(income_sources, suggested_total)
-        category_rows  = build_category_rows(
+        income_section           = build_income_section(income_sources, suggested_total)
+        category_rows            = build_category_rows(
           all_categories,
           recurring_by_category,
           recurring_by_subcategory,
@@ -59,8 +59,9 @@ module Finanzas
           suggested_total,
           confirmed_by_subcategory
         )
+        suggested_sinking_funds  = build_suggested_sinking_funds(account_id)
 
-        { income: income_section, categories: category_rows }
+        { income: income_section, categories: category_rows, suggested_sinking_funds: suggested_sinking_funds }
       end
 
       private
@@ -339,6 +340,33 @@ module Finanzas
         target = target_date.to_date.beginning_of_month
         delta = (target.year * 12 + target.month) - (today.year * 12 + today.month) + 1
         [ delta, 1 ].max
+      end
+
+      # Returns planned expenses that need a sinking fund but don't have one yet.
+      # Each entry is a suggestion: "this planned expense should have a bolsillo".
+      def build_suggested_sinking_funds(account_id)
+        funded_expense_ids = ::SinkingFund
+          .where(account_id: account_id, active: true)
+          .where.not(planned_expense_id: nil)
+          .pluck(:planned_expense_id)
+          .to_set
+
+        ::PlannedExpense
+          .where(account_id: account_id, status: "planned", planning_type: PLANNED_EXPENSE_TYPES)
+          .where("target_date >= ?", Date.current.beginning_of_month)
+          .reject { |exp| funded_expense_ids.include?(exp.id) }
+          .map do |exp|
+            monthly = monthly_planned_contribution(exp)
+            {
+              planned_expense_id:   exp.id,
+              name:                 exp.name,
+              target_amount:        exp.amount_estimated,
+              target_date:          exp.target_date&.iso8601,
+              suggested_monthly:    monthly,
+              months_remaining:     months_until_target(exp.target_date),
+              planning_type:        exp.planning_type
+            }
+          end
       end
     end
   end

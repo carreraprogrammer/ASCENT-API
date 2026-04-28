@@ -5,8 +5,12 @@ module Finanzas
       DATE_DDMMYYYY = %r{\A\d{2}/\d{2}/\d{4}\z}.freeze
       DATE_ISO      = %r{\A\d{4}-\d{2}-\d{2}\z}.freeze
 
-      def initialize(repo: Finanzas::Repositories::TransactionRepository.new)
-        @repo = repo
+      def initialize(
+        repo: Finanzas::Repositories::TransactionRepository.new,
+        structure_detector: Finanzas::Interactors::DetectTransactionStructure.new
+      )
+        @repo               = repo
+        @structure_detector = structure_detector
       end
 
       AUTOMATED_SOURCES = %w[telegram gmail].freeze
@@ -44,7 +48,7 @@ module Finanzas
           nil
         end
 
-        @repo.create(
+        txn = @repo.create(
           user_id: user_id,
           account_id: account_id,
           date: date,
@@ -63,9 +67,28 @@ module Finanzas
           payment_source: payment_source,
           credit_card_status: resolved_cc_status
         )
+
+        if transaction_type == "expense" && status == "confirmed"
+          txn.structural_match = detect_structure(account_id, concept, amount.to_i, subcategory_id, date)
+        end
+
+        txn
       end
 
       private
+
+      def detect_structure(account_id, concept, amount, subcategory_id, date)
+        @structure_detector.call(
+          account_id:    account_id,
+          concept:       concept,
+          amount:        amount,
+          subcategory_id: subcategory_id,
+          date_str:      date
+        )
+      rescue => e
+        Rails.logger.warn("[CreateTransaction] structure detection failed: #{e.message}")
+        nil
+      end
 
       # Accepts DD/MM, DD/MM/YYYY, or YYYY-MM-DD — derives year/month for denormalized columns
       def parse_date(date_str)

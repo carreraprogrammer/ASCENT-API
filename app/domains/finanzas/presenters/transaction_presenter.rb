@@ -31,6 +31,7 @@ module Finanzas
             metadata: transaction.metadata,
             payment_source: transaction.payment_source,
             credit_card_status: transaction.credit_card_status,
+            structural_match: transaction.structural_match,
             created_at: transaction.created_at,
             updated_at: transaction.updated_at
           },

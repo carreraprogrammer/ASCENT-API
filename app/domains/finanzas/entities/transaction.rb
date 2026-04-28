@@ -7,6 +7,7 @@ module Finanzas
                   :clarification_resolved_at, :metadata, :source_event_id,
                   :year, :month, :payment_source, :credit_card_status,
                   :created_at, :updated_at
+      attr_accessor :structural_match
 
       def initialize(attrs = {})
         @id                          = attrs[:id]

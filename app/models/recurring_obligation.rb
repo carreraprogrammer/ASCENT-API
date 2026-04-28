@@ -24,6 +24,7 @@ class RecurringObligation < ApplicationRecord
   validate :source_reference_must_be_complete
   validate :debt_source_must_exist
   validate :debt_source_must_use_credit_subcategory
+  validate :credit_subcategory_requires_debt_source
 
   scope :active, -> { where(active: true).order(:due_day) }
 
@@ -58,5 +59,12 @@ class RecurringObligation < ApplicationRecord
     return if subcategory&.code == "creditos"
 
     errors.add(:base, "debt links require the 'Créditos' subcategory")
+  end
+
+  def credit_subcategory_requires_debt_source
+    return unless subcategory&.code == "creditos"
+    return if source_type == DEBT_SOURCE_TYPE && source_id.present?
+
+    errors.add(:base, "La subcategoría 'Créditos' requiere vincular una deuda (source_type: Debt, source_id: id)")
   end
 end
