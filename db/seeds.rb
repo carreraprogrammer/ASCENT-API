@@ -176,3 +176,14 @@ forms.each do |attrs|
   end
 end
 puts "Seeded: #{FormSchema.count} form schemas"
+
+# ─── Agent: service account token ────────────────────────────────────────────
+
+service_token = ENV["DANIEL15K_SERVICE_TOKEN"]
+if service_token.present?
+  sa = ServiceAccount.find_by(slug: "daniel15k-brain")
+  if sa
+    sa.store_raw_token!(service_token)
+    puts "Seeded: service account token hash updated for #{sa.slug}"
+  end
+end
