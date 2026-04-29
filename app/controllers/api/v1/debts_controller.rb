@@ -47,6 +47,45 @@ module Api
         render_unprocessable(e.message)
       end
 
+      # POST /api/v1/debts/:id/payments
+      def payments
+        return unless require_scope!("debts:update")
+        return unless require_scope!("transactions:create")
+
+        result = Finanzas::Interactors::RegisterDebtPayment.new.call(
+          user_id: current_owner_user_id,
+          account_id: current_account.id,
+          debt_id: params[:id],
+          **debt_payment_params
+        )
+
+        Rails.logger.info(
+          "[DebtsController#payments] debt_id=#{params[:id].inspect} " \
+          "transaction_id=#{result[:transaction].id} applied_amount=#{result[:applied_amount]} " \
+          "previous_balance=#{result[:previous_balance]} current_balance=#{result[:current_balance]}"
+        )
+
+        render json: {
+          data: {
+            transaction: Finanzas::Presenters::TransactionPresenter.resource(result[:transaction]),
+            debt: result[:debt],
+            previous_balance: result[:previous_balance],
+            current_balance: result[:current_balance],
+            applied_amount: result[:applied_amount]
+          }
+        }, status: :created
+      rescue Finanzas::Errors::DuplicateTransaction => e
+        render json: {
+          errors: [ { status: "409", title: "Duplicate Transaction (idempotency)", detail: e.message } ],
+          existing_id: e.existing_id
+        }, status: :conflict
+      rescue ActiveRecord::RecordNotFound => e
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      rescue Finanzas::Errors::InvalidTransaction => e
+        render json: { errors: [ { status: "422", title: "Invalid Transaction", detail: e.message } ] },
+               status: :unprocessable_entity
+      end
+
       private
 
       def repo
@@ -86,6 +125,19 @@ module Api
           :name, :current_balance, :monthly_payment,
           :interest_rate, :status, :payoff_date, :notes
         ).to_h.symbolize_keys
+      end
+
+      def debt_payment_params
+        p = params.permit(
+          :date, :concept, :product, :amount, :category_id, :subcategory_id,
+          :category_code, :subcategory_code, :source, :status, :payment_source,
+          :recurring_obligation_id, metadata: {}
+        ).to_h.symbolize_keys
+        category_repo.resolve_codes(p, account_id: current_account.id)
+      end
+
+      def category_repo
+        @category_repo ||= Finanzas::Repositories::CategoryRepository.new
       end
 
       def debt_filters

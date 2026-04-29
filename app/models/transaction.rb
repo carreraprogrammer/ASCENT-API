@@ -5,6 +5,8 @@ class Transaction < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :category, optional: true
   belongs_to :subcategory, optional: true
+  belongs_to :debt, optional: true
+  belongs_to :recurring_obligation, optional: true
 
   TYPES = %w[expense income].freeze
   SOURCES = %w[telegram gmail manual].freeze
