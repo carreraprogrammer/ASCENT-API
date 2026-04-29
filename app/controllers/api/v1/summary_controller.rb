@@ -48,7 +48,15 @@ module Api
           burn_rate:            build_burn_rate(account_id, month, year, budgets, now_col),
           debts:                build_debts_summary(debts),
           monthly_plan:         build_monthly_plan_summary(plan),
-          overflow_status:      build_overflow_status(plan, balance, ctx, debts, liquidity),
+          overflow_status:      build_overflow_status(
+                                  plan,
+                                  balance,
+                                  ctx,
+                                  debts,
+                                  liquidity,
+                                  income_sources,
+                                  realized_income_by_source
+                                ),
           financial_context:    build_context_summary(ctx, plan, debts, liquidity),
           liquidity:            liquidity,
           credit_card_pending:  credit_card_pending,
@@ -163,17 +171,37 @@ module Api
         }
       end
 
-      def build_overflow_status(plan, balance, ctx, debts, liquidity = nil)
+      def build_overflow_status(
+        plan,
+        balance,
+        ctx,
+        debts,
+        liquidity = nil,
+        income_sources = [],
+        realized_income_by_source = {}
+      )
         return nil unless plan
 
         base_budget_income = plan[:base_budget_income].to_i
         confirmed_income = balance[:income_confirmed].to_i
         expected_variable_income = plan[:expected_variable_income].to_i
-        realized_overflow = [confirmed_income - base_budget_income, 0].max
+        realized_expected_variable_income = realized_expected_variable_income(
+          income_sources,
+          realized_income_by_source,
+          expected_variable_income
+        )
+        realized_overflow = [
+          confirmed_income - base_budget_income - realized_expected_variable_income,
+          0
+        ].max
         safe_to_deploy = liquidity&.dig(:safe_to_deploy).to_i
         deployable_overflow = [realized_overflow, safe_to_deploy].min
         blocked_by_liquidity = realized_overflow.positive? && deployable_overflow <= 0
         target = overflow_target_for(plan, ctx, debts)
+        remaining_expected_overflow = [
+          expected_variable_income - realized_expected_variable_income,
+          0
+        ].max
 
         {
           rule: plan[:overflow_rule],
@@ -181,14 +209,22 @@ module Api
           base_budget_income: base_budget_income,
           confirmed_income: confirmed_income,
           expected_variable_income: expected_variable_income,
+          realized_expected_variable_income: realized_expected_variable_income,
           realized_overflow: realized_overflow,
           safe_to_deploy: safe_to_deploy,
           deployable_overflow: deployable_overflow,
           blocked_by_liquidity: blocked_by_liquidity,
-          remaining_expected_overflow: [expected_variable_income - realized_overflow, 0].max,
+          remaining_expected_overflow: remaining_expected_overflow,
           status: overflow_status(realized_overflow, deployable_overflow),
           suggested_destination: target,
-          suggested_action: overflow_action(plan, realized_overflow, deployable_overflow, target)
+          suggested_action: overflow_action(
+            plan,
+            realized_overflow,
+            deployable_overflow,
+            target,
+            realized_expected_variable_income,
+            remaining_expected_overflow
+          )
         }
       end
 
@@ -275,8 +311,25 @@ module Api
         end
       end
 
-      def overflow_action(plan, realized_overflow, deployable_overflow, target)
-        return "Todavía no hay ingreso extra confirmado sobre la base del plan." if realized_overflow <= 0
+      def overflow_action(
+        plan,
+        realized_overflow,
+        deployable_overflow,
+        target,
+        realized_expected_variable_income = 0,
+        remaining_expected_overflow = 0
+      )
+        if realized_overflow <= 0
+          if realized_expected_variable_income.positive?
+            if remaining_expected_overflow.positive?
+              return "Ya entraron #{format_cop(realized_expected_variable_income)} de ingresos variables proyectados; faltan #{format_cop(remaining_expected_overflow)} por materializarse. No hay overflow adicional confirmado."
+            end
+
+            return "Los ingresos variables proyectados ya se materializaron. No hay overflow adicional confirmado por encima del plan."
+          end
+
+          return "Todavía no hay ingreso extra confirmado sobre la base del plan."
+        end
 
         if deployable_overflow <= 0
           return "Entraron #{format_cop(realized_overflow)} por encima de tu base, pero no están libres para mover: primero hay que cubrir obligaciones próximas y el buffer."
@@ -313,6 +366,23 @@ module Api
           .where.not(income_source_id: nil)
           .group(:income_source_id)
           .sum(:amount)
+      end
+
+      def realized_expected_variable_income(income_sources, realized_income_by_source, expected_variable_income)
+        realized = Array(income_sources)
+          .select { |source| source[:active] && variable_income_source?(source) }
+          .sum do |source|
+            source_id = source[:id]
+            amount = realized_income_by_source.fetch(source_id, realized_income_by_source[source_id.to_s]).to_i
+            expected = source[:expected_amount].to_i
+            expected.positive? ? [ amount, expected ].min : amount
+          end
+
+        expected_variable_income.positive? ? [ realized, expected_variable_income ].min : realized
+      end
+
+      def variable_income_source?(source)
+        source[:classification] == "variable" || source[:is_variable] == true
       end
 
       # ── Repos ─────────────────────────────────────────────────────────────────

@@ -123,6 +123,10 @@ RSpec.describe "Summary API" do
       data = JSON.parse(response.body)
 
       expect(data["liquidity"]["pending_income"]).to eq(0)
+      expect(data["overflow_status"]["realized_expected_variable_income"]).to eq(2_900_000)
+      expect(data["overflow_status"]["remaining_expected_overflow"]).to eq(0)
+      expect(data["overflow_status"]["realized_overflow"]).to eq(0)
+      expect(data["overflow_status"]["status"]).to eq("waiting")
     end
   end
 end
