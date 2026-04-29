@@ -41,6 +41,13 @@ module Finanzas
         records.map { |r| map_to_entity(r) }
       end
 
+      def credit_card_pending(account_id:)
+        ::Transaction
+          .where(account_id: account_id, payment_source: "credit_card", credit_card_status: "pending")
+          .order(year: :asc, month: :asc, date: :asc, created_at: :asc)
+          .map { |r| map_to_entity(r) }
+      end
+
       def balance(account_id:, month:, year:)
         rows = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
                             .select(:amount, :transaction_type, :status)

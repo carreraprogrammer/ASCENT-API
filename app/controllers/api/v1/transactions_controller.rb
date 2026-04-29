@@ -32,6 +32,14 @@ module Api
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
+      def credit_card_pending
+        return unless require_scope!("transactions:read")
+        transactions = Finanzas::Repositories::TransactionRepository.new.credit_card_pending(
+          account_id: current_account.id
+        )
+        render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
+      end
+
       def balance
         return unless require_scope!("summary:read")
         month = params[:month] || Time.now.month
