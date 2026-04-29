@@ -39,6 +39,7 @@ Rails.application.routes.draw do
       resources :transactions, only: [ :index, :create, :update, :destroy ] do
         collection do
           get :pending
+          get :credit_card_pending
           get :balance
           post :batch
           post :settle_credit_card

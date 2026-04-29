@@ -37,6 +37,39 @@ RSpec.describe "Transactions API" do
     end
   end
 
+  describe "GET /api/v1/transactions/credit_card_pending" do
+    before do
+      create(
+        :transaction,
+        user: user,
+        concept: "Compra pendiente",
+        payment_source: "credit_card",
+        credit_card_status: "pending",
+        status: "confirmed",
+        month: 3
+      )
+      create(
+        :transaction,
+        user: user,
+        concept: "Compra saldada",
+        payment_source: "credit_card",
+        credit_card_status: "settled",
+        status: "confirmed"
+      )
+      create(:transaction, user: user, concept: "Débito", payment_source: "debit")
+    end
+
+    it "returns only credit card purchases pending settlement across months" do
+      get "/api/v1/transactions/credit_card_pending", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["data"].length).to eq(1)
+      expect(json["data"].first.dig("attributes", "concept")).to eq("Compra pendiente")
+      expect(json["data"].first.dig("attributes", "credit_card_status")).to eq("pending")
+    end
+  end
+
   describe "POST /api/v1/transactions" do
     let(:valid_params) do
       { date: "11/04", concept: "Domicilio pizza", amount: 35_000, product: "nequi" }
