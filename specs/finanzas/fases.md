@@ -110,14 +110,16 @@ La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2
 - ✅ Validación cruzada deuda ↔ recurrente — subcategoría `creditos` en `RecurringObligation` requiere `source_type=Debt`; `POST /debts` devuelve sugerencia de crear obligación recurrente si no existe
 - ✅ Ruta `/quick` + `QuickCapturePage` — pantalla mínima sin nav bar, carga categorías, usa `TransactionComposer`, badge de éxito con auto-hide 2s
 - ✅ PWA manifest shortcut "Registrar gasto" → deep-link a `/quick` (home screen Android/iOS)
-- ✅ Botón "Comenzar presupuesto" en `BudgetsPage` conectado a `startChat('Quiero crear mi plan mensual')` vía `AgentUIContext`
 - ✅ Seeds: `ServiceAccount.token_hash` se regenera desde `DANIEL15K_SERVICE_TOKEN` en cada deploy (fix 401 post-redeploy)
 
 ### Pendiente dentro de Fase 3
 
-- ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural (recurring locked, planned_expense locked)
-- ⬜ Chat nativo completo — UI de conversación con historial y renderizado de eventos del agente (el botón del wizard conecta al agente, pero no hay pantalla de chat dedicada)
+- ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural — ver Fase A de [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+- ⬜ CTAs desde wizard hacia la fuente de verdad cuando una línea no se puede editar inline
+- ⬜ Chat nativo completo — UI de conversación con historial e input de texto
 - ⬜ Medios de pago y modelo de tarjeta de crédito (ver [payment-sources-credit-card.md](./payment-sources-credit-card.md)) — movido a Fase 3.5
+
+> **Nota:** el `BudgetWizardModal` es el canal correcto para la creación del plan mensual. Conectarlo al agente conversacional es trabajo futuro de la Fase 3 del budget-module (ver sección 7 de [budget-module.md](./budget-module.md)), no reemplaza el modal actual.
 
 El detalle funcional y los criterios de cierre de ese bloque viven en:
 
@@ -347,12 +349,12 @@ POST  /api/v1/agents/chat            -- entrada web → agente
 **Front-end (Ionic React)** — ya construido:
 - Hook `useWebChat(sessionId)` — wrappea `POST /agents/chat` para enviar mensajes y respuestas de eventos
 - Manejo de evento `navigate` en `useAgentEvents` — ejecuta navegacion del router
-- Botón "Comenzar presupuesto" conectado a `startChat()` vía `AgentUIContext` — lanza el agente en modo chat web
 - ✅ Ruta `/quick` — pantalla mínima de captura rápida, sin navegación, optimizada para registro en 2 segundos
 - ✅ PWA manifest shortcut "Registrar gasto" → deep-link a `/quick`, aparece en home screen Android/iOS
 
 **Front-end (Ionic React)** — pendiente:
-- Chat nativo en la app — UI de conversación dedicada con historial e input de texto (hoy el agente responde con componentes pero no hay pantalla de chat propia)
+- Chat nativo en la app — UI de conversación dedicada con historial e input de texto
+- El botón "Comenzar presupuesto" llama al `BudgetWizardModal` directamente — la integración agente ↔ wizard es trabajo futuro (ver [budget-module.md](./budget-module.md) Fase 3)
 
 ##### Criterios de aceptacion
 
