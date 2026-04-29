@@ -19,6 +19,7 @@ module Auth
           attributes: {
             email: user.email,
             name: user.name,
+            city: user.city,
             confirmed: user.confirmed?,
             created_at: user.created_at,
             avatar_url: user.avatar_url,

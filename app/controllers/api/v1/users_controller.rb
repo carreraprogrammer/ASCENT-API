@@ -14,7 +14,7 @@ class Api::V1::UsersController < Api::V1::BaseController
   def update
     user = Users::Interactors::FindUser.new.call(id: params[:id])
     authorize user, policy_class: Authorization::Policies::UserPolicy
-    updated_user = Users::Interactors::UpdateUser.new.call(user: user, attributes: params.permit(:name).to_h)
+    updated_user = Users::Interactors::UpdateUser.new.call(user: user, attributes: params.permit(:name, :city).to_h)
     render json: Authorization::Presenters::UserPresenter.single(updated_user)
   end
 

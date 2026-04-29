@@ -10,7 +10,7 @@ module Authorization
       end
 
       def self.serialize(user)
-        { id: user.id.to_s, type: "users", attributes: { email: user.email, name: user.name, super_admin: user.super_admin } }
+        { id: user.id.to_s, type: "users", attributes: { email: user.email, name: user.name, city: user.city, super_admin: user.super_admin } }
       end
       private_class_method :serialize
     end
