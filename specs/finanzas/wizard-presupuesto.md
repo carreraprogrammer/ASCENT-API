@@ -1,8 +1,7 @@
 # Taxonomía Dual y Wizard de Presupuesto Mensual
 
+> Estado: 🔲 diseño aprobado — pendiente implementación
 > Última actualización: 2026-04-21
-> Estado: Diseño aprobado — pendiente implementación
-> Identidad visual: [BRAND.md](../../../daniel15k-web/BRAND.md) en el proyecto web
 
 ---
 
@@ -329,6 +328,6 @@ El agente nocturno revisa todas las transacciones del día sin subcategoría (`u
 ## Referencias
 
 - [plan.md](plan.md) — principios de diseño y taxonomía original
-- [budget-module.md](budget-module.md) — marco ZBB, niveles de madurez, bolsillos
-- [behavioral-layer.md](behavioral-layer.md) — cómo las categorías mapean a lenguaje de coaching
+- [presupuesto.md](presupuesto.md) — marco ZBB, niveles de madurez, bolsillos
+- [capa-conductual.md](capa-conductual.md) — cómo las categorías mapean a lenguaje de coaching
 - [deep-research-report.md](../research/deep-research-report.md) — investigación base (Mental Accounting, COM-B, SDT)

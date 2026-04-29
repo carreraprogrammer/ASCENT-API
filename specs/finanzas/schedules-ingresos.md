@@ -1,6 +1,7 @@
-# Income Source Schedules
+# Schedules de Fuentes de Ingreso
 
-Fecha: 2026-04-17
+> Estado: ⚠️ parcialmente supersedido — el modelo actual de `income_sources` incorporó parte de este diseño; verificar código antes de usar
+> Última actualización: 2026-04-17
 
 ## Objetivo
 

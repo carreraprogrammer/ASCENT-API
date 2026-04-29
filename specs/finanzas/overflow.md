@@ -1,6 +1,7 @@
-# Fase 3.3 - Overflow y uso operativo del plan
+# Overflow y Uso Operativo del Plan
 
-Fecha: 2026-04-17
+> Estado: ⚠️ parcialmente implementado — ver fases.md para detalle
+> Última actualización: 2026-04-17
 
 ## Objetivo
 

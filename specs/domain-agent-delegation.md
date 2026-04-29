@@ -1,4 +1,8 @@
-# agent-delegation.md — daniel15k-api
+# Delegación de Agentes
+
+> Estado: 🟡 fase inicial implementada
+> Última actualización: 2026-04-28
+> Depende de: architecture.md
 
 Este documento define la transicion desde ownership por `user_id` hacia un
 modelo de delegacion compatible con agentes.

@@ -1,6 +1,6 @@
-# Behavioral Layer
+# Capa Conductual
 
-> Fuente de verdad: daniel15k-api/specs/finanzas/behavioral-layer.md
+> Estado: 🔲 futuro — no iniciar hasta cerrar Fases 3 y 4
 > Última actualización: 2026-04-18
 
 ## Tesis

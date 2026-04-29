@@ -1,4 +1,7 @@
-# Módulo Finanzas — Fases de Ejecución
+# Finanzas — Tracker de Fases
+
+> Estado: documento vivo — actualizar con cada entrega
+> Última actualización: 2026-04-28
 
 Este documento es el **tracker de estado** del módulo. Para diseño y criterios técnicos de cada bloque, ver los specs individuales listados en cada fase.
 
@@ -34,7 +37,7 @@ Reglas:
 - web chat: `POST /api/v1/agents/chat` + polling `agent_ui_events`
 - `AgentEventRenderer` con registry de componentes (UI)
 
-**Spec:** [../agent-delegation.md](../agent-delegation.md)
+**Spec:** [../domain-agent-delegation.md](../domain-agent-delegation.md)
 
 ---
 
@@ -42,7 +45,7 @@ Reglas:
 
 **Estado:** `en progreso`
 
-**Spec operativo principal:** [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+**Spec operativo principal:** [living-budget.md](./living-budget.md)
 
 ---
 
@@ -65,13 +68,13 @@ Reglas:
 - ✅ `savings_goals` CRUD con `monthly_contribution_needed` calculado
 - ✅ `summary` incluye `savings_goals` activos
 
-**Spec:** [plan-history-and-execution.md](./plan-history-and-execution.md) · [dashboard-liquidity-agent-insights.md](./dashboard-liquidity-agent-insights.md)
+**Spec:** [historial-planes.md](./historial-planes.md) · [dashboard.md](./dashboard.md)
 
 ---
 
 ### Completado — Living Budget Integration (2026-04-28)
 
-Fases A-D del spec [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md):
+Fases A-D del spec [living-budget.md](./living-budget.md):
 
 - ✅ **Fase B** — `sinking_funds` CRUD (`GET/POST/PATCH/DELETE /api/v1/sinking_funds`); vinculables a `planned_expense_id`
 - ✅ **Fase B** — `wizard_data` incluye `suggested_sinking_funds`: detecta `planned_expenses` sin fondo activo y calcula cuota mensual
@@ -98,7 +101,7 @@ Fases A-D del spec [phase-3-4-living-budget-integration.md](./phase-3-4-living-b
 
 Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mensual al banco contabilizados dos veces. Introduce `payment_source` y `credit_card_status: pending | settled` con liquidación FIFO.
 
-**Spec:** [payment-sources-credit-card.md](./payment-sources-credit-card.md)
+**Spec:** [medios-de-pago.md](./medios-de-pago.md)
 
 ---
 
@@ -122,7 +125,7 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 - ⬜ Narrativa de progreso contextual: "2/5 deudas liquidadas, ritmo actual: 8 meses para el objetivo"
 - ⬜ Overflow rules: si el plan define overflow a deuda/ahorro, el summary lo refleja
 
-**Spec:** [gamification.md](./gamification.md)
+**Spec:** [gamificacion.md](./gamificacion.md)
 
 ---
 
@@ -132,7 +135,7 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 
 Perfil conductual inferido (6 ejes: money_management_domains, motivation_quality, self_efficacy, monitoring_habit, credit_reliance, stress_and_shame_risk) + intervenciones COM-B + trazabilidad trigger→intervención→respuesta→resultado.
 
-**Spec:** [behavioral-layer.md](./behavioral-layer.md) · [../research/deep-research-report.md](../research/deep-research-report.md)
+**Spec:** [capa-conductual.md](./capa-conductual.md) · [../research/deep-research-report.md](../research/deep-research-report.md)
 
 ---
 
@@ -149,19 +152,19 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 | Archivo | Propósito | Vigencia |
 |---------|-----------|----------|
 | [plan.md](./plan.md) | Principios de diseño, modelo de datos canónico, fuentes de verdad | ✅ vigente |
-| [taxonomy-and-budget-wizard.md](./taxonomy-and-budget-wizard.md) | Taxonomía dual, wizard paso a paso, subcategorías del sistema | ✅ vigente |
-| [budget-module.md](./budget-module.md) | Framework ZBB, niveles de madurez, bolsillos, guía visual | ✅ vigente |
-| [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md) | Spec operativo del bloque Living Budget (Fases A-E) | ✅ vigente — fuente de verdad actual |
-| [planned_expenses.md](./planned_expenses.md) | Entidad `planned_expenses`: qué es, qué no es, contrato | ✅ vigente |
-| [plan-history-and-execution.md](./plan-history-and-execution.md) | Historial de planes, CloseMonthlyPlan, ProposeBudget con historial | ✅ vigente |
-| [dashboard-liquidity-agent-insights.md](./dashboard-liquidity-agent-insights.md) | safe_to_deploy, LiquidityProjection, AgentInsights | ✅ vigente |
-| [mobile-motion-and-feedback.md](./mobile-motion-and-feedback.md) | Guía de motion y feedback visual — aplica a toda UI del módulo | ✅ vigente |
-| [gamification.md](./gamification.md) | Niveles de madurez, milestones, streaks | ✅ vigente |
-| [behavioral-layer.md](./behavioral-layer.md) | Motor conductual futuro (Fase 5) | 🔲 futuro |
-| [payment-sources-credit-card.md](./payment-sources-credit-card.md) | Medios de pago y ciclo TC (Fase 3.5) | 🔲 spec listo, pendiente |
-| [income-source-schedules.md](./income-source-schedules.md) | Schedules de income sources | ⚠️ parcialmente supersedido por `income_sources` actual |
-| [phase-3-2-completeness-preflight.md](./phase-3-2-completeness-preflight.md) | Completeness state y preflight | ⚠️ implementado — ver código para estado real |
-| [phase-3-3-overflow-and-operational-use.md](./phase-3-3-overflow-and-operational-use.md) | Overflow rules y uso operacional | ⚠️ parcialmente implementado |
+| [wizard-presupuesto.md](./wizard-presupuesto.md) | Taxonomía dual, wizard paso a paso, subcategorías del sistema | ✅ vigente |
+| [presupuesto.md](./presupuesto.md) | Framework ZBB, niveles de madurez, bolsillos, guía visual | ✅ vigente |
+| [living-budget.md](./living-budget.md) | Spec operativo del bloque Living Budget (Fases A-E) | ✅ vigente — fuente de verdad actual |
+| [gastos-planeados.md](./gastos-planeados.md) | Entidad `planned_expenses`: qué es, qué no es, contrato | ✅ vigente |
+| [historial-planes.md](./historial-planes.md) | Historial de planes, CloseMonthlyPlan, ProposeBudget con historial | ✅ vigente |
+| [dashboard.md](./dashboard.md) | safe_to_deploy, LiquidityProjection, AgentInsights | ✅ vigente |
+| [motion-feedback.md](./motion-feedback.md) | Guía de motion y feedback visual — aplica a toda UI del módulo | ✅ vigente |
+| [gamificacion.md](./gamificacion.md) | Niveles de madurez, milestones, streaks | ✅ vigente |
+| [capa-conductual.md](./capa-conductual.md) | Motor conductual futuro (Fase 5) | 🔲 futuro |
+| [medios-de-pago.md](./medios-de-pago.md) | Medios de pago y ciclo TC (Fase 3.5) | 🔲 spec listo, pendiente |
+| [schedules-ingresos.md](./schedules-ingresos.md) | Schedules de income sources | ⚠️ parcialmente supersedido por `income_sources` actual |
+| [completeness.md](./completeness.md) | Completeness state y preflight | ⚠️ implementado — ver código para estado real |
+| [overflow.md](./overflow.md) | Overflow rules y uso operacional | ⚠️ parcialmente implementado |
 
 ---
 

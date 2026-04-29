@@ -1,4 +1,7 @@
-# Dashboard · Liquidity Projection · Agent Insights
+# Dashboard — Liquidity Projection y Agent Insights
+
+> Estado: ✅ implementado y desplegado
+> Última actualización: 2026-04-28
 
 ## Contexto y motivación
 

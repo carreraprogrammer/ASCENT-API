@@ -1,8 +1,10 @@
-# roles-permissions.md — boilerplate-rails-api
+# Dominio Authorization — Roles y Permisos
 
-Dominio: `authorization`
-Responsabilidad: gestionar roles dinámicos, permisos granulares, y autorización de acciones en toda la API.
-Leer `architecture.md` antes de implementar este dominio.
+> Estado: ✅ completo
+> Última actualización: 2026-04-28
+> Depende de: architecture.md, domain-auth.md
+
+Gestiona roles dinámicos, permisos granulares y autorización de acciones en toda la API.
 
 ---
 

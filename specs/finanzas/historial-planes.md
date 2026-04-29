@@ -1,6 +1,6 @@
 # Historial de Planes y Ejecución Mensual
 
-> Estado: Backend implementado y desplegado. Front-end y ProposeBudget pendientes.
+> Estado: 🟡 backend completo — frontend y ProposeBudget pendientes
 > Última actualización: 2026-04-25
 
 ---

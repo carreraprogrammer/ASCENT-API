@@ -1,7 +1,7 @@
-# Mobile Motion and Feedback — Daniel 15K
+# Guía de Motion y Feedback Móvil
 
+> Estado: ✅ guía operativa vigente — aplica a toda UI del módulo
 > Última actualización: 2026-04-24
-> Estado: guía operativa vigente para UI móvil y web app móvil-first
 
 ---
 

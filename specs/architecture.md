@@ -1,7 +1,9 @@
-# architecture.md — daniel15k-api
+# Arquitectura General
+
+> Estado: ✅ vigente — tiene precedencia sobre cualquier spec de dominio
+> Última actualización: 2026-04-28
 
 Este documento es el mapa global del repositorio. Léelo completo antes de leer cualquier spec de dominio.
-Ante cualquier ambigüedad, este archivo tiene precedencia sobre los specs de dominio.
 
 ---
 
@@ -92,9 +94,9 @@ daniel15k-api/
 │       └── swagger.yaml
 ├── specs/
 │   ├── architecture.md
-│   ├── auth.md
-│   ├── roles-permissions.md
-│   └── forms.md
+│   ├── domain-auth.md
+│   ├── domain-authorization.md
+│   └── domain-forms.md
 ├── docker/
 │   └── entrypoint.sh
 ├── Dockerfile
@@ -212,11 +214,11 @@ ALLOWED_ORIGINS
 
 | Dominio | Estado | Spec |
 |---------|--------|------|
-| auth | ✅ completo | auth.md |
-| authorization | ✅ completo | roles-permissions.md |
-| forms | ✅ completo | forms.md |
-| finanzas | ✅ MVP completo | finanzas/plan.md |
-| agent delegation foundation | 🟡 fase inicial | agent-delegation.md |
+| auth | ✅ completo | domain-auth.md |
+| authorization | ✅ completo | domain-authorization.md |
+| forms | ✅ completo | domain-forms.md |
+| finanzas | ✅ MVP completo | finanzas/principios.md |
+| agent delegation foundation | 🟡 fase inicial | domain-agent-delegation.md |
 
 ---
 

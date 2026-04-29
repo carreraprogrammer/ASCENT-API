@@ -1,6 +1,6 @@
-# Módulo de Presupuesto — Plan de Implementación
+# Módulo de Presupuesto
 
-> Framework: Zero-Based Budgeting (ZBB) con categorías dinámicas y bolsillos
+> Estado: ✅ vigente — framework ZBB con categorías dinámicas y bolsillos
 > Última actualización: 2026-04-18
 
 ---
@@ -300,7 +300,7 @@ Este documento sigue describiendo bien el modelo de presupuesto, pero la siguien
 
 Plan operativo actual:
 
-- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+- [living-budget.md](./living-budget.md)
 
 ### Fase 1 — Cimientos ✅ COMPLETADA
 Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GET /api/v1/budget_context`
@@ -348,7 +348,7 @@ Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GE
 
 La capa visual del módulo de presupuesto ya no debe tomar decisiones aisladas sobre animación o transiciones. La guía vigente para futuras iteraciones está en:
 
-- [mobile-motion-and-feedback.md](./mobile-motion-and-feedback.md)
+- [motion-feedback.md](./motion-feedback.md)
 
 Reglas especialmente relevantes para presupuesto:
 

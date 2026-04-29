@@ -508,7 +508,7 @@ ALLOWED_ORIGINS=http://localhost:5173
 ## Documentación adicional
 
 - [specs/architecture.md](specs/architecture.md) — reglas de arquitectura DDD
-- [specs/auth.md](specs/auth.md) — flujo de autenticación
-- [specs/roles-permissions.md](specs/roles-permissions.md) — RBAC
-- [specs/finanzas/plan.md](specs/finanzas/plan.md) — plan completo del módulo Finanzas
+- [specs/domain-auth.md](specs/domain-auth.md) — flujo de autenticación
+- [specs/domain-authorization.md](specs/domain-authorization.md) — RBAC
+- [specs/finanzas/principios.md](specs/finanzas/principios.md) — principios de diseño del módulo Finanzas
 - [specs/finanzas/fases.md](specs/finanzas/fases.md) — fases de ejecución con criterios de aceptación
