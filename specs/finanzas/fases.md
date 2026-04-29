@@ -58,7 +58,7 @@ La infraestructura del Brain esta cerrada. Lo que queda pendiente ya no es "tene
 
 ## Fase 3 - Planeacion Mensual y Completitud Contextual
 
-**Estado**: `en progreso — núcleo completo, integración pendiente`
+**Estado**: `en progreso — núcleo completo + canal web parcial; queda wizard estructural y tarjetas`
 
 **Subfase activa**: [Fase 3.4 — Living Budget Integration](./phase-3-4-living-budget-integration.md)
 
@@ -102,12 +102,22 @@ La planeacion mensual deja de depender de campos legacy como `monthly_income_1/2
 - ✅ `savings_goals` CRUD con `monthly_contribution_needed` calculado automáticamente
 - ✅ `summary` incluye `savings_goals` activos
 
+### Completado dentro de Fase 3 (2026-04-28)
+
+- ✅ `sinking_funds` CRUD (`GET/POST/PATCH/DELETE /api/v1/sinking_funds`) — fondos de acumulación vinculables a `planned_expenses`
+- ✅ `wizard_data` incluye `suggested_sinking_funds` — detecta `planned_expenses` sin fondo activo y calcula cuota mensual sugerida
+- ✅ `DetectTransactionStructure` interactor — al crear una transacción `expense+confirmed` devuelve `structural_match: {match_type, match_id, entity_name, confidence}` en la respuesta
+- ✅ Validación cruzada deuda ↔ recurrente — subcategoría `creditos` en `RecurringObligation` requiere `source_type=Debt`; `POST /debts` devuelve sugerencia de crear obligación recurrente si no existe
+- ✅ Ruta `/quick` + `QuickCapturePage` — pantalla mínima sin nav bar, carga categorías, usa `TransactionComposer`, badge de éxito con auto-hide 2s
+- ✅ PWA manifest shortcut "Registrar gasto" → deep-link a `/quick` (home screen Android/iOS)
+- ✅ Botón "Comenzar presupuesto" en `BudgetsPage` conectado a `startChat('Quiero crear mi plan mensual')` vía `AgentUIContext`
+- ✅ Seeds: `ServiceAccount.token_hash` se regenera desde `DANIEL15K_SERVICE_TOKEN` en cada deploy (fix 401 post-redeploy)
+
 ### Pendiente dentro de Fase 3
 
-- ⬜ Matching estructural transacción → deuda / planned_expense / recurrente
-- ⬜ Reglas cruzadas deuda ↔ recurrente hardened
-- ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural
-- ⬜ Medios de pago y modelo de tarjeta de crédito (ver [payment-sources-credit-card.md](./payment-sources-credit-card.md))
+- ⬜ Wizard: líneas bloqueadas cuando vienen de fuente de verdad estructural (recurring locked, planned_expense locked)
+- ⬜ Chat nativo completo — UI de conversación con historial y renderizado de eventos del agente (el botón del wizard conecta al agente, pero no hay pantalla de chat dedicada)
+- ⬜ Medios de pago y modelo de tarjeta de crédito (ver [payment-sources-credit-card.md](./payment-sources-credit-card.md)) — movido a Fase 3.5
 
 El detalle funcional y los criterios de cierre de ese bloque viven en:
 
@@ -334,25 +344,27 @@ POST  /api/v1/agents/chat            -- entrada web → agente
 - `AgentEventRenderer` con registry de componentes
 - `PlanProposalCard`, `AgentCard`, `ConfirmCard`
 
-**Front-end (Ionic React)** — por construir:
+**Front-end (Ionic React)** — ya construido:
 - Hook `useWebChat(sessionId)` — wrappea `POST /agents/chat` para enviar mensajes y respuestas de eventos
 - Manejo de evento `navigate` en `useAgentEvents` — ejecuta navegacion del router
-- Conectar boton "Comenzar presupuesto" al `useWebChat` en lugar de abrir wizard estatico
-- Chat nativo en la app — UI de conversación con historial, input y renderizado de eventos del agente
-- Ruta `/quick` — pantalla mínima de captura rápida, sin navegación, optimizada para registro en 2 segundos
-- PWA manifest shortcut "Registrar" → deep-link a `/quick`, aparece en home screen Android/iOS
+- Botón "Comenzar presupuesto" conectado a `startChat()` vía `AgentUIContext` — lanza el agente en modo chat web
+- ✅ Ruta `/quick` — pantalla mínima de captura rápida, sin navegación, optimizada para registro en 2 segundos
+- ✅ PWA manifest shortcut "Registrar gasto" → deep-link a `/quick`, aparece en home screen Android/iOS
+
+**Front-end (Ionic React)** — pendiente:
+- Chat nativo en la app — UI de conversación dedicada con historial e input de texto (hoy el agente responde con componentes pero no hay pantalla de chat propia)
 
 ##### Criterios de aceptacion
 
-- [ ] `POST /api/v1/agents/chat` recibe mensaje web y corre el agente en modo web
-- [ ] el agente usa `emit_ui_event` (no `send_telegram`) cuando `source == "web"`
-- [ ] el wizard de presupuesto arranca con propuesta calculada, no formulario vacio
+- [x] `POST /api/v1/agents/chat` recibe mensaje web y corre el agente en modo web
+- [x] el agente usa `emit_ui_event` (no `send_telegram`) cuando `source == "web"`
+- [x] el wizard de presupuesto arranca con propuesta calculada, no formulario vacio
 - [ ] el usuario puede ajustar el draft y el agente revalida en la misma sesion
 - [ ] confirmar el plan desde el web guarda `monthly_financial_plan` y navega a `/budgets`
-- [ ] el plan del mes se hereda del anterior; el agente marca las diferencias
-- [ ] si el agente no conoce la ciudad del usuario, la pregunta antes de proponer cifras
-- [ ] existe ruta `/quick` con captura mínima sin fricción
-- [ ] PWA shortcut en manifest abre `/quick` directamente desde el home screen
+- [x] el plan del mes se hereda del anterior; el agente marca las diferencias
+- [x] si el agente no conoce la ciudad del usuario, la pregunta antes de proponer cifras
+- [x] existe ruta `/quick` con captura mínima sin fricción
+- [x] PWA shortcut en manifest abre `/quick` directamente desde el home screen
 - [ ] el chat nativo tiene paridad funcional con Telegram para registro de transacciones
 
 ---
