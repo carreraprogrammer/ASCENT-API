@@ -6,7 +6,8 @@ module Finanzas
 	                  :source, :status, :clarification_requested_at,
 	                  :clarification_resolved_at, :metadata, :source_event_id,
 	                  :year, :month, :payment_source, :credit_card_status,
-	                  :debt_id, :recurring_obligation_id, :created_at, :updated_at
+	                  :debt_id, :recurring_obligation_id, :income_source_id,
+	                  :created_at, :updated_at
       attr_accessor :structural_match
 
       def initialize(attrs = {})
@@ -31,6 +32,7 @@ module Finanzas
 	        @credit_card_status          = attrs[:credit_card_status]
 	        @debt_id                     = attrs[:debt_id]
 	        @recurring_obligation_id     = attrs[:recurring_obligation_id]
+	        @income_source_id            = attrs[:income_source_id]
 	        @created_at                  = attrs[:created_at]
         @updated_at                  = attrs[:updated_at]
       end

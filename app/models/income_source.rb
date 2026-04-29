@@ -4,6 +4,7 @@ class IncomeSource < ApplicationRecord
   belongs_to :user
   belongs_to :account, optional: true
   has_many :schedules, class_name: "IncomeSourceSchedule", dependent: :destroy
+  has_many :transactions, dependent: :nullify
 
   CLASSIFICATIONS = %w[base variable seasonal one_time].freeze
   CADENCES = %w[monthly biweekly weekly irregular].freeze

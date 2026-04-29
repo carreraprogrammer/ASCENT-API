@@ -102,5 +102,27 @@ RSpec.describe "Summary API" do
       expect(data["overflow_status"]["status"]).to eq("blocked_by_liquidity")
       expect(data["overflow_status"]["suggested_action"]).to include("primero hay que cubrir obligaciones próximas")
     end
+
+    it "does not count realized linked variable income as pending liquidity" do
+      allow(Time).to receive(:now).and_return(Time.utc(2026, 4, 29, 12, 0, 0))
+
+      source = create(
+        :income_source,
+        :variable,
+        user: user,
+        account: user.default_account,
+        expected_day_from: 26,
+        expected_day_to: 30,
+        expected_amount: 2_900_000
+      )
+      variable_income_txn.update!(income_source_id: source.id)
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+
+      expect(data["liquidity"]["pending_income"]).to eq(0)
+    end
   end
 end
