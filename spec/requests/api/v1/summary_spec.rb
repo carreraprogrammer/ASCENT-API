@@ -103,6 +103,56 @@ RSpec.describe "Summary API" do
       expect(data["overflow_status"]["suggested_action"]).to include("primero hay que cubrir obligaciones próximas")
     end
 
+    it "includes next-cycle base income in projection when base window closed at end of month" do
+      # Simula el caso real: fin de mes, saldo bajo, ingreso base ya llegó este mes
+      # pero llegará de nuevo el próximo ciclo. Sin este fix el sistema marcaba "critical".
+      allow(Time).to receive(:now).and_return(Time.utc(2026, 4, 29, 12, 0, 0))
+
+      base_source = create(
+        :income_source,
+        user: user,
+        account: user.default_account,
+        expected_day_from: 1,
+        expected_day_to: 5,
+        expected_amount: 6_400_000
+      )
+      # Ingreso base de abril ya realizado y vinculado a la fuente
+      base_income_txn.update!(income_source_id: base_source.id)
+
+      # Gasto grande para drenar el balance (simula obligaciones y gastos de fin de mes)
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 4, 28),
+        year: 2026,
+        month: 4,
+        amount: 8_000_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Obligaciones y gastos de abril"
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      liquidity = data["liquidity"]
+
+      # confirmed: ingresos (6.4M + 2.9M) - gastos (8M) = 1.3M
+      expect(liquidity["confirmed_balance"]).to eq(1_300_000)
+
+      # Ventana base ya cerró (día 5 < día 29) → pending_base = 0, next_cycle_base = 6.4M
+      expect(liquidity["pending_base"]).to   eq(0)
+      expect(liquidity["next_cycle_base"]).to eq(6_400_000)
+      expect(liquidity["pending_income"]).to  eq(6_400_000)
+
+      # projected = 1.3M + 6.4M = 7.7M; obligaciones = 3.5M; free = 4.2M → comfortable
+      expect(liquidity["buffer_status"]).to eq("comfortable")
+      expect(liquidity["safe_to_deploy"]).to eq(3_900_000)  # 4.2M - 300K buffer
+    end
+
     it "does not count realized linked variable income as pending liquidity" do
       allow(Time).to receive(:now).and_return(Time.utc(2026, 4, 29, 12, 0, 0))
 
