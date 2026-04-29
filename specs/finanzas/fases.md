@@ -147,11 +147,19 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 
 ---
 
+## Decisiones de arquitectura activas
+
+| Decisión | Spec | Fecha |
+|----------|------|-------|
+| Wizards Telegram → UI (deprecar PendingAction flows) | [wizard-migration.md](./wizard-migration.md) | 2026-04-29 |
+
+---
+
 ## Índice de specs vigentes
 
 | Archivo | Propósito | Vigencia |
 |---------|-----------|----------|
-| [plan.md](./plan.md) | Principios de diseño, modelo de datos canónico, fuentes de verdad | ✅ vigente |
+| [principios.md](./principios.md) | Principios de diseño, modelo de datos canónico, fuentes de verdad | ✅ vigente |
 | [wizard-presupuesto.md](./wizard-presupuesto.md) | Taxonomía dual, wizard paso a paso, subcategorías del sistema | ✅ vigente |
 | [presupuesto.md](./presupuesto.md) | Framework ZBB, niveles de madurez, bolsillos, guía visual | ✅ vigente |
 | [living-budget.md](./living-budget.md) | Spec operativo del bloque Living Budget (Fases A-E) | ✅ vigente — fuente de verdad actual |
@@ -165,6 +173,7 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 | [schedules-ingresos.md](./schedules-ingresos.md) | Schedules de income sources | ⚠️ parcialmente supersedido por `income_sources` actual |
 | [completeness.md](./completeness.md) | Completeness state y preflight | ⚠️ implementado — ver código para estado real |
 | [overflow.md](./overflow.md) | Overflow rules y uso operacional | ⚠️ parcialmente implementado |
+| [wizard-migration.md](./wizard-migration.md) | Migración wizards Telegram → UI | 🟡 decisión tomada — pendiente |
 
 ---
 
