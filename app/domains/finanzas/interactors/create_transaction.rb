@@ -16,9 +16,10 @@ module Finanzas
       AUTOMATED_SOURCES = %w[telegram gmail].freeze
 
       def call(user_id:, account_id:, date:, concept:, amount:, transaction_type: "expense",
-               product: nil, category_id: nil, subcategory_id: nil,
-               source: "manual", status: "confirmed", metadata: {},
-               payment_source: nil, credit_card_status: nil)
+	               product: nil, category_id: nil, subcategory_id: nil,
+	               source: "manual", status: "confirmed", metadata: {},
+	               payment_source: nil, credit_card_status: nil,
+	               debt_id: nil, recurring_obligation_id: nil)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -61,12 +62,14 @@ module Finanzas
           source: source,
           status: status,
           source_event_id: source_event_id,
-          metadata: metadata,
-          year: year,
-          month: month,
-          payment_source: payment_source,
-          credit_card_status: resolved_cc_status
-        )
+	          metadata: metadata,
+	          year: year,
+	          month: month,
+	          payment_source: payment_source,
+	          credit_card_status: resolved_cc_status,
+	          debt_id: debt_id,
+	          recurring_obligation_id: recurring_obligation_id
+	        )
 
         if transaction_type == "expense" && status == "confirmed"
           txn.structural_match = detect_structure(account_id, concept, amount.to_i, subcategory_id, date)

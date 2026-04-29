@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260509) do
+ActiveRecord::Schema[8.0].define(version: 20260510) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -447,12 +447,17 @@ ActiveRecord::Schema[8.0].define(version: 20260509) do
     t.string "source_event_id"
     t.string "payment_source"
     t.string "credit_card_status"
+    t.bigint "debt_id"
+    t.bigint "recurring_obligation_id"
+    t.index ["account_id", "debt_id", "year", "month"], name: "index_transactions_on_account_debt_period"
     t.index ["account_id", "payment_source", "credit_card_status"], name: "index_transactions_on_account_credit_card_pending", where: "(((payment_source)::text = 'credit_card'::text) AND ((credit_card_status)::text = 'pending'::text))"
     t.index ["account_id", "source", "source_event_id"], name: "idx_on_account_id_source_source_event_id_5beb8b9a55", unique: true, where: "(source_event_id IS NOT NULL)"
     t.index ["account_id", "status"], name: "index_transactions_on_account_id_and_status"
     t.index ["account_id", "year", "month"], name: "index_transactions_on_account_id_and_year_and_month"
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
+    t.index ["debt_id"], name: "index_transactions_on_debt_id"
+    t.index ["recurring_obligation_id"], name: "index_transactions_on_recurring_obligation_id"
     t.index ["subcategory_id"], name: "index_transactions_on_subcategory_id"
     t.index ["user_id", "status"], name: "index_transactions_on_user_id_and_status"
     t.index ["user_id", "year", "month"], name: "index_transactions_on_user_id_and_year_and_month"
@@ -544,6 +549,8 @@ ActiveRecord::Schema[8.0].define(version: 20260509) do
   add_foreign_key "subcategories", "users"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
+  add_foreign_key "transactions", "debts"
+  add_foreign_key "transactions", "recurring_obligations"
   add_foreign_key "transactions", "subcategories"
   add_foreign_key "transactions", "users"
   add_foreign_key "user_milestones", "accounts"

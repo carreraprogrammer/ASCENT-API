@@ -3,10 +3,10 @@ module Finanzas
     class Transaction
       attr_reader :id, :user_id, :date, :concept, :product, :amount,
                   :transaction_type, :category_id, :subcategory_id,
-                  :source, :status, :clarification_requested_at,
-                  :clarification_resolved_at, :metadata, :source_event_id,
-                  :year, :month, :payment_source, :credit_card_status,
-                  :created_at, :updated_at
+	                  :source, :status, :clarification_requested_at,
+	                  :clarification_resolved_at, :metadata, :source_event_id,
+	                  :year, :month, :payment_source, :credit_card_status,
+	                  :debt_id, :recurring_obligation_id, :created_at, :updated_at
       attr_accessor :structural_match
 
       def initialize(attrs = {})
@@ -27,9 +27,11 @@ module Finanzas
         @source_event_id             = attrs[:source_event_id]
         @year                        = attrs[:year]
         @month                       = attrs[:month]
-        @payment_source              = attrs[:payment_source]
-        @credit_card_status          = attrs[:credit_card_status]
-        @created_at                  = attrs[:created_at]
+	        @payment_source              = attrs[:payment_source]
+	        @credit_card_status          = attrs[:credit_card_status]
+	        @debt_id                     = attrs[:debt_id]
+	        @recurring_obligation_id     = attrs[:recurring_obligation_id]
+	        @created_at                  = attrs[:created_at]
         @updated_at                  = attrs[:updated_at]
       end
 

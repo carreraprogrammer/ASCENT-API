@@ -174,9 +174,10 @@ module Api
 
       def transaction_create_params
         p = params.permit(
-          :date, :concept, :product, :amount, :transaction_type,
-          :category_id, :subcategory_id, :category_code, :subcategory_code,
-          :source, :status, :payment_source, :credit_card_status, metadata: {}
+	          :date, :concept, :product, :amount, :transaction_type,
+	          :category_id, :subcategory_id, :category_code, :subcategory_code,
+	          :source, :status, :payment_source, :credit_card_status,
+	          :debt_id, :recurring_obligation_id, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
@@ -184,9 +185,10 @@ module Api
       def batch_transaction_params
         params.require(:transactions).map do |txn|
           p = txn.permit(
-            :date, :concept, :product, :amount, :transaction_type,
-            :category_id, :subcategory_id, :category_code, :subcategory_code,
-            :source, :status, :payment_source, :credit_card_status, metadata: {}
+	            :date, :concept, :product, :amount, :transaction_type,
+	            :category_id, :subcategory_id, :category_code, :subcategory_code,
+	            :source, :status, :payment_source, :credit_card_status,
+	            :debt_id, :recurring_obligation_id, metadata: {}
           ).to_h.symbolize_keys
           category_repo.resolve_codes(p, account_id: current_account.id)
         end
@@ -194,9 +196,9 @@ module Api
 
       def transaction_update_params
         p = params.permit(
-          :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
-          :concept, :product, :amount, :date, :source, :clarification_resolved_at,
-          :payment_source, :credit_card_status, metadata: {}
+	          :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
+	          :concept, :product, :amount, :date, :source, :clarification_resolved_at,
+	          :payment_source, :credit_card_status, :debt_id, :recurring_obligation_id, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
