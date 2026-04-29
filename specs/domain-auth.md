@@ -1,6 +1,8 @@
-# auth.md
-<!-- domain: auth | repo: boilerplate-rails-api | version: 1.0 -->
-<!-- depends on: architecture.md must be implemented first -->
+# Dominio Auth — Autenticación JWT
+
+> Estado: ✅ completo
+> Última actualización: 2026-04-28
+> Depende de: architecture.md
 
 ## Purpose
 

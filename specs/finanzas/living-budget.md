@@ -1,8 +1,8 @@
-# Fase 3.4 — Living Budget Integration
+# Living Budget Integration
 
+> Estado: 🟡 Fases B · C · D completadas — Fase A parcial — Fase E pendiente
 > Última actualización: 2026-04-28
-> Estado: Fases B · C · D completadas — Fase A parcial — Fase E pendiente
-> Prioridad actual: CTAs del wizard hacia fuentes de verdad (Fase A pendiente) + coherencia Brain/prompts (Fase E)
+> Prioridad: CTAs del wizard hacia fuentes de verdad (Fase A) + coherencia Brain/prompts (Fase E)
 
 ---
 
@@ -33,7 +33,7 @@ La prioridad de esta fase no es agregar más módulos. Es conectar bien los exis
 
 La iteración de UI de esta fase no puede resolver ruido informativo agregando motion llamativa. Cualquier cambio visual futuro debe seguir la guía:
 
-- [mobile-motion-and-feedback.md](./mobile-motion-and-feedback.md)
+- [motion-feedback.md](./motion-feedback.md)
 
 En esta fase, el objetivo del wizard y del presupuesto activo es:
 

@@ -1,6 +1,6 @@
-# Módulo de Gamificación — Diseño y Base de Datos
+# Gamificación y Milestones
 
-> Estado: Spec actualizado — base de datos pendiente de migrar. Implementación pendiente.
+> Estado: 🟡 parcial — milestones implementados, DB migrada; streaks pendientes
 > Última actualización: 2026-04-24
 
 ---

@@ -1,5 +1,6 @@
-# planned_expenses
+# Gastos Planeados
 
+> Estado: 🟡 CRUD implementado — integración con plan mensual pendiente
 > Última actualización: 2026-04-23
 
 ## Qué es
@@ -195,7 +196,7 @@ La siguiente ejecución debe hacer que `planned_expenses` deje de ser solo un CR
 
 Ver:
 
-- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+- [living-budget.md](./living-budget.md)
 
 ## Reglas operativas del sistema
 

@@ -1,6 +1,6 @@
 # Medios de Pago y Tarjetas de Crédito
 
-> Estado: Spec definido — pendiente de implementar.
+> Estado: 🔲 spec listo — pendiente de implementar (Fase 3.5)
 > Última actualización: 2026-04-24
 
 ---

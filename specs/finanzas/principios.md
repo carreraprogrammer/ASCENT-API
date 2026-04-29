@@ -1,4 +1,7 @@
-# Módulo Finanzas — Plan General
+# Finanzas — Principios de Diseño
+
+> Estado: ✅ vigente — fuente de verdad del módulo
+> Última actualización: 2026-04-28
 
 > El objetivo no es llevar una contabilidad perfecta. Es cambiar conductas. La diferencia es enorme: una contabilidad te dice qué pasó, el coaching te dice qué hacer diferente.
 
@@ -273,7 +276,7 @@ Los puntos 1-5 ya están implementados. El pendiente activo:
 
 Spec operativo:
 
-- [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
+- [living-budget.md](./living-budget.md)
 
 ---
 

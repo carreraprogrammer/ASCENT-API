@@ -1,6 +1,8 @@
-# forms.md
-<!-- domain: forms | repo: boilerplate-rails-api | version: 1.0 -->
-<!-- depends on: architecture.md, auth.md, roles-permissions.md must be implemented first -->
+# Dominio Forms — Schema-Driven UI
+
+> Estado: ✅ completo
+> Última actualización: 2026-04-28
+> Depende de: architecture.md, domain-auth.md, domain-authorization.md
 
 ## Purpose
 

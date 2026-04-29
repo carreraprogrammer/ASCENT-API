@@ -1,8 +1,10 @@
-# oauth.md — boilerplate-rails-api
+# Extensión Auth — OAuth con Google
 
-Dominio: `auth`
-Responsabilidad: autenticación con Google OAuth 2.0 como método alternativo al registro con email/password.
-Leer `architecture.md` y `auth.md` antes de implementar.
+> Estado: ✅ completo
+> Última actualización: 2026-04-28
+> Depende de: architecture.md, domain-auth.md
+
+Autenticación con Google OAuth 2.0 como método alternativo al registro con email/password.
 
 ---
 
