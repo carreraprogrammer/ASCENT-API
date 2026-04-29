@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260507) do
+ActiveRecord::Schema[8.0].define(version: 20260509) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -392,8 +392,11 @@ ActiveRecord::Schema[8.0].define(version: 20260507) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "planned_expense_id"
     t.index ["account_id", "active"], name: "index_sinking_funds_on_account_id_and_active"
     t.index ["account_id"], name: "index_sinking_funds_on_account_id"
+    t.index ["planned_expense_id"], name: "index_sinking_funds_on_planned_expense_id"
+    t.index ["planned_expense_id"], name: "index_sinking_funds_on_planned_expense_id_unique", unique: true, where: "(planned_expense_id IS NOT NULL)"
     t.index ["user_id"], name: "index_sinking_funds_on_user_id"
   end
 
@@ -493,6 +496,7 @@ ActiveRecord::Schema[8.0].define(version: 20260507) do
     t.string "google_uid"
     t.string "avatar_url"
     t.string "auth_provider"
+    t.string "city"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["google_uid"], name: "index_users_on_google_uid", unique: true, where: "(google_uid IS NOT NULL)"
     t.index ["refresh_token_hash"], name: "index_users_on_refresh_token_hash"
@@ -534,6 +538,7 @@ ActiveRecord::Schema[8.0].define(version: 20260507) do
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
   add_foreign_key "sinking_funds", "accounts"
+  add_foreign_key "sinking_funds", "planned_expenses"
   add_foreign_key "sinking_funds", "users"
   add_foreign_key "subcategories", "categories"
   add_foreign_key "subcategories", "users"
