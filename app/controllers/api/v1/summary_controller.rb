@@ -46,7 +46,7 @@ module Api
           burn_rate:            build_burn_rate(account_id, month, year, budgets, now_col),
           debts:                build_debts_summary(debts),
           monthly_plan:         build_monthly_plan_summary(plan),
-          overflow_status:      build_overflow_status(plan, balance, ctx, debts),
+          overflow_status:      build_overflow_status(plan, balance, ctx, debts, liquidity),
           financial_context:    build_context_summary(ctx, plan, debts, liquidity),
           liquidity:            liquidity,
           credit_card_pending:  credit_card_pending,
@@ -161,13 +161,16 @@ module Api
         }
       end
 
-      def build_overflow_status(plan, balance, ctx, debts)
+      def build_overflow_status(plan, balance, ctx, debts, liquidity = nil)
         return nil unless plan
 
         base_budget_income = plan[:base_budget_income].to_i
         confirmed_income = balance[:income_confirmed].to_i
         expected_variable_income = plan[:expected_variable_income].to_i
         realized_overflow = [confirmed_income - base_budget_income, 0].max
+        safe_to_deploy = liquidity&.dig(:safe_to_deploy).to_i
+        deployable_overflow = [realized_overflow, safe_to_deploy].min
+        blocked_by_liquidity = realized_overflow.positive? && deployable_overflow <= 0
         target = overflow_target_for(plan, ctx, debts)
 
         {
@@ -177,11 +180,21 @@ module Api
           confirmed_income: confirmed_income,
           expected_variable_income: expected_variable_income,
           realized_overflow: realized_overflow,
+          safe_to_deploy: safe_to_deploy,
+          deployable_overflow: deployable_overflow,
+          blocked_by_liquidity: blocked_by_liquidity,
           remaining_expected_overflow: [expected_variable_income - realized_overflow, 0].max,
-          status: realized_overflow.positive? ? "available" : "waiting",
+          status: overflow_status(realized_overflow, deployable_overflow),
           suggested_destination: target,
-          suggested_action: overflow_action(plan, realized_overflow, target)
+          suggested_action: overflow_action(plan, realized_overflow, deployable_overflow, target)
         }
+      end
+
+      def overflow_status(realized_overflow, deployable_overflow)
+        return "waiting" unless realized_overflow.positive?
+        return "blocked_by_liquidity" unless deployable_overflow.positive?
+
+        "available"
       end
 
       def build_context_summary(ctx, plan, debts, liquidity = nil)
@@ -260,19 +273,23 @@ module Api
         end
       end
 
-      def overflow_action(plan, realized_overflow, target)
+      def overflow_action(plan, realized_overflow, deployable_overflow, target)
         return "Todavía no hay ingreso extra confirmado sobre la base del plan." if realized_overflow <= 0
+
+        if deployable_overflow <= 0
+          return "Entraron #{format_cop(realized_overflow)} por encima de tu base, pero no están libres para mover: primero hay que cubrir obligaciones próximas y el buffer."
+        end
 
         case plan[:overflow_rule]
         when "debt"
           debt_name = target&.dig(:debt_name) || "deuda prioritaria"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería ir a #{debt_name}."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para mover; según tu plan debería ir a #{debt_name}."
         when "emergency_fund"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería reforzar tu colchón."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para reforzar tu colchón."
         when "investment"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería ir a inversión."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para inversión."
         when "mixed"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Según tu plan, ese extra debería repartirse sin inflar tu presupuesto base."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para repartir sin inflar tu presupuesto base."
         else
           nil
         end
