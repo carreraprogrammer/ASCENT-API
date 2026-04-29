@@ -67,9 +67,40 @@ RSpec.describe "Summary API" do
 
       expect(data["overflow_status"]["status"]).to eq("available")
       expect(data["overflow_status"]["realized_overflow"]).to eq(2_900_000)
+      expect(data["overflow_status"]["safe_to_deploy"]).to be > 0
+      expect(data["overflow_status"]["deployable_overflow"]).to eq(2_900_000)
+      expect(data["overflow_status"]["blocked_by_liquidity"]).to eq(false)
       expect(data["overflow_status"]["rule"]).to eq("debt")
       expect(data["overflow_status"]["suggested_destination"]["type"]).to eq("debt")
       expect(data["overflow_status"]["suggested_destination"]["debt_id"]).to eq(debt.id)
+    end
+
+    it "blocks overflow recommendations when liquidity is already committed" do
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 4, 20),
+        year: 2026,
+        month: 4,
+        amount: 5_600_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Obligaciones ya pagadas"
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+
+      expect(data["overflow_status"]["realized_overflow"]).to eq(2_900_000)
+      expect(data["overflow_status"]["safe_to_deploy"]).to eq(0)
+      expect(data["overflow_status"]["deployable_overflow"]).to eq(0)
+      expect(data["overflow_status"]["blocked_by_liquidity"]).to eq(true)
+      expect(data["overflow_status"]["status"]).to eq("blocked_by_liquidity")
+      expect(data["overflow_status"]["suggested_action"]).to include("primero hay que cubrir obligaciones próximas")
     end
   end
 end
