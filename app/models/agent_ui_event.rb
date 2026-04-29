@@ -7,6 +7,7 @@ class AgentUiEvent < ApplicationRecord
     show_form
     request_confirmation
     navigate
+    open_wizard
   ].freeze
 
   validates :event_type, inclusion: { in: EVENT_TYPES }
