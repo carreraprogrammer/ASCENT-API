@@ -12,7 +12,7 @@ La meta no es ganar $15.000 USD/mes. Es convertirse en la persona que se los mer
 
 | Módulo | Estado | Descripción |
 |--------|--------|-------------|
-| **Finanzas** | 🟡 En construcción | Registro de gastos, presupuestos, deudas, metas de ahorro, coaching nocturno |
+| **Finanzas** | 🟡 En construcción | Transacciones, presupuesto mensual, deudas, sinking funds, metas de ahorro, coaching nocturno |
 | **Cuerpo** | 🔲 Planificado | Suplementos, calorías por foto, ejercicio, sueño |
 | **Mente** | 🔲 Planificado | Ritual matutino, journaling, Consejo de Sabios semanal |
 | **Social** | 🔲 Planificado | Fragmento diario, debrief nocturno, evidencia acumulada |
@@ -123,29 +123,24 @@ Ver [specs/architecture.md](specs/architecture.md) para reglas completas.
 
 ### Autenticación
 
-Todos los endpoints requieren JWT en el header:
-
+**Usuario (JWT):**
 ```
 Authorization: Bearer <access_token>
 ```
 
-Obtener token:
-
 ```http
 POST /api/v1/auth/login
-
 { "email": "daniel@example.com", "password": "..." }
 ```
 
-```json
-{
-  "data": {
-    "access_token": "eyJ...",
-    "refresh_token": "eyJ...",
-    "expires_in": 3600
-  }
-}
+**Service account (Brain):**
 ```
+Authorization: Bearer <DANIEL15K_SERVICE_TOKEN>
+X-Account-Id: <account_id>
+X-Agent-Type: finance_coach
+```
+
+El service account autentica via SHA-256 del token en `service_accounts.token_hash`. Los scopes disponibles para `finance_coach` incluyen `transactions:*`, `debts:*`, `budgets:*`, `recurring_obligations:*`, `income_sources:*`, `pending_actions:*`, `summary:read`, `financial_context:*`.
 
 ---
 
@@ -319,43 +314,86 @@ POST /api/v1/debts
 Gastos futuros previsibles que influyen en planeación, pero todavía no son transacciones reales ni obligaciones recurrentes mensuales.
 
 ```http
-GET  /api/v1/planned_expenses
-POST /api/v1/planned_expenses
-
-{
-  "name": "SOAT moto",
-  "amount_estimated": 420000,
-  "target_date": "2026-12-15",
-  "planning_type": "mandatory_one_off",
-  "status": "planned",
-  "category_id": 3,
-  "subcategory_id": 12,
-  "notes": "Renovacion anual"
-}
-```
-
-```http
+GET   /api/v1/planned_expenses
+POST  /api/v1/planned_expenses
 PATCH /api/v1/planned_expenses/:id
 ```
 
-Tipos iniciales de `planning_type`:
+`planning_type`: `mandatory_one_off` · `irregular_maintenance` · `wish` · `planned_purchase`
+`status`: `planned` · `executed` · `cancelled`
 
-- `mandatory_one_off`
-- `irregular_maintenance`
-- `wish`
-- `planned_purchase`
+---
 
-Estados iniciales:
+### Sinking Funds
 
-- `planned`
-- `executed`
-- `cancelled`
+Reservas de acumulación mensual para fondear `planned_expenses` futuros.
 
-Límites actuales:
+```http
+GET    /api/v1/sinking_funds
+POST   /api/v1/sinking_funds
+PATCH  /api/v1/sinking_funds/:id
+DELETE /api/v1/sinking_funds/:id   # soft-delete (active=false)
 
-- no crea transacciones automáticamente
-- no crea reservas automáticas
-- no reemplaza `debts`, `investments` ni `recurring_obligations`
+{
+  "name": "SOAT moto",
+  "monthly_contribution": 35000,
+  "target_amount": 420000,
+  "target_date": "2027-01-01",
+  "planned_expense_id": 2          # opcional — vincula al planned_expense
+}
+```
+
+---
+
+### Metas de Ahorro
+
+```http
+GET   /api/v1/savings_goals
+POST  /api/v1/savings_goals
+PATCH /api/v1/savings_goals/:id
+
+{ "name": "Fondo emergencia", "target_amount": 5000000, "target_date": "2027-06-01", "priority": 1 }
+```
+
+`monthly_contribution_needed` se calcula automáticamente: `(target_amount - current_amount) / months_remaining`.
+
+---
+
+### Plan Mensual
+
+```http
+GET  /api/v1/monthly_plans                  # historial paginado
+GET  /api/v1/monthly_plans/current          # plan del mes vigente
+GET  /api/v1/monthly_plans/wizard_data      # propuesta calculada para el wizard
+POST /api/v1/monthly_plans/generate         # genera draft del mes
+POST /api/v1/monthly_plans/:id/confirm      # confirma el plan
+POST /api/v1/monthly_plans/:id/close        # cierra el mes + guarda execution_snapshot
+PATCH /api/v1/monthly_plans/:id
+```
+
+`wizard_data` devuelve: `income`, `categories` (con `confidence` y `source_of_truth`), y `suggested_sinking_funds` (planned_expenses sin fondo activo con cuota mensual calculada).
+
+---
+
+### Completeness y Preflight
+
+```http
+GET  /api/v1/completeness               # estado de completitud en 5 dimensiones
+POST /api/v1/agents/preflight           # el agente evalúa si hay gaps antes de actuar
+```
+
+Dimensiones: `income_profile` · `debts` · `recurring_expenses` · `strategy` · `monthly_plan`
+Estados: `missing` · `partial` · `sufficient` · `stale` · `conflicting`
+
+---
+
+### Canal Web (Agent Events)
+
+```http
+POST  /api/v1/agents/chat               # entrada web → agente (source: "web")
+GET   /api/v1/agent_events/pending      # polling de eventos del agente
+PATCH /api/v1/agent_events/:id/consume  # marcar evento como procesado
+```
 
 ---
 
@@ -391,9 +429,9 @@ GET /api/v1/summary?month=04&year=2026
   "data": {
     "period": "abril 2026",
     "income": 6435146,
+    "safe_to_deploy": 350000,
     "categories": {
       "committed":     { "budget": 4000000, "spent": 3200000, "pct": 80 },
-      "necessary":     { "budget": 800000,  "spent": 650000,  "pct": 81 },
       "discretionary": {
         "budget": 500000, "spent": 480000, "pct": 96,
         "burn_rate_alert": "A este ritmo gastarás $640.000 — 28% sobre presupuesto"
@@ -404,13 +442,12 @@ GET /api/v1/summary?month=04&year=2026
     ],
     "financial_phase": "debt_payoff",
     "financial_score": 72,
-    "insights": [
-      "Llevas 11 días sin delivery. Tu mejor racha este año.",
-      "Discrecional al 96% — quedan 19 días de mes."
-    ]
+    "agent_insight": { "headline": "...", "signals": [...], "generated_at": "..." }
   }
 }
 ```
+
+`safe_to_deploy` = dinero disponible después de compromisos del próximo ciclo. Guardrail universal del agente.
 
 ---
 
