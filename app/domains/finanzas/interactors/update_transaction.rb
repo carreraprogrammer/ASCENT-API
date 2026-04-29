@@ -9,9 +9,10 @@ module Finanzas
         transaction = @repo.find(id, account_id: account_id)
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless transaction
 
-        permitted = attrs.slice(:status, :category_id, :subcategory_id, :concept,
-                                :product, :amount, :date, :source, :metadata,
-                                :clarification_resolved_at, :payment_source, :credit_card_status)
+          permitted = attrs.slice(:status, :category_id, :subcategory_id, :concept,
+                                  :product, :amount, :date, :source, :metadata,
+                                  :clarification_resolved_at, :payment_source, :credit_card_status,
+                                  :debt_id, :recurring_obligation_id)
 
         Rails.logger.info(
           "[UpdateTransaction] id=#{id.inspect} account_id=#{account_id.inspect} " \
