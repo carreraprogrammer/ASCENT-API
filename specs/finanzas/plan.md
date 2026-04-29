@@ -262,18 +262,16 @@ El agente recibe el `summary` completo y tiene contexto para razonar sobre:
 
 ## Siguiente bloque prioritario
 
-La siguiente fase de ejecución no consiste en abrir módulos nuevos, sino en conectarlos correctamente.
+Los puntos 1-5 ya están implementados. El pendiente activo:
 
-Prioridad explícita:
+1. ~~dejar el wizard correcto~~ ✅
+2. ~~wizard lee fuentes de verdad~~ ✅ (income_sources bloqueado, recurring bloqueado)
+3. ~~conectar `planned_expenses` con `sinking_funds`~~ ✅
+4. ~~matching estructural de transacciones~~ ✅ (`structural_match` en response)
+5. ~~reglas cruzadas `debts` ↔ `recurring_obligations`~~ ✅
+6. **Pendiente**: alinear prompts del Brain con el contrato operativo del backend (Fase E)
 
-1. dejar el wizard de planeación mensual correcto
-2. hacer que el wizard lea fuentes de verdad en vez de duplicarlas
-3. conectar `planned_expenses` con `sinking_funds`
-4. permitir matching estructural de transacciones
-5. endurecer reglas cruzadas entre `debts` y `recurring_obligations`
-6. alinear backend, UI y agente con el mismo contrato operativo
-
-Spec operativo de esta fase:
+Spec operativo:
 
 - [phase-3-4-living-budget-integration.md](./phase-3-4-living-budget-integration.md)
 
@@ -291,32 +289,24 @@ Cada módulo tiene su propio dominio en `app/domains/` y su propio conjunto de e
 
 ---
 
-## Estado real de esta fase
+## Estado real del módulo (2026-04-28)
 
-### Implementado
+### Implementado y operativo
 
-- `recurring_obligations.source_type/source_id` para relación explícita con entidad estructural
-- `planned_expenses` como fuente de verdad para planeación futura
-- backfill idempotente y conservador para vínculo obligación ↔ deuda
-
-### Expuesto en UI
-
-- vista operable de `planned_expenses` en `/planned-expenses`
-- visualización del vínculo deuda ↔ obligación recurrente en pantallas de deudas y recurrentes
-- operación mínima del vínculo deuda ↔ obligación desde la pantalla de deudas
-
-### Disponible para agente
-
-- adapter y tools para listar/crear/actualizar `planned_expenses`
-- prompts ajustados para no confundir gasto futuro con transacción real
-- lectura del vínculo deuda ↔ obligación usando `source_type/source_id`
-- capacidad explícita de quitar vínculo deuda ↔ obligación usando `update_recurring_obligation`
+- `recurring_obligations.source_type/source_id` — relación explícita con deuda
+- `planned_expenses` — CRUD completo en backend, UI y agente
+- `sinking_funds` — CRUD completo; vinculables a `planned_expense_id`
+- `wizard_data` — propuesta calculada desde fuentes de verdad; `suggested_sinking_funds`
+- `BudgetWizardModal` — 7 pasos, income bloqueado, recurrentes bloqueados
+- `structural_match` en response de `POST /transactions`
+- Validación `creditos` → `Debt` requerida en `RecurringObligation`
+- `POST /debts` sugiere obligación recurrente si no existe
 
 ### Pendiente
 
-- linking manual más rico desde UI para asociar deuda ↔ obligación
+- CTAs desde wizard hacia fuente de verdad (navegar al módulo correcto al editar línea bloqueada)
+- coherencia prompts del Brain con validaciones del backend (Fase E)
 - soporte estructural real para `investments`
-- automatizaciones entre `planned_expenses`, reservas y plan mensual
 
 ### Legacy-compatible
 

@@ -1,8 +1,8 @@
 # Fase 3.4 — Living Budget Integration
 
-> Última actualización: 2026-04-23
-> Estado: Fase A iniciada — iteración 1 implementada
-> Prioridad máxima: dejar el wizard de planeación mensual correcto y conectado a las fuentes de verdad reales
+> Última actualización: 2026-04-28
+> Estado: Fases B · C · D completadas — Fase A parcial — Fase E pendiente
+> Prioridad actual: CTAs del wizard hacia fuentes de verdad (Fase A pendiente) + coherencia Brain/prompts (Fase E)
 
 ---
 
@@ -167,18 +167,17 @@ No deben aparecer como montos arbitrarios. Deben salir de su propio cálculo men
 
 ### Estado actual de implementación
 
-Ya quedó implementado en esta iteración:
+Implementado (2026-04-25 / 2026-04-28):
 
-- el paso de ingresos lee `income_sources` como fuente de verdad y deja de editarlos inline
-- si faltan `income_sources`, el wizard no deja avanzar como si el dato estuviera resuelto
-- las subcategorías alimentadas directamente por `recurring_obligations` llegan bloqueadas, con fuente de verdad explícita
-- los `planned_expenses` de tipo `mandatory_one_off` e `irregular_maintenance` ya aportan una sugerencia mensual visible en el wizard
+- ✅ el paso de ingresos lee `income_sources` como fuente de verdad y deja de editarlos inline
+- ✅ si faltan `income_sources`, el wizard no deja avanzar como si el dato estuviera resuelto
+- ✅ las subcategorías alimentadas por `recurring_obligations` llegan bloqueadas con fuente de verdad explícita
+- ✅ los `planned_expenses` de tipo `mandatory_one_off` e `irregular_maintenance` aportan sugerencia mensual en `wizard_data` (`suggested_sinking_funds`)
 
 Todavía pendiente dentro de Fase A:
 
-- completar el contrato para distinguir mejor líneas semi-fijas vs completamente fijas
-- conectar la edición de la fuente de verdad desde CTA directos del wizard
-- cubrir integración real con base local o entorno de pruebas con Postgres levantado
+- ⬜ CTA directos desde el wizard hacia la fuente de verdad (ej: "Editar en Recurrentes →") cuando una línea es bloqueada
+- ⬜ contrato claro para líneas semi-fijas vs completamente fijas
 
 ---
 
@@ -341,17 +340,18 @@ El agente debe tener instrucciones explícitas para:
 
 ## Checklist de ejecución
 
-### Para empezar
+### Completado
 
-- mapear todas las líneas del wizard a su fuente de verdad
-- clasificar cuáles son bloqueadas, sugeridas o editables
-- definir qué `planned_expenses` deben producir bolsillo sugerido
+- [x] el wizard no duplica ingresos (income_sources como base)
+- [x] el wizard no edita fijos desde adentro (recurring bloqueados)
+- [x] los `planned_expenses` obligatorios producen sugerencia de bolsillo en `wizard_data`
+- [x] `sinking_funds` CRUD vinculable a `planned_expense_id`
+- [x] transacciones intentan match estructural (`structural_match` en response)
+- [x] crédito sin deuda deja de ser un estado válido (validación en RecurringObligation)
+- [x] `POST /debts` sugiere crear obligación recurrente si no existe
 
-### Antes de cerrar
+### Pendiente
 
-- el wizard no duplica ingresos
-- el wizard no edita fijos desde adentro
-- los gastos previsibles obligatorios ya financian un bolsillo
-- transacciones pueden intentar match estructural
-- crédito sin deuda deja de ser un estado válido
-- agente, backend y UI comparten las mismas reglas
+- [ ] CTAs desde wizard hacia fuente de verdad (Fase A)
+- [ ] agente, backend y UI comparten las mismas reglas (Fase E — prompts del Brain)
+- [ ] front-end del wizard navega a fuente de verdad al tocar línea bloqueada
