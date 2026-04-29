@@ -20,6 +20,7 @@ module Api
         ctx                  = ctx_repo.find_by_account(account_id)
         plan                 = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
         income_sources       = income_source_repo.active_for_account(account_id)
+        realized_income_by_source = income_realized_by_source(account_id, month, year)
         credit_card_pending  = ::Transaction
                                  .where(account_id: account_id, payment_source: "credit_card",
                                         credit_card_status: "pending")
@@ -28,6 +29,7 @@ module Api
                                  plan:                plan,
                                  balance:             balance,
                                  income_sources:      income_sources,
+                                 realized_income_by_source: realized_income_by_source,
                                  credit_card_pending: credit_card_pending,
                                  today:               now_col.to_date
                                )
@@ -297,6 +299,20 @@ module Api
 
       def format_cop(amount)
         "$#{amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1.').reverse}"
+      end
+
+      def income_realized_by_source(account_id, month, year)
+        ::Transaction
+          .where(
+            account_id: account_id,
+            month: month,
+            year: year,
+            transaction_type: "income",
+            status: "confirmed"
+          )
+          .where.not(income_source_id: nil)
+          .group(:income_source_id)
+          .sum(:amount)
       end
 
       # ── Repos ─────────────────────────────────────────────────────────────────

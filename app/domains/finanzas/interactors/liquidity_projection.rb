@@ -11,18 +11,20 @@ module Finanzas
       # @param plan                  [Hash, nil]    plan mensual vigente (puede ser nil)
       # @param balance               [Hash]         balance del período {income_confirmed:, expense_confirmed:, ...}
       # @param income_sources        [Array<Hash>]  fuentes de ingreso activas de la cuenta (opcional)
+      # @param realized_income_by_source [Hash]     ingresos confirmados agrupados por income_source_id
       # @param credit_card_pending   [Integer]      total de compras con tarjeta de crédito sin pagar al banco
       # @param today                 [Date, nil]    fecha actual (opcional, por defecto Date.today)
       # @return                      [Hash, nil]    proyección de liquidez, o nil si no hay plan
-      def call(plan:, balance:, income_sources: [], credit_card_pending: 0, today: nil)
+      def call(plan:, balance:, income_sources: [], realized_income_by_source: {}, credit_card_pending: 0, today: nil)
         return nil unless plan
 
         confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
 
         # Ingreso variable pendiente: suma de fuentes activas de clasificación variable
-        # cuyo expected_day_from sea posterior al día de hoy (aún no deberían haber llegado).
+        # cuya ventana siga vigente y que todavía no se hayan materializado
+        # como transacciones enlazadas a la fuente proyectada.
         today_day = (today || Date.today).day
-        pending_income = pending_variable_income(income_sources, today_day)
+        pending_income = pending_variable_income(income_sources, realized_income_by_source, today_day)
 
         # Obligaciones del próximo ciclo: recurrentes + mínimos de deuda + crédito pendiente.
         # El crédito pendiente es lo que se le debe al banco por compras aún no pagadas.
@@ -51,16 +53,21 @@ module Finanzas
 
       private
 
-      # Suma el expected_amount de las fuentes de ingreso variable activas que
-      # todavía no deberían haber llegado según su calendario (expected_day_from > hoy).
+      # Suma el saldo pendiente de fuentes variables activas cuya ventana de pago
+      # aún no cerró. Si una transacción real ya quedó vinculada a la fuente, se
+      # descuenta para evitar duplicar "proyectado" + "realizado".
       #
       # Una fuente es "variable" si su classification es 'variable' O su flag is_variable
       # es true (ambos campos existen en el modelo; el criterio es OR para cubrir ambas
       # convenciones de datos).
-      def pending_variable_income(income_sources, today_day)
+      def pending_variable_income(income_sources, realized_income_by_source, today_day)
         Array(income_sources)
-          .select { |src| src[:active] && variable_source?(src) && src[:expected_day_from].to_i > today_day }
-          .sum { |src| src[:expected_amount].to_i }
+          .select { |src| src[:active] && variable_source?(src) && src[:expected_day_to].to_i >= today_day }
+          .sum do |src|
+            expected = src[:expected_amount].to_i
+            realized = realized_income_by_source.fetch(src[:id], realized_income_by_source[src[:id].to_s]).to_i
+            [expected - realized, 0].max
+          end
       end
 
       def variable_source?(src)

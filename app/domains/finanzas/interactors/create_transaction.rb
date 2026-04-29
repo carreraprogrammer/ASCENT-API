@@ -7,10 +7,12 @@ module Finanzas
 
       def initialize(
         repo: Finanzas::Repositories::TransactionRepository.new,
-        structure_detector: Finanzas::Interactors::DetectTransactionStructure.new
+        structure_detector: Finanzas::Interactors::DetectTransactionStructure.new,
+        income_matcher: Finanzas::Interactors::MatchIncomeSource.new
       )
         @repo               = repo
         @structure_detector = structure_detector
+        @income_matcher     = income_matcher
       end
 
       AUTOMATED_SOURCES = %w[telegram gmail].freeze
@@ -19,7 +21,8 @@ module Finanzas
 	               product: nil, category_id: nil, subcategory_id: nil,
 	               source: "manual", status: "confirmed", metadata: {},
 	               payment_source: nil, credit_card_status: nil,
-	               debt_id: nil, recurring_obligation_id: nil)
+	               debt_id: nil, recurring_obligation_id: nil,
+	               income_source_id: nil)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -41,6 +44,14 @@ module Finanzas
         end
 
         year, month = parse_date(date)
+        resolved_income_source_id = resolve_income_source_id(
+          account_id: account_id,
+          transaction_type: transaction_type,
+          income_source_id: income_source_id,
+          date: date,
+          concept: concept,
+          amount: amount.to_i
+        )
 
         # Auto-set credit_card_status to pending when payment_source is credit_card
         resolved_cc_status = if payment_source == "credit_card"
@@ -68,7 +79,8 @@ module Finanzas
 	          payment_source: payment_source,
 	          credit_card_status: resolved_cc_status,
 	          debt_id: debt_id,
-	          recurring_obligation_id: recurring_obligation_id
+	          recurring_obligation_id: recurring_obligation_id,
+	          income_source_id: resolved_income_source_id
 	        )
 
         if transaction_type == "expense" && status == "confirmed"
@@ -79,6 +91,29 @@ module Finanzas
       end
 
       private
+
+      def resolve_income_source_id(account_id:, transaction_type:, income_source_id:, date:, concept:, amount:)
+        return nil unless transaction_type == "income"
+
+        if income_source_id.present?
+          source = ::IncomeSource.active.where(account_id: account_id).find_by(id: income_source_id)
+          raise Finanzas::Errors::InvalidTransaction, "Income source #{income_source_id} not found" unless source
+
+          return source.id
+        end
+
+        @income_matcher.call(
+          account_id: account_id,
+          date: date,
+          concept: concept,
+          amount: amount
+        )
+      rescue Finanzas::Errors::InvalidTransaction
+        raise
+      rescue => e
+        Rails.logger.warn("[CreateTransaction] income source matching failed: #{e.message}")
+        nil
+      end
 
       def detect_structure(account_id, concept, amount, subcategory_id, date)
         @structure_detector.call(

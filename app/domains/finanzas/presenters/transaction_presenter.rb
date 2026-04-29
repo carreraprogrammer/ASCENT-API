@@ -33,6 +33,7 @@ module Finanzas
 	            credit_card_status: transaction.credit_card_status,
 	            debt_id: transaction.debt_id,
 	            recurring_obligation_id: transaction.recurring_obligation_id,
+	            income_source_id: transaction.income_source_id,
 	            structural_match: transaction.structural_match,
             created_at: transaction.created_at,
             updated_at: transaction.updated_at
@@ -49,6 +50,9 @@ module Finanzas
 	            },
 	            recurring_obligation: {
 	              data: transaction.recurring_obligation_id ? { id: transaction.recurring_obligation_id.to_s, type: "recurring_obligations" } : nil
+	            },
+	            income_source: {
+	              data: transaction.income_source_id ? { id: transaction.income_source_id.to_s, type: "income_sources" } : nil
 	            }
 	          }
         }

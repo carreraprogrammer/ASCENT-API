@@ -84,6 +84,34 @@ RSpec.describe "Transactions API" do
       expect(json.dig("data", "attributes", "status")).to eq("confirmed")
     end
 
+    it "auto-links expected income transactions to an income source" do
+      source = create(
+        :income_source,
+        :variable,
+        user: user,
+        account: user.default_account,
+        name: "Grupo 525",
+        expected_day_from: 26,
+        expected_day_to: 30,
+        expected_amount: 3_000_000
+      )
+
+      post "/api/v1/transactions",
+           params: {
+             date: "27/04/2026",
+             concept: "Pago Grupo 525",
+             amount: 3_000_000,
+             transaction_type: "income",
+             source: "gmail"
+           },
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json.dig("data", "attributes", "income_source_id")).to eq(source.id)
+      expect(json.dig("data", "relationships", "income_source", "data", "id")).to eq(source.id.to_s)
+    end
+
     it "returns 422 when amount is negative" do
       post "/api/v1/transactions", params: valid_params.merge(amount: -100), headers: headers
       expect(response).to have_http_status(:unprocessable_entity)
@@ -132,8 +160,20 @@ RSpec.describe "Transactions API" do
 
         expect(response).to have_http_status(:ok)
         json = JSON.parse(response.body)
-        expect(json.dig("data", "relationships", "debt", "data", "id")).to eq(debt.id.to_s)
-        expect(json.dig("data", "relationships", "recurring_obligation", "data", "id")).to eq(obligation.id.to_s)
+      expect(json.dig("data", "relationships", "debt", "data", "id")).to eq(debt.id.to_s)
+      expect(json.dig("data", "relationships", "recurring_obligation", "data", "id")).to eq(obligation.id.to_s)
+    end
+
+      it "updates income source links" do
+        source = create(:income_source, user: user, account: user.default_account)
+
+        patch "/api/v1/transactions/#{transaction.id}",
+              params: { income_source_id: source.id },
+              headers: headers
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json.dig("data", "relationships", "income_source", "data", "id")).to eq(source.id.to_s)
       end
 
     it "returns 404 for unknown id" do

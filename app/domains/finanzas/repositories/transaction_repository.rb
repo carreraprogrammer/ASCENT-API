@@ -174,6 +174,7 @@ module Finanzas
 	          credit_card_status: record.credit_card_status,
 	          debt_id: record.debt_id,
 	          recurring_obligation_id: record.recurring_obligation_id,
+	          income_source_id: record.income_source_id,
 	          created_at: record.created_at,
           updated_at: record.updated_at
         )
