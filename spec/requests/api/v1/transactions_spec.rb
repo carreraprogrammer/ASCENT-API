@@ -97,10 +97,10 @@ RSpec.describe "Transactions API" do
     end
   end
 
-  describe "PATCH /api/v1/transactions/:id" do
-    let(:category) { create(:category, :discretionary) }
-    let(:subcategory) { create(:subcategory, category: category) }
-    let(:transaction) { create(:transaction, user: user, status: "pending") }
+    describe "PATCH /api/v1/transactions/:id" do
+      let(:category) { create(:category, :discretionary) }
+      let(:subcategory) { create(:subcategory, category: category) }
+      let(:transaction) { create(:transaction, user: user, status: "pending") }
 
     it "updates status, category_id, subcategory_id" do
       patch "/api/v1/transactions/#{transaction.id}",
@@ -109,8 +109,32 @@ RSpec.describe "Transactions API" do
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json.dig("data", "attributes", "status")).to eq("confirmed")
-      expect(json.dig("data", "relationships", "category", "data", "id")).to eq(category.id.to_s)
-    end
+        expect(json.dig("data", "relationships", "category", "data", "id")).to eq(category.id.to_s)
+      end
+
+      it "updates debt links" do
+        credit_category = create(:category, :committed)
+        credit_subcategory = create(:subcategory, category: credit_category, code: "creditos", name: "Créditos")
+        debt = create(:debt, user: user, account: user.default_account)
+        obligation = create(
+          :recurring_obligation,
+          user: user,
+          account: user.default_account,
+          category: credit_category,
+          subcategory: credit_subcategory,
+          source_type: "Debt",
+          source_id: debt.id
+        )
+
+        patch "/api/v1/transactions/#{transaction.id}",
+              params: { debt_id: debt.id, recurring_obligation_id: obligation.id },
+              headers: headers
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json.dig("data", "relationships", "debt", "data", "id")).to eq(debt.id.to_s)
+        expect(json.dig("data", "relationships", "recurring_obligation", "data", "id")).to eq(obligation.id.to_s)
+      end
 
     it "returns 404 for unknown id" do
       patch "/api/v1/transactions/999999", params: { status: "confirmed" }, headers: headers
