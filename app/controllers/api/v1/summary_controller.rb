@@ -177,7 +177,7 @@ module Api
       end
 
       def realized_income_by_source_for_period(account_id, period)
-        ::Transaction
+        linked = ::Transaction
           .where(
             account_id: account_id,
             transaction_type: "income",
@@ -188,10 +188,30 @@ module Api
           .each_with_object(Hash.new(0)) do |transaction, hash|
             hash[transaction.income_source_id] += transaction.amount.to_i
           end
+
+        ::Transaction
+          .where(
+            account_id: account_id,
+            transaction_type: "income",
+            status: "confirmed",
+            income_source_id: nil
+          )
+          .select { |transaction| transaction_applies_to_period?(transaction, period) }
+          .each do |transaction|
+            source_id = income_matcher.call(
+              account_id: account_id,
+              date: transaction.date,
+              concept: transaction.concept,
+              amount: transaction.amount
+            )
+            linked[source_id] += transaction.amount.to_i if source_id.present?
+          end
+
+        linked
       end
 
       def realized_recurring_obligations_for_period(account_id, period)
-        ::Transaction
+        linked = ::Transaction
           .where(
             account_id: account_id,
             transaction_type: "expense",
@@ -202,6 +222,31 @@ module Api
           .each_with_object(Hash.new(0)) do |transaction, hash|
             hash[transaction.recurring_obligation_id] += transaction.amount.to_i
           end
+
+        ::Transaction
+          .where(
+            account_id: account_id,
+            transaction_type: "expense",
+            status: "confirmed",
+            recurring_obligation_id: nil
+          )
+          .select { |transaction| transaction_applies_to_period?(transaction, period) }
+          .each do |transaction|
+            match = structure_detector.call(
+              account_id: account_id,
+              concept: transaction.concept,
+              amount: transaction.amount,
+              subcategory_id: transaction.subcategory_id,
+              date_str: transaction.date
+            )
+            next unless %w[debt recurring].include?(match[:match_type])
+            next unless match[:confidence] == "high"
+            next if match[:match_id].blank?
+
+            linked[match[:match_id]] += transaction.amount.to_i
+          end
+
+        linked
       end
 
       def transaction_applies_to_period?(transaction, period)
@@ -593,6 +638,14 @@ module Api
 
       def variable_income_source?(source)
         source[:classification] == "variable" || source[:is_variable] == true
+      end
+
+      def income_matcher
+        @income_matcher ||= Finanzas::Interactors::MatchIncomeSource.new
+      end
+
+      def structure_detector
+        @structure_detector ||= Finanzas::Interactors::DetectTransactionStructure.new
       end
 
       # ── Repos ─────────────────────────────────────────────────────────────────
