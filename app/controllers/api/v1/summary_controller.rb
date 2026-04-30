@@ -262,31 +262,17 @@ module Api
         }
       end
 
-      def build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_overflow = 0)
+      def build_recommended_action(ctx, active_debts, safe_to_deploy, _deployable_overflow = 0)
         return nil if active_debts.empty?
 
+        # El sistema agrega ingreso mensual pero no modela el timing intra-mes
+        # (quincenas, fechas de vencimiento de obligaciones). Dar un monto específico
+        # de abono sin ese modelo produce recomendaciones irresponsables.
+        # Solo se muestra el estado del ciclo; el insight del agente maneja la recomendación.
         if safe_to_deploy <= 0
-          return "Cubre tus obligaciones del próximo ciclo primero. No hay margen para mover dinero ahora."
-        end
-
-        # deployable_overflow > 0 solo cuando el ingreso extra ya llegó y está en cuenta.
-        # Si es 0, el próximo ciclo está cubierto pero el excedente aún no se materializó.
-        if deployable_overflow <= 0
-          return "El próximo ciclo está cubierto. Cuando llegue el ingreso variable, vas a tener margen para hacer un abono extra."
-        end
-
-        case ctx[:phase]
-        when "debt_payoff"
-          target = ctx[:strategy] == "snowball" ?
-            active_debts.min_by { |d| d[:current_balance] } :
-            active_debts.max_by { |d| d[:interest_rate] }
-          return nil unless target
-
-          abono  = [deployable_overflow, target[:current_balance]].min
-          months = abono > 0 ? (target[:current_balance].to_f / abono).ceil : "?"
-          "Tenés #{format_cop(deployable_overflow)} disponibles para abonar. Abona #{format_cop(abono)} al #{target[:name]} — lo liquidás en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
+          "Priorizá cubrir las obligaciones del próximo ciclo antes de mover dinero."
         else
-          nil
+          "El próximo ciclo está cubierto."
         end
       end
 
