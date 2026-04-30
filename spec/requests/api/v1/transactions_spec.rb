@@ -112,6 +112,35 @@ RSpec.describe "Transactions API" do
       expect(json.dig("data", "relationships", "income_source", "data", "id")).to eq(source.id.to_s)
     end
 
+    it "auto-links expense transactions to matching recurring obligations" do
+      category = create(:category, :committed)
+      obligation = create(
+        :recurring_obligation,
+        user: user,
+        account: user.default_account,
+        category: category,
+        name: "Parqueadero",
+        amount: 100_000,
+        due_day: nil
+      )
+
+      post "/api/v1/transactions",
+           params: {
+             date: "29/04/2026",
+             concept: "Parqueadero moto - mayo",
+             amount: 100_000,
+             transaction_type: "expense",
+             source: "telegram",
+             payment_source: "debit"
+           },
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json.dig("data", "attributes", "recurring_obligation_id")).to eq(obligation.id)
+      expect(json.dig("data", "relationships", "recurring_obligation", "data", "id")).to eq(obligation.id.to_s)
+    end
+
     it "returns 422 when amount is negative" do
       post "/api/v1/transactions", params: valid_params.merge(amount: -100), headers: headers
       expect(response).to have_http_status(:unprocessable_entity)

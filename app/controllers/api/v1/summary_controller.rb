@@ -21,6 +21,7 @@ module Api
         plan                 = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
         income_sources       = income_source_repo.active_for_account(account_id)
         realized_income_by_source = income_realized_by_source(account_id, month, year)
+        prepaid_recurring_obligations = prepaid_recurring_obligations_total(account_id, month, year)
         credit_card_pending  = ::Transaction
                                  .where(account_id: account_id, payment_source: "credit_card",
                                         credit_card_status: "pending")
@@ -31,6 +32,7 @@ module Api
                                  income_sources:      income_sources,
                                  realized_income_by_source: realized_income_by_source,
                                  credit_card_pending: credit_card_pending,
+                                 prepaid_recurring_obligations: prepaid_recurring_obligations,
                                  today:               now_col.to_date
                                )
 
@@ -359,6 +361,34 @@ module Api
           .where.not(income_source_id: nil)
           .group(:income_source_id)
           .sum(:amount)
+      end
+
+      def prepaid_recurring_obligations_total(account_id, month, year)
+        next_cycle = Date.new(year, month, 1).next_month
+
+        ::Transaction
+          .includes(:recurring_obligation)
+          .where(
+            account_id: account_id,
+            month: month,
+            year: year,
+            transaction_type: "expense",
+            status: "confirmed"
+          )
+          .where.not(recurring_obligation_id: nil)
+          .select { |transaction| applies_to_period?(transaction.metadata, next_cycle) }
+          .sum do |transaction|
+            expected_amount = transaction.recurring_obligation&.amount.to_i
+            expected_amount.positive? ? [ transaction.amount.to_i, expected_amount ].min : transaction.amount.to_i
+          end
+      end
+
+      def applies_to_period?(metadata, period)
+        data = (metadata || {}).to_h.stringify_keys
+        return true if data["applies_to_period"].to_s == period.strftime("%Y-%m")
+
+        data["applies_to_month"].to_i == period.month &&
+          data["applies_to_year"].to_i == period.year
       end
 
       def realized_expected_variable_income(income_sources, realized_income_by_source, expected_variable_income)

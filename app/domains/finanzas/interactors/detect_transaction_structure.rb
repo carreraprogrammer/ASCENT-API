@@ -26,7 +26,7 @@ module Finanzas
 
         day = parse_day(date_str)
 
-        recurring = match_recurring(account_id, amount, subcategory_id, day)
+        recurring = match_recurring(account_id, concept, amount, subcategory_id, day)
         return recurring if recurring[:confidence] == "high"
 
         planned = match_planned(account_id, concept, amount)
@@ -40,19 +40,41 @@ module Finanzas
 
       # ── Recurring obligations ─────────────────────────────────────────────
 
-      def match_recurring(account_id, amount, subcategory_id, day)
+      def match_recurring(account_id, concept, amount, subcategory_id, day)
+        matches = []
+
         ::RecurringObligation.where(account_id: account_id, active: true).find_each do |ob|
           next unless within_pct?(ob.amount, amount, RECURRING_AMOUNT_TOLERANCE)
 
-          subcat_match = subcategory_id.nil? || ob.subcategory_id.nil? || ob.subcategory_id == subcategory_id
-          day_match    = day.nil? || ob.due_day.nil? || (ob.due_day - day).abs <= DUE_DAY_WINDOW
-          confidence   = (subcat_match && day_match) ? "high" : "medium"
-
+          concept_match = concept_overlap?(concept, ob.name)
+          subcat_known  = subcategory_id.present? && ob.subcategory_id.present?
+          day_known     = day.present? && ob.due_day.present?
+          subcat_match  = !subcat_known || ob.subcategory_id == subcategory_id
+          day_match     = !day_known || (ob.due_day - day).abs <= DUE_DAY_WINDOW
+          score         = 50
+          score        += 30 if concept_match
+          score        += 10 if subcat_known && subcat_match
+          score        += 10 if day_known && day_match
+          confidence    = recurring_confidence(concept_match, subcat_known, subcat_match, day_known, day_match)
           type = ob.source_type == "Debt" ? "debt" : "recurring"
-          return { match_type: type, match_id: ob.id, entity_name: ob.name, confidence: confidence }
+          matches << {
+            match_type: type,
+            match_id: ob.id,
+            entity_name: ob.name,
+            confidence: confidence,
+            score: score
+          }
         end
 
-        no_match
+        best = matches.max_by { |match| [ confidence_rank(match[:confidence]), match[:score] ] }
+        return no_match unless best
+
+        tied_best = matches.count do |match|
+          match[:confidence] == best[:confidence] && match[:score] == best[:score]
+        end
+        return no_match if tied_best > 1 && best[:confidence] != "high"
+
+        best.except(:score)
       end
 
       # ── Planned expenses ──────────────────────────────────────────────────
@@ -102,6 +124,14 @@ module Finanzas
         b_tokens = tokenize(b)
         shared   = a_tokens & b_tokens
         shared.size >= 1 && shared.any? { |w| w.length >= 4 }
+      end
+
+      def recurring_confidence(concept_match, subcat_known, subcat_match, day_known, day_match)
+        return "high" if concept_match && subcat_match && day_match
+        return "high" if subcat_known && day_known && subcat_match && day_match
+        return "medium" if concept_match || (subcat_known && subcat_match) || (day_known && day_match)
+
+        "low"
       end
 
       def tokenize(str)

@@ -21,9 +21,18 @@ module Finanzas
       # @param income_sources            [Array<Hash>]  fuentes de ingreso activas de la cuenta
       # @param realized_income_by_source [Hash]         ingresos confirmados agrupados por income_source_id
       # @param credit_card_pending       [Integer]      total de compras TC sin pagar al banco
+      # @param prepaid_recurring_obligations [Integer]  recurrentes del próximo ciclo ya pagados
       # @param today                     [Date, nil]    fecha actual (por defecto Date.today)
       # @return                          [Hash, nil]    proyección, o nil si no hay plan
-      def call(plan:, balance:, income_sources: [], realized_income_by_source: {}, credit_card_pending: 0, today: nil)
+      def call(
+        plan:,
+        balance:,
+        income_sources: [],
+        realized_income_by_source: {},
+        credit_card_pending: 0,
+        prepaid_recurring_obligations: 0,
+        today: nil
+      )
         return nil unless plan
 
         today_day = (today || Date.today).day
@@ -39,7 +48,11 @@ module Finanzas
         # Incluye discretionary_limit para que el gate de supervivencia sea honesto:
         # safe_to_deploy > 0 solo cuando el ingreso del próximo ciclo cubre TODO el plan (arriendo +
         # deudas + alimentación + discrecional), no solo las obligaciones contractuales.
-        next_cycle_obligations = plan[:recurring_obligations_total].to_i +
+        recurring_obligations_due = [
+          plan[:recurring_obligations_total].to_i - prepaid_recurring_obligations.to_i,
+          0
+        ].max
+        next_cycle_obligations = recurring_obligations_due +
                                  plan[:debt_minimums_total].to_i +
                                  plan[:discretionary_limit].to_i +
                                  credit_card_pending.to_i
@@ -67,6 +80,8 @@ module Finanzas
           pending_base:           pending_base,
           next_cycle_base:        next_cycle_base,
           projected_eom_balance:  projected_eom_balance,
+          prepaid_recurring_obligations: prepaid_recurring_obligations.to_i,
+          recurring_obligations_due: recurring_obligations_due,
           next_cycle_obligations: next_cycle_obligations,
           credit_card_pending:    credit_card_pending.to_i,
           protected_buffer:       protected_buffer,
