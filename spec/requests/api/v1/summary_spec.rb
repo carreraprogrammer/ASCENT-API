@@ -103,6 +103,117 @@ RSpec.describe "Summary API" do
       expect(data["overflow_status"]["suggested_action"]).to include("primero hay que cubrir obligaciones próximas")
     end
 
+    it "returns income execution against expected income sources" do
+      base_source = create(
+        :income_source,
+        user: user,
+        account: user.default_account,
+        expected_amount: 6_400_000,
+        classification: "base"
+      )
+      variable_source = create(
+        :income_source,
+        :variable,
+        user: user,
+        account: user.default_account,
+        expected_amount: 2_900_000
+      )
+      base_income_txn.update!(income_source_id: base_source.id)
+      variable_income_txn.update!(income_source_id: variable_source.id)
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 4, 22),
+        year: 2026,
+        month: 4,
+        amount: 100_000,
+        transaction_type: "income",
+        status: "confirmed",
+        source: "manual",
+        concept: "Ingreso no proyectado"
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      income = JSON.parse(response.body).dig("month_execution", "income")
+
+      expect(income["expected_total"]).to eq(9_300_000)
+      expect(income["delivered_expected_total"]).to eq(9_300_000)
+      expect(income["remaining_expected_total"]).to eq(0)
+      expect(income["pct"]).to eq(100)
+      expect(income["confirmed_income_total"]).to eq(9_400_000)
+      expect(income["unlinked_confirmed_total"]).to eq(100_000)
+      expect(income["base"]["delivered_total"]).to eq(6_400_000)
+      expect(income["variable"]["delivered_total"]).to eq(2_900_000)
+    end
+
+    it "returns recurring obligation execution for the selected month" do
+      category = create(:category, :committed)
+      covered = create(
+        :recurring_obligation,
+        user: user,
+        account: user.default_account,
+        category: category,
+        name: "Parqueadero",
+        amount: 100_000
+      )
+      next_month = create(
+        :recurring_obligation,
+        user: user,
+        account: user.default_account,
+        category: category,
+        name: "Claude",
+        amount: 80_000
+      )
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 4, 29),
+        year: 2026,
+        month: 4,
+        amount: 100_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Parqueadero abril",
+        recurring_obligation_id: covered.id
+      )
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 4, 29),
+        year: 2026,
+        month: 4,
+        amount: 80_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Claude mayo",
+        recurring_obligation_id: next_month.id,
+        metadata: {
+          applies_to_period: "2026-05",
+          prepaid_obligation: true
+        }
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      execution = JSON.parse(response.body).dig("month_execution", "recurring_obligations")
+
+      expect(execution["expected_total"]).to eq(180_000)
+      expect(execution["covered_total"]).to eq(100_000)
+      expect(execution["remaining_total"]).to eq(80_000)
+      expect(execution["covered_count"]).to eq(1)
+      expect(execution["total_count"]).to eq(2)
+      expect(execution["items"].find { |item| item["id"] == covered.id }["status"]).to eq("covered")
+      expect(execution["items"].find { |item| item["id"] == next_month.id }["status"]).to eq("pending")
+    end
+
     it "includes next-cycle base income in projection when base window closed at end of month" do
       # Simula el caso real: fin de mes, saldo bajo, ingreso base ya llegó este mes
       # pero llegará de nuevo el próximo ciclo. Sin este fix el sistema marcaba "critical".
