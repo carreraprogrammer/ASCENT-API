@@ -45,6 +45,16 @@ module Finanzas
         free_after_obligations = projected_eom_balance - next_cycle_obligations
         safe_to_deploy         = [ free_after_obligations - protected_buffer, 0 ].max
 
+        # Cuánto podés destinar a deuda/ahorro ESTE ciclo.
+        # Solo se muestra cuando el ciclo siguiente está cubierto (safe_to_deploy > 0).
+        # Excluye next_cycle_base porque ese ingreso ya tiene destino: cubrir el plan del mes siguiente.
+        deployable_this_cycle =
+          if safe_to_deploy > 0
+            [ confirmed_balance + pending_variable + pending_base - protected_buffer, 0 ].max
+          else
+            0
+          end
+
         {
           confirmed_balance:      confirmed_balance,
           pending_income:         pending_income,
@@ -57,6 +67,7 @@ module Finanzas
           protected_buffer:       protected_buffer,
           free_after_obligations: free_after_obligations,
           safe_to_deploy:         safe_to_deploy,
+          deployable_this_cycle:  deployable_this_cycle,
           buffer_status:          classify_status(free_after_obligations, protected_buffer)
         }
       end
