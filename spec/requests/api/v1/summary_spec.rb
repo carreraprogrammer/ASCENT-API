@@ -118,7 +118,6 @@ RSpec.describe "Summary API" do
         account: user.default_account,
         expected_amount: 2_900_000
       )
-      base_income_txn.update!(income_source_id: base_source.id)
       variable_income_txn.update!(income_source_id: variable_source.id)
       create(
         :transaction,
@@ -157,7 +156,8 @@ RSpec.describe "Summary API" do
         account: user.default_account,
         category: category,
         name: "Parqueadero",
-        amount: 100_000
+        amount: 100_000,
+        due_day: nil
       )
       next_month = create(
         :recurring_obligation,
@@ -179,7 +179,7 @@ RSpec.describe "Summary API" do
         status: "confirmed",
         source: "manual",
         concept: "Parqueadero abril",
-        recurring_obligation_id: covered.id
+        category: category
       )
       create(
         :transaction,
