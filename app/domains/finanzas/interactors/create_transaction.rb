@@ -44,6 +44,13 @@ module Finanzas
         end
 
         year, month = parse_date(date)
+        structural_match = detect_structure(account_id, concept, amount.to_i, subcategory_id, date) if transaction_type == "expense"
+        resolved_recurring_obligation_id = resolve_recurring_obligation_id(
+          account_id: account_id,
+          transaction_type: transaction_type,
+          recurring_obligation_id: recurring_obligation_id,
+          structural_match: structural_match
+        )
         resolved_income_source_id = resolve_income_source_id(
           account_id: account_id,
           transaction_type: transaction_type,
@@ -79,18 +86,34 @@ module Finanzas
 	          payment_source: payment_source,
 	          credit_card_status: resolved_cc_status,
 	          debt_id: debt_id,
-	          recurring_obligation_id: recurring_obligation_id,
+	          recurring_obligation_id: resolved_recurring_obligation_id,
 	          income_source_id: resolved_income_source_id
 	        )
 
         if transaction_type == "expense" && status == "confirmed"
-          txn.structural_match = detect_structure(account_id, concept, amount.to_i, subcategory_id, date)
+          txn.structural_match = structural_match
         end
 
         txn
       end
 
       private
+
+      def resolve_recurring_obligation_id(account_id:, transaction_type:, recurring_obligation_id:, structural_match:)
+        return nil unless transaction_type == "expense"
+
+        if recurring_obligation_id.present?
+          obligation = ::RecurringObligation.active.where(account_id: account_id).find_by(id: recurring_obligation_id)
+          raise Finanzas::Errors::InvalidTransaction, "Recurring obligation #{recurring_obligation_id} not found" unless obligation
+
+          return obligation.id
+        end
+
+        return nil unless structural_match&.dig(:match_type) == "recurring"
+        return nil unless structural_match[:confidence] == "high"
+
+        structural_match[:match_id]
+      end
 
       def resolve_income_source_id(account_id:, transaction_type:, income_source_id:, date:, concept:, amount:)
         return nil unless transaction_type == "income"

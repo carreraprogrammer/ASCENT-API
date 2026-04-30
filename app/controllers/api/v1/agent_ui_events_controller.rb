@@ -3,9 +3,12 @@ module Api
     class AgentUiEventsController < Api::V1::BaseController
       skip_after_action :verify_authorized
       skip_after_action :verify_policy_scoped
+      PENDING_EVENT_TTL = 1.hour
 
       # GET /api/v1/agent_events/pending
       def pending
+        expire_stale_events
+
         events = AgentUiEvent
           .where(account_id: current_account.id)
           .pending
@@ -39,6 +42,13 @@ module Api
       end
 
       private
+
+      def expire_stale_events
+        AgentUiEvent
+          .where(account_id: current_account.id, consumed_at: nil)
+          .where("created_at < ?", PENDING_EVENT_TTL.ago)
+          .update_all(consumed_at: Time.current, updated_at: Time.current)
+      end
 
       def serialize(event)
         {

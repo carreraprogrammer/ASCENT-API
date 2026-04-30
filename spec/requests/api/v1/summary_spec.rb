@@ -148,9 +148,9 @@ RSpec.describe "Summary API" do
       expect(liquidity["next_cycle_base"]).to eq(6_400_000)
       expect(liquidity["pending_income"]).to  eq(6_400_000)
 
-      # projected = 1.3M + 6.4M = 7.7M; obligaciones = 3.5M; free = 4.2M → comfortable
+      # projected = 1.3M + 6.4M = 7.7M; plan siguiente = 4.1M; free = 3.6M → comfortable
       expect(liquidity["buffer_status"]).to eq("comfortable")
-      expect(liquidity["safe_to_deploy"]).to eq(3_900_000)  # 4.2M - 300K buffer
+      expect(liquidity["safe_to_deploy"]).to eq(3_300_000)  # 3.6M - 300K buffer
     end
 
     it "does not count realized linked variable income as pending liquidity" do
@@ -177,6 +177,48 @@ RSpec.describe "Summary API" do
       expect(data["overflow_status"]["remaining_expected_overflow"]).to eq(0)
       expect(data["overflow_status"]["realized_overflow"]).to eq(0)
       expect(data["overflow_status"]["status"]).to eq("waiting")
+    end
+
+    it "subtracts prepaid recurring obligations from the next cycle liquidity gate" do
+      obligation = create(
+        :recurring_obligation,
+        user: user,
+        account: user.default_account,
+        amount: 100_000,
+        name: "Parqueadero"
+      )
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 4, 29),
+        year: 2026,
+        month: 4,
+        amount: 100_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Parqueadero moto - mayo",
+        recurring_obligation_id: obligation.id,
+        metadata: {
+          applies_to_month: 5,
+          applies_to_year: 2026,
+          prepaid_obligation: true
+        }
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+
+      expect(data["liquidity"]["prepaid_recurring_obligations"]).to eq(100_000)
+      expect(data["liquidity"]["recurring_obligations_due"]).to eq(plan.recurring_obligations_total - 100_000)
+      expect(data["liquidity"]["next_cycle_obligations"]).to eq(
+        plan.recurring_obligations_total - 100_000 +
+        plan.debt_minimums_total +
+        plan.discretionary_limit
+      )
     end
   end
 end

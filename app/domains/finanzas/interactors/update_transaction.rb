@@ -28,6 +28,11 @@ module Finanzas
           raise Finanzas::Errors::InvalidTransaction, "Income source #{permitted[:income_source_id]} not found" unless source
         end
 
+        if permitted[:recurring_obligation_id].present?
+          obligation = ::RecurringObligation.active.where(account_id: account_id).find_by(id: permitted[:recurring_obligation_id])
+          raise Finanzas::Errors::InvalidTransaction, "Recurring obligation #{permitted[:recurring_obligation_id]} not found" unless obligation
+        end
+
         @repo.update(id, permitted, account_id: account_id)
       end
     end
