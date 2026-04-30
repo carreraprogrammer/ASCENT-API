@@ -35,8 +35,13 @@ module Finanzas
 
         pending_income = pending_variable + pending_base + next_cycle_base
 
+        # Usa el presupuesto completo del próximo ciclo como obligación, no solo los compromisos fijos.
+        # Incluye discretionary_limit para que el gate de supervivencia sea honesto:
+        # safe_to_deploy > 0 solo cuando el ingreso del próximo ciclo cubre TODO el plan (arriendo +
+        # deudas + alimentación + discrecional), no solo las obligaciones contractuales.
         next_cycle_obligations = plan[:recurring_obligations_total].to_i +
                                  plan[:debt_minimums_total].to_i +
+                                 plan[:discretionary_limit].to_i +
                                  credit_card_pending.to_i
 
         protected_buffer       = plan[:protected_buffer_amount].to_i

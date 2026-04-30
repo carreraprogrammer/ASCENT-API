@@ -248,9 +248,10 @@ module Api
             plan[:discretionary_limit].to_i
         end
 
-        safe_to_deploy = liquidity&.dig(:safe_to_deploy).to_i
-        active_debts   = debts.select { |d| d[:status] == "active" }
-        recommended_action = build_recommended_action(ctx, active_debts, safe_to_deploy)
+        safe_to_deploy        = liquidity&.dig(:safe_to_deploy).to_i
+        deployable_this_cycle = liquidity&.dig(:deployable_this_cycle).to_i
+        active_debts          = debts.select { |d| d[:status] == "active" }
+        recommended_action = build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_this_cycle)
 
         {
           phase:                    ctx[:phase],
@@ -261,11 +262,15 @@ module Api
         }
       end
 
-      def build_recommended_action(ctx, active_debts, safe_to_deploy)
+      def build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_this_cycle = 0)
         return nil if active_debts.empty?
 
         if safe_to_deploy <= 0
           return "Cubre tus obligaciones del próximo ciclo primero. No hay margen para mover dinero ahora."
+        end
+
+        if deployable_this_cycle <= 0
+          return "El próximo ciclo está cubierto. En cuanto llegue el ingreso pendiente, tendrás margen para abonar a tus deudas."
         end
 
         case ctx[:phase]
@@ -275,9 +280,9 @@ module Api
             active_debts.max_by { |d| d[:interest_rate] }
           return nil unless target
 
-          abono  = [safe_to_deploy, target[:current_balance]].min
+          abono  = [deployable_this_cycle, target[:current_balance]].min
           months = abono > 0 ? (target[:current_balance].to_f / abono).ceil : "?"
-          "Tienes #{format_cop(safe_to_deploy)} disponibles para mover. Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
+          "Si el ingreso pendiente llega esta semana, podés destinar #{format_cop(deployable_this_cycle)} a deuda. Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
         else
           nil
         end
