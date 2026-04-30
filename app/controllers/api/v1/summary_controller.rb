@@ -52,6 +52,7 @@ module Api
         render json: {
           period:               { month: month, year: year },
           balance:              balance,
+          month_execution:      build_month_execution(account_id, month, year, income_sources),
           burn_rate:            build_burn_rate(account_id, month, year, budgets, now_col),
           debts:                build_debts_summary(debts),
           monthly_plan:         build_monthly_plan_summary(plan),
@@ -64,6 +65,192 @@ module Api
       end
 
       private
+
+      # ── Month execution ──────────────────────────────────────────────────────
+
+      def build_month_execution(account_id, month, year, income_sources)
+        period = Date.new(year, month, 1)
+
+        {
+          income: build_income_execution(account_id, period, income_sources),
+          recurring_obligations: build_recurring_obligation_execution(account_id, period)
+        }
+      end
+
+      def build_income_execution(account_id, period, income_sources)
+        sources = Array(income_sources)
+        realized_by_source = realized_income_by_source_for_period(account_id, period)
+        confirmed_income_total = ::Transaction
+          .where(
+            account_id: account_id,
+            month: period.month,
+            year: period.year,
+            transaction_type: "income",
+            status: "confirmed"
+          )
+          .sum(:amount)
+
+        expected_total = sources.sum { |source| source[:expected_amount].to_i }
+        source_rows = sources.map do |source|
+          expected = source[:expected_amount].to_i
+          realized = realized_by_source.fetch(source[:id], 0).to_i
+          delivered = expected.positive? ? [ realized, expected ].min : realized
+          remaining = [ expected - delivered, 0 ].max
+
+          {
+            id: source[:id],
+            name: source[:name],
+            classification: source[:classification],
+            expected_amount: expected,
+            delivered_amount: delivered,
+            remaining_amount: remaining,
+            pct: pct(delivered, expected),
+            status: execution_status(delivered, expected),
+            expected_day_from: source[:expected_day_from],
+            expected_day_to: source[:expected_day_to]
+          }
+        end
+
+        delivered_expected_total = source_rows.sum { |row| row[:delivered_amount] }
+        unlinked_confirmed_total = [
+          confirmed_income_total - realized_by_source.values.sum(&:to_i),
+          0
+        ].max
+
+        {
+          expected_total: expected_total,
+          delivered_expected_total: delivered_expected_total,
+          remaining_expected_total: [ expected_total - delivered_expected_total, 0 ].max,
+          pct: pct(delivered_expected_total, expected_total),
+          confirmed_income_total: confirmed_income_total,
+          unlinked_confirmed_total: unlinked_confirmed_total,
+          base: income_execution_bucket(source_rows, "base"),
+          variable: income_execution_bucket(source_rows, "variable"),
+          sources: source_rows
+        }
+      end
+
+      def build_recurring_obligation_execution(account_id, period)
+        obligations = ::RecurringObligation
+          .includes(:category, :subcategory)
+          .where(account_id: account_id, active: true)
+          .order(:due_day, :created_at)
+          .to_a
+        covered_by_obligation = realized_recurring_obligations_for_period(account_id, period)
+
+        rows = obligations.map do |obligation|
+          expected = obligation.amount.to_i
+          realized = covered_by_obligation.fetch(obligation.id, 0).to_i
+          covered = expected.positive? ? [ realized, expected ].min : realized
+          remaining = [ expected - covered, 0 ].max
+
+          {
+            id: obligation.id,
+            name: obligation.name,
+            expected_amount: expected,
+            covered_amount: covered,
+            remaining_amount: remaining,
+            pct: pct(covered, expected),
+            status: execution_status(covered, expected),
+            due_day: obligation.due_day,
+            category_id: obligation.category_id,
+            category_code: obligation.category&.code,
+            subcategory_id: obligation.subcategory_id,
+            subcategory_code: obligation.subcategory&.code,
+            source_type: obligation.source_type,
+            source_id: obligation.source_id
+          }
+        end
+
+        expected_total = rows.sum { |row| row[:expected_amount] }
+        covered_total = rows.sum { |row| row[:covered_amount] }
+
+        {
+          expected_total: expected_total,
+          covered_total: covered_total,
+          remaining_total: [ expected_total - covered_total, 0 ].max,
+          pct: pct(covered_total, expected_total),
+          covered_count: rows.count { |row| row[:status] == "covered" },
+          total_count: rows.size,
+          items: rows
+        }
+      end
+
+      def realized_income_by_source_for_period(account_id, period)
+        ::Transaction
+          .where(
+            account_id: account_id,
+            transaction_type: "income",
+            status: "confirmed"
+          )
+          .where.not(income_source_id: nil)
+          .select { |transaction| transaction_applies_to_period?(transaction, period) }
+          .each_with_object(Hash.new(0)) do |transaction, hash|
+            hash[transaction.income_source_id] += transaction.amount.to_i
+          end
+      end
+
+      def realized_recurring_obligations_for_period(account_id, period)
+        ::Transaction
+          .where(
+            account_id: account_id,
+            transaction_type: "expense",
+            status: "confirmed"
+          )
+          .where.not(recurring_obligation_id: nil)
+          .select { |transaction| transaction_applies_to_period?(transaction, period) }
+          .each_with_object(Hash.new(0)) do |transaction, hash|
+            hash[transaction.recurring_obligation_id] += transaction.amount.to_i
+          end
+      end
+
+      def transaction_applies_to_period?(transaction, period)
+        data = (transaction.metadata || {}).to_h.stringify_keys
+        explicit_period = data["applies_to_period"].presence
+        return explicit_period == period.strftime("%Y-%m") if explicit_period
+
+        explicit_month = data["applies_to_month"].presence
+        explicit_year = data["applies_to_year"].presence
+        if explicit_month && explicit_year
+          return explicit_month.to_i == period.month && explicit_year.to_i == period.year
+        end
+
+        transaction.month.to_i == period.month && transaction.year.to_i == period.year
+      end
+
+      def income_execution_bucket(rows, classification)
+        filtered = rows.select do |row|
+          classification == "variable" ? variable_income_row?(row) : row[:classification] == classification
+        end
+        expected = filtered.sum { |row| row[:expected_amount] }
+        delivered = filtered.sum { |row| row[:delivered_amount] }
+
+        {
+          expected_total: expected,
+          delivered_total: delivered,
+          remaining_total: [ expected - delivered, 0 ].max,
+          pct: pct(delivered, expected)
+        }
+      end
+
+      def variable_income_row?(row)
+        row[:classification] != "base"
+      end
+
+      def execution_status(realized, expected)
+        return "unplanned" if expected.to_i <= 0 && realized.to_i.positive?
+        return "covered" if expected.to_i.positive? && realized.to_i >= expected.to_i
+        return "partial" if realized.to_i.positive?
+
+        "pending"
+      end
+
+      def pct(realized, expected)
+        expected = expected.to_i
+        return 0 if expected <= 0
+
+        ((realized.to_i.to_f / expected) * 100).round
+      end
 
       # ── Burn rate ────────────────────────────────────────────────────────────
 
