@@ -42,22 +42,19 @@ module Api
                        monthly_contribution_needed: g.monthly_contribution_needed,
                        target_date: g.target_date, status: g.status } }
 
+        overflow = build_overflow_status(
+                     plan, balance, ctx, debts, liquidity,
+                     income_sources, realized_income_by_source
+                   )
+
         render json: {
           period:               { month: month, year: year },
           balance:              balance,
           burn_rate:            build_burn_rate(account_id, month, year, budgets, now_col),
           debts:                build_debts_summary(debts),
           monthly_plan:         build_monthly_plan_summary(plan),
-          overflow_status:      build_overflow_status(
-                                  plan,
-                                  balance,
-                                  ctx,
-                                  debts,
-                                  liquidity,
-                                  income_sources,
-                                  realized_income_by_source
-                                ),
-          financial_context:    build_context_summary(ctx, plan, debts, liquidity),
+          overflow_status:      overflow,
+          financial_context:    build_context_summary(ctx, plan, debts, liquidity, overflow&.dig(:deployable_overflow).to_i),
           liquidity:            liquidity,
           credit_card_pending:  credit_card_pending,
           savings_goals:        savings_goals
@@ -239,7 +236,7 @@ module Api
         "available"
       end
 
-      def build_context_summary(ctx, plan, debts, liquidity = nil)
+      def build_context_summary(ctx, plan, debts, liquidity = nil, deployable_overflow = 0)
         return nil unless ctx
 
         # monthly_surplus_estimate se mantiene para referencia histórica (calculado desde el plan).
@@ -252,10 +249,9 @@ module Api
             plan[:discretionary_limit].to_i
         end
 
-        safe_to_deploy        = liquidity&.dig(:safe_to_deploy).to_i
-        deployable_this_cycle = liquidity&.dig(:deployable_this_cycle).to_i
-        active_debts          = debts.select { |d| d[:status] == "active" }
-        recommended_action = build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_this_cycle)
+        safe_to_deploy    = liquidity&.dig(:safe_to_deploy).to_i
+        active_debts      = debts.select { |d| d[:status] == "active" }
+        recommended_action = build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_overflow)
 
         {
           phase:                    ctx[:phase],
@@ -266,15 +262,17 @@ module Api
         }
       end
 
-      def build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_this_cycle = 0)
+      def build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_overflow = 0)
         return nil if active_debts.empty?
 
         if safe_to_deploy <= 0
           return "Cubre tus obligaciones del próximo ciclo primero. No hay margen para mover dinero ahora."
         end
 
-        if deployable_this_cycle <= 0
-          return "El próximo ciclo está cubierto. En cuanto llegue el ingreso pendiente, tendrás margen para abonar a tus deudas."
+        # deployable_overflow > 0 solo cuando el ingreso extra ya llegó y está en cuenta.
+        # Si es 0, el próximo ciclo está cubierto pero el excedente aún no se materializó.
+        if deployable_overflow <= 0
+          return "El próximo ciclo está cubierto. Cuando llegue el ingreso variable, vas a tener margen para hacer un abono extra."
         end
 
         case ctx[:phase]
@@ -284,9 +282,9 @@ module Api
             active_debts.max_by { |d| d[:interest_rate] }
           return nil unless target
 
-          abono  = [deployable_this_cycle, target[:current_balance]].min
+          abono  = [deployable_overflow, target[:current_balance]].min
           months = abono > 0 ? (target[:current_balance].to_f / abono).ceil : "?"
-          "Si el ingreso pendiente llega esta semana, podés destinar #{format_cop(deployable_this_cycle)} a deuda. Abona #{format_cop(abono)} al #{target[:name]} — lo liquidas en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
+          "Tenés #{format_cop(deployable_overflow)} disponibles para abonar. Abona #{format_cop(abono)} al #{target[:name]} — lo liquidás en #{months} #{"mes".pluralize(months)} (#{ctx[:strategy]})."
         else
           nil
         end
