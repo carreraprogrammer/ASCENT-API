@@ -194,8 +194,12 @@ module Api
           confirmed_income - base_budget_income - realized_expected_variable_income,
           0
         ].max
-        safe_to_deploy = liquidity&.dig(:safe_to_deploy).to_i
-        deployable_overflow = [realized_overflow, safe_to_deploy].min
+        safe_to_deploy   = liquidity&.dig(:safe_to_deploy).to_i
+        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
+        # Capa el deployable por el balance real: no podés mover plata que ya se gastó.
+        # realized_overflow mide income histórico sobre el plan; si esos ingresos ya
+        # fueron consumidos por gastos, el overflow contable no está disponible en caja.
+        deployable_overflow = [realized_overflow, safe_to_deploy, [confirmed_balance, 0].max].min
         blocked_by_liquidity = realized_overflow.positive? && deployable_overflow <= 0
         target = overflow_target_for(plan, ctx, debts)
         remaining_expected_overflow = [
