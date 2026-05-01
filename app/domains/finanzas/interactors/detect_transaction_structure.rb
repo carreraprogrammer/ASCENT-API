@@ -4,10 +4,11 @@ module Finanzas
     #
     # Given a transaction being created/updated, tries to match it against:
     #   - recurring_obligations  (debt or regular recurring)
+    #   - sinking_funds          (monthly contributions to pockets)
     #   - planned_expenses       (mandatory_one_off / irregular_maintenance)
     #
     # Returns a hash:
-    #   { match_type: "debt|recurring|planned_expense|none",
+    #   { match_type: "debt|recurring|sinking_fund|planned_expense|none",
     #     match_id:   Integer | nil,
     #     entity_name: String | nil,
     #     confidence: "high|medium|low|none" }
@@ -16,6 +17,7 @@ module Finanzas
     # as suggestions for the user or agent to resolve.
     class DetectTransactionStructure
       RECURRING_AMOUNT_TOLERANCE = 0.05   # ±5 % of obligation amount
+      SINKING_AMOUNT_TOLERANCE   = 0.20   # ±20 % of monthly contribution
       PLANNED_AMOUNT_TOLERANCE   = 0.20   # ±20 % of planned expense
       DUE_DAY_WINDOW             = 5      # ± calendar days from due_day
       PLANNED_HORIZON_DAYS       = 90     # look-ahead window for target_date
@@ -29,10 +31,13 @@ module Finanzas
         recurring = match_recurring(account_id, concept, amount, subcategory_id, day)
         return recurring if recurring[:confidence] == "high"
 
+        sinking = match_sinking_fund(account_id, concept, amount)
+        return sinking if sinking[:confidence] == "high"
+
         planned = match_planned(account_id, concept, amount)
         return planned if planned[:confidence] == "high"
 
-        best_medium = [ recurring, planned ].max_by { |m| confidence_rank(m[:confidence]) }
+        best_medium = [ recurring, sinking, planned ].max_by { |m| confidence_rank(m[:confidence]) }
         best_medium[:confidence] == "none" ? no_match : best_medium
       end
 
@@ -61,6 +66,42 @@ module Finanzas
             match_type: type,
             match_id: ob.id,
             entity_name: ob.name,
+            confidence: confidence,
+            score: score
+          }
+        end
+
+        best = matches.max_by { |match| [ confidence_rank(match[:confidence]), match[:score] ] }
+        return no_match unless best
+
+        tied_best = matches.count do |match|
+          match[:confidence] == best[:confidence] && match[:score] == best[:score]
+        end
+        return no_match if tied_best > 1 && best[:confidence] != "high"
+
+        best.except(:score)
+      end
+
+      # ── Sinking funds ────────────────────────────────────────────────────
+
+      def match_sinking_fund(account_id, concept, amount)
+        matches = []
+
+        ::SinkingFund.where(account_id: account_id, active: true).find_each do |fund|
+          concept_match = concept_overlap?(concept, fund.name)
+          amount_match = fund.monthly_contribution.to_i.positive? &&
+                         within_pct?(fund.monthly_contribution, amount, SINKING_AMOUNT_TOLERANCE)
+          next unless concept_match || amount_match
+
+          score = 0
+          score += 30 if concept_match
+          score += 20 if amount_match
+          confidence = concept_match && amount_match ? "high" : "medium"
+
+          matches << {
+            match_type: "sinking_fund",
+            match_id: fund.id,
+            entity_name: fund.name,
             confidence: confidence,
             score: score
           }

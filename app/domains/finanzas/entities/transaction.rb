@@ -7,6 +7,7 @@ module Finanzas
 	                  :clarification_resolved_at, :metadata, :source_event_id,
 	                  :year, :month, :payment_source, :credit_card_status,
 	                  :debt_id, :recurring_obligation_id, :income_source_id,
+                    :sinking_fund_id,
 	                  :created_at, :updated_at
       attr_accessor :structural_match
 
@@ -33,6 +34,7 @@ module Finanzas
 	        @debt_id                     = attrs[:debt_id]
 	        @recurring_obligation_id     = attrs[:recurring_obligation_id]
 	        @income_source_id            = attrs[:income_source_id]
+          @sinking_fund_id              = attrs[:sinking_fund_id]
 	        @created_at                  = attrs[:created_at]
         @updated_at                  = attrs[:updated_at]
       end

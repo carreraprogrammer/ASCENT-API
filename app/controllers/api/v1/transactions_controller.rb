@@ -177,7 +177,7 @@ module Api
 	          :date, :concept, :product, :amount, :transaction_type,
 	          :category_id, :subcategory_id, :category_code, :subcategory_code,
 	          :source, :status, :payment_source, :credit_card_status,
-	          :debt_id, :recurring_obligation_id, :income_source_id, metadata: {}
+	          :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
@@ -188,7 +188,7 @@ module Api
 	            :date, :concept, :product, :amount, :transaction_type,
 	            :category_id, :subcategory_id, :category_code, :subcategory_code,
 	            :source, :status, :payment_source, :credit_card_status,
-	            :debt_id, :recurring_obligation_id, :income_source_id, metadata: {}
+	            :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, metadata: {}
           ).to_h.symbolize_keys
           category_repo.resolve_codes(p, account_id: current_account.id)
         end
@@ -199,7 +199,7 @@ module Api
 	          :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
 	          :concept, :product, :amount, :date, :source, :clarification_resolved_at,
 	          :payment_source, :credit_card_status, :debt_id, :recurring_obligation_id,
-	          :income_source_id, metadata: {}
+	          :income_source_id, :sinking_fund_id, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
