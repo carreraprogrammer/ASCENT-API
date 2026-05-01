@@ -49,6 +49,9 @@ module Finanzas
         # Existing confirmed budget for this month — highest priority when editing
         confirmed_by_subcategory = fetch_confirmed_budget_by_subcategory(account_id, month, year)
 
+        # Previous month's confirmed budget — carry-forward suggestion
+        prev_month_budget_by_subcategory = fetch_prev_month_budget_by_subcategory(account_id, month, year)
+
         income_section           = build_income_section(income_sources, suggested_total)
         category_rows            = build_category_rows(
           all_categories,
@@ -57,7 +60,8 @@ module Finanzas
           planned_by_subcategory,
           avg_by_subcategory,
           suggested_total,
-          confirmed_by_subcategory
+          confirmed_by_subcategory,
+          prev_month_budget_by_subcategory
         )
         suggested_sinking_funds  = build_suggested_sinking_funds(account_id)
 
@@ -94,7 +98,8 @@ module Finanzas
         planned_by_subcategory,
         avg_by_subcategory,
         income,
-        confirmed_by_subcategory = {}
+        confirmed_by_subcategory = {},
+        prev_month_budget_by_subcategory = {}
       )
         rows = []
 
@@ -113,7 +118,8 @@ module Finanzas
             avg_by_subcategory,
             income,
             pct,
-            confirmed_by_subcategory
+            confirmed_by_subcategory,
+            prev_month_budget_by_subcategory
           )
 
           suggested_total = sub_rows.sum { |s| s[:suggested_amount] }
@@ -139,7 +145,8 @@ module Finanzas
         avg_by_subcategory,
         income,
         benchmark_pct,
-        confirmed_by_subcategory = {}
+        confirmed_by_subcategory = {},
+        prev_month_budget_by_subcategory = {}
       )
         subcategories = category.subcategories
         return [] if subcategories.empty?
@@ -185,6 +192,16 @@ module Finanzas
               locked: false,
               source_of_truth: "planned_expenses",
               edit_hint: "Se calcula desde gastos planeados obligatorios."
+            )
+          elsif prev_month_budget_by_subcategory.key?(sub.id)
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: prev_month_budget_by_subcategory[sub.id],
+              confidence: "medium",
+              source: "prev_plan",
+              locked: false,
+              source_of_truth: "budgets",
+              edit_hint: "Monto del plan del mes anterior. Ajusta si cambió algo."
             )
           elsif avg_by_subcategory.key?(sub.id)
             rows << build_subcategory_row(
@@ -325,6 +342,16 @@ module Finanzas
       def fetch_confirmed_budget_by_subcategory(account_id, month, year)
         ::Budget
           .where(account_id: account_id, month: month, year: year)
+          .where.not(subcategory_id: nil)
+          .pluck(:subcategory_id, :amount_limit)
+          .to_h
+      end
+
+      # Returns { subcategory_id => amount_limit } from the immediately preceding month's budget.
+      def fetch_prev_month_budget_by_subcategory(account_id, month, year)
+        prev = Date.new(year, month, 1).prev_month
+        ::Budget
+          .where(account_id: account_id, month: prev.month, year: prev.year)
           .where.not(subcategory_id: nil)
           .pluck(:subcategory_id, :amount_limit)
           .to_h
