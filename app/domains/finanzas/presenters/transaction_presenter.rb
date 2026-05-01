@@ -34,6 +34,7 @@ module Finanzas
 	            debt_id: transaction.debt_id,
 	            recurring_obligation_id: transaction.recurring_obligation_id,
 	            income_source_id: transaction.income_source_id,
+              sinking_fund_id: transaction.sinking_fund_id,
 	            structural_match: transaction.structural_match,
             created_at: transaction.created_at,
             updated_at: transaction.updated_at
@@ -53,7 +54,10 @@ module Finanzas
 	            },
 	            income_source: {
 	              data: transaction.income_source_id ? { id: transaction.income_source_id.to_s, type: "income_sources" } : nil
-	            }
+	            },
+              sinking_fund: {
+                data: transaction.sinking_fund_id ? { id: transaction.sinking_fund_id.to_s, type: "sinking_funds" } : nil
+              }
 	          }
         }
       end

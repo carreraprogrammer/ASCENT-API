@@ -92,7 +92,11 @@ module Finanzas
       end
 
       def create(attrs)
-        record = ::Transaction.create!(attrs)
+        record = nil
+        ::Transaction.transaction do
+          record = ::Transaction.create!(attrs)
+          apply_sinking_fund_delta!(nil, record)
+        end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
@@ -104,7 +108,11 @@ module Finanzas
         record = scope.first
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
-        record.update!(attrs)
+        before = sinking_fund_balance_snapshot(record)
+        ::Transaction.transaction do
+          record.update!(attrs)
+          apply_sinking_fund_delta!(before, record)
+        end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
@@ -116,7 +124,11 @@ module Finanzas
         record = scope.first
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
-        record.destroy!
+        before = sinking_fund_balance_snapshot(record)
+        ::Transaction.transaction do
+          record.destroy!
+          apply_sinking_fund_delta!(before, nil)
+        end
       end
 
       private
@@ -175,9 +187,43 @@ module Finanzas
 	          debt_id: record.debt_id,
 	          recurring_obligation_id: record.recurring_obligation_id,
 	          income_source_id: record.income_source_id,
+            sinking_fund_id: record.sinking_fund_id,
 	          created_at: record.created_at,
           updated_at: record.updated_at
         )
+      end
+
+      def sinking_fund_balance_snapshot(record)
+        {
+          sinking_fund_id: record.sinking_fund_id,
+          amount: record.amount.to_i,
+          transaction_type: record.transaction_type,
+          status: record.status
+        }
+      end
+
+      def apply_sinking_fund_delta!(before, after)
+        subtract = sinking_fund_effect(before)
+        add = sinking_fund_effect(sinking_fund_balance_snapshot(after)) if after
+
+        adjust_sinking_fund!(subtract[:sinking_fund_id], -subtract[:amount]) if subtract
+        adjust_sinking_fund!(add[:sinking_fund_id], add[:amount]) if add
+      end
+
+      def sinking_fund_effect(snapshot)
+        return nil if snapshot.blank?
+        return nil unless snapshot[:sinking_fund_id].present?
+        return nil unless snapshot[:transaction_type] == "expense"
+        return nil unless snapshot[:status] == "confirmed"
+
+        { sinking_fund_id: snapshot[:sinking_fund_id], amount: snapshot[:amount].to_i }
+      end
+
+      def adjust_sinking_fund!(sinking_fund_id, amount_delta)
+        return if amount_delta.zero?
+
+        fund = ::SinkingFund.lock.find(sinking_fund_id)
+        fund.update!(current_balance: fund.current_balance.to_i + amount_delta)
       end
 
       def normalize_page(page)

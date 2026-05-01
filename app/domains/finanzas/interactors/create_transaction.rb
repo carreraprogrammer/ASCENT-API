@@ -22,7 +22,7 @@ module Finanzas
 	               source: "manual", status: "confirmed", metadata: {},
 	               payment_source: nil, credit_card_status: nil,
 	               debt_id: nil, recurring_obligation_id: nil,
-	               income_source_id: nil)
+	               income_source_id: nil, sinking_fund_id: nil)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -59,6 +59,12 @@ module Finanzas
           concept: concept,
           amount: amount.to_i
         )
+        resolved_sinking_fund_id = resolve_sinking_fund_id(
+          account_id: account_id,
+          transaction_type: transaction_type,
+          sinking_fund_id: sinking_fund_id,
+          structural_match: structural_match
+        )
 
         # Auto-set credit_card_status to pending when payment_source is credit_card
         resolved_cc_status = if payment_source == "credit_card"
@@ -87,7 +93,8 @@ module Finanzas
 	          credit_card_status: resolved_cc_status,
 	          debt_id: debt_id,
 	          recurring_obligation_id: resolved_recurring_obligation_id,
-	          income_source_id: resolved_income_source_id
+	          income_source_id: resolved_income_source_id,
+            sinking_fund_id: resolved_sinking_fund_id
 	        )
 
         if transaction_type == "expense" && status == "confirmed"
@@ -136,6 +143,22 @@ module Finanzas
       rescue => e
         Rails.logger.warn("[CreateTransaction] income source matching failed: #{e.message}")
         nil
+      end
+
+      def resolve_sinking_fund_id(account_id:, transaction_type:, sinking_fund_id:, structural_match:)
+        return nil unless transaction_type == "expense"
+
+        if sinking_fund_id.present?
+          fund = ::SinkingFund.active.where(account_id: account_id).find_by(id: sinking_fund_id)
+          raise Finanzas::Errors::InvalidTransaction, "Sinking fund #{sinking_fund_id} not found" unless fund
+
+          return fund.id
+        end
+
+        return nil unless structural_match&.dig(:match_type) == "sinking_fund"
+        return nil unless structural_match[:confidence] == "high"
+
+        structural_match[:match_id]
       end
 
       def detect_structure(account_id, concept, amount, subcategory_id, date)

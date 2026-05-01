@@ -12,7 +12,8 @@ module Finanzas
           permitted = attrs.slice(:status, :category_id, :subcategory_id, :concept,
                                   :product, :amount, :date, :source, :metadata,
                                   :clarification_resolved_at, :payment_source, :credit_card_status,
-                                  :debt_id, :recurring_obligation_id, :income_source_id)
+                                  :debt_id, :recurring_obligation_id, :income_source_id,
+                                  :sinking_fund_id)
 
         Rails.logger.info(
           "[UpdateTransaction] id=#{id.inspect} account_id=#{account_id.inspect} " \
@@ -31,6 +32,11 @@ module Finanzas
         if permitted[:recurring_obligation_id].present?
           obligation = ::RecurringObligation.active.where(account_id: account_id).find_by(id: permitted[:recurring_obligation_id])
           raise Finanzas::Errors::InvalidTransaction, "Recurring obligation #{permitted[:recurring_obligation_id]} not found" unless obligation
+        end
+
+        if permitted[:sinking_fund_id].present?
+          fund = ::SinkingFund.active.where(account_id: account_id).find_by(id: permitted[:sinking_fund_id])
+          raise Finanzas::Errors::InvalidTransaction, "Sinking fund #{permitted[:sinking_fund_id]} not found" unless fund
         end
 
         @repo.update(id, permitted, account_id: account_id)

@@ -8,6 +8,7 @@ class Transaction < ApplicationRecord
   belongs_to :debt, optional: true
   belongs_to :recurring_obligation, optional: true
   belongs_to :income_source, optional: true
+  belongs_to :sinking_fund, optional: true
 
   TYPES = %w[expense income].freeze
   SOURCES = %w[telegram gmail manual].freeze

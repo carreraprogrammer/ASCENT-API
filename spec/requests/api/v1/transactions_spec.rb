@@ -141,6 +141,55 @@ RSpec.describe "Transactions API" do
       expect(json.dig("data", "relationships", "recurring_obligation", "data", "id")).to eq(obligation.id.to_s)
     end
 
+    it "links pocket contributions to a sinking fund and increases its balance" do
+      fund = create(:sinking_fund, user: user, account: user.default_account, current_balance: 20_000)
+
+      post "/api/v1/transactions",
+           params: {
+             date: "29/04/2026",
+             concept: "Apartado para SOAT",
+             amount: 90_000,
+             transaction_type: "expense",
+             status: "confirmed",
+             payment_source: "debit",
+             sinking_fund_id: fund.id
+           },
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json.dig("data", "attributes", "sinking_fund_id")).to eq(fund.id)
+      expect(json.dig("data", "relationships", "sinking_fund", "data", "id")).to eq(fund.id.to_s)
+      expect(fund.reload.current_balance).to eq(110_000)
+    end
+
+    it "auto-links matching pocket contributions to a sinking fund" do
+      fund = create(
+        :sinking_fund,
+        user: user,
+        account: user.default_account,
+        name: "SOAT moto",
+        monthly_contribution: 90_000,
+        current_balance: 0
+      )
+
+      post "/api/v1/transactions",
+           params: {
+             date: "29/04/2026",
+             concept: "Guardé para el SOAT",
+             amount: 90_000,
+             transaction_type: "expense",
+             status: "confirmed",
+             payment_source: "debit"
+           },
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json.dig("data", "attributes", "sinking_fund_id")).to eq(fund.id)
+      expect(fund.reload.current_balance).to eq(90_000)
+    end
+
     it "returns 422 when amount is negative" do
       post "/api/v1/transactions", params: valid_params.merge(amount: -100), headers: headers
       expect(response).to have_http_status(:unprocessable_entity)
@@ -205,6 +254,30 @@ RSpec.describe "Transactions API" do
         expect(json.dig("data", "relationships", "income_source", "data", "id")).to eq(source.id.to_s)
       end
 
+      it "updates sinking fund links and moves balance deltas" do
+        first_fund = create(:sinking_fund, user: user, account: user.default_account, current_balance: 100_000)
+        second_fund = create(:sinking_fund, user: user, account: user.default_account, name: "Viaje", current_balance: 20_000)
+        linked = create(
+          :transaction,
+          user: user,
+          account: user.default_account,
+          amount: 40_000,
+          status: "confirmed",
+          transaction_type: "expense",
+          sinking_fund: first_fund
+        )
+
+        patch "/api/v1/transactions/#{linked.id}",
+              params: { amount: 60_000, sinking_fund_id: second_fund.id },
+              headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(first_fund.reload.current_balance).to eq(60_000)
+        expect(second_fund.reload.current_balance).to eq(80_000)
+        json = JSON.parse(response.body)
+        expect(json.dig("data", "relationships", "sinking_fund", "data", "id")).to eq(second_fund.id.to_s)
+      end
+
     it "returns 404 for unknown id" do
       patch "/api/v1/transactions/999999", params: { status: "confirmed" }, headers: headers
       expect(response).to have_http_status(:not_found)
@@ -216,6 +289,24 @@ RSpec.describe "Transactions API" do
       transaction = create(:transaction, user: user)
       delete "/api/v1/transactions/#{transaction.id}", headers: headers
       expect(response).to have_http_status(:no_content)
+    end
+
+    it "reverses a linked sinking fund contribution" do
+      fund = create(:sinking_fund, user: user, account: user.default_account, current_balance: 100_000)
+      transaction = create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        amount: 35_000,
+        status: "confirmed",
+        transaction_type: "expense",
+        sinking_fund: fund
+      )
+
+      delete "/api/v1/transactions/#{transaction.id}", headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      expect(fund.reload.current_balance).to eq(65_000)
     end
 
     it "returns 404 for unknown id" do
