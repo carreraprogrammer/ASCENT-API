@@ -13,6 +13,7 @@ class PlannedExpense < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :category
   belongs_to :subcategory
+  has_one :sinking_fund, dependent: :nullify
 
   validates :name, presence: true
   validates :amount_estimated, numericality: { greater_than: 0 }
