@@ -26,14 +26,16 @@ module Api
                                  .where(account_id: account_id, payment_source: "credit_card",
                                         credit_card_status: "pending")
                                  .sum(:amount)
+        carryover_from_previous_month = previous_month_carryover(account_id, month, year)
         liquidity            = Finanzas::Interactors::LiquidityProjection.new.call(
-                                 plan:                plan,
-                                 balance:             balance,
-                                 income_sources:      income_sources,
-                                 realized_income_by_source: realized_income_by_source,
-                                 credit_card_pending: credit_card_pending,
+                                 plan:                         plan,
+                                 balance:                      balance,
+                                 income_sources:               income_sources,
+                                 realized_income_by_source:    realized_income_by_source,
+                                 credit_card_pending:          credit_card_pending,
                                  prepaid_recurring_obligations: prepaid_recurring_obligations,
-                                 today:               now_col.to_date
+                                 carryover_from_previous_month: carryover_from_previous_month,
+                                 today:                        now_col.to_date
                                )
 
         savings_goals = ::SavingsGoal
@@ -46,7 +48,8 @@ module Api
 
         overflow = build_overflow_status(
                      plan, balance, ctx, debts, liquidity,
-                     income_sources, realized_income_by_source
+                     income_sources, realized_income_by_source,
+                     carryover_from_previous_month
                    )
 
         render json: {
@@ -409,7 +412,8 @@ module Api
         debts,
         liquidity = nil,
         income_sources = [],
-        realized_income_by_source = {}
+        realized_income_by_source = {},
+        carryover_from_previous_month = 0
       )
         return nil unless plan
 
@@ -426,7 +430,8 @@ module Api
           0
         ].max
         safe_to_deploy    = liquidity&.dig(:safe_to_deploy).to_i
-        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
+        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i +
+                            carryover_from_previous_month.to_i
         protected_buffer  = plan[:protected_buffer_amount].to_i
         # El deployable está limitado por lo que queda del balance DESPUÉS de reservar el buffer.
         # Si el balance actual no supera el buffer, no hay nada desplegable hoy — el buffer
@@ -674,6 +679,17 @@ module Api
 
       def income_source_repo
         @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
+      end
+
+      # Retorna el overflow_amount del último plan cerrado estrictamente anterior al período consultado.
+      # Representa dinero real que quedó disponible en el banco al cerrar ese mes.
+      def previous_month_carryover(account_id, month, year)
+        previous_plan = plan_repo.last_closed(account_id: account_id, limit: 1).first
+        return 0 unless previous_plan
+        return 0 unless previous_plan[:year] < year ||
+                        (previous_plan[:year] == year && previous_plan[:month] < month)
+
+        previous_plan.dig(:execution_snapshot, "overflow_amount").to_i
       end
     end
   end

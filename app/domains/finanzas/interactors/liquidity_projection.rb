@@ -16,14 +16,15 @@ module Finanzas
     # No hace queries — opera sobre los hashes que el SummaryController ya cargó.
     # Todos los valores son enteros en COP.
     class LiquidityProjection
-      # @param plan                      [Hash, nil]    plan mensual vigente (puede ser nil)
-      # @param balance                   [Hash]         {income_confirmed:, expense_confirmed:, ...}
-      # @param income_sources            [Array<Hash>]  fuentes de ingreso activas de la cuenta
-      # @param realized_income_by_source [Hash]         ingresos confirmados agrupados por income_source_id
-      # @param credit_card_pending       [Integer]      total de compras TC sin pagar al banco
-      # @param prepaid_recurring_obligations [Integer]  recurrentes del próximo ciclo ya pagados
-      # @param today                     [Date, nil]    fecha actual (por defecto Date.today)
-      # @return                          [Hash, nil]    proyección, o nil si no hay plan
+      # @param plan                          [Hash, nil]    plan mensual vigente (puede ser nil)
+      # @param balance                       [Hash]         {income_confirmed:, expense_confirmed:, ...}
+      # @param income_sources                [Array<Hash>]  fuentes de ingreso activas de la cuenta
+      # @param realized_income_by_source     [Hash]         ingresos confirmados agrupados por income_source_id
+      # @param credit_card_pending           [Integer]      total de compras TC sin pagar al banco
+      # @param prepaid_recurring_obligations [Integer]      recurrentes del próximo ciclo ya pagados
+      # @param carryover_from_previous_month [Integer]      excedente del mes anterior (overflow_amount del plan cerrado)
+      # @param today                         [Date, nil]    fecha actual (por defecto Date.today)
+      # @return                              [Hash, nil]    proyección, o nil si no hay plan
       def call(
         plan:,
         balance:,
@@ -31,12 +32,14 @@ module Finanzas
         realized_income_by_source: {},
         credit_card_pending: 0,
         prepaid_recurring_obligations: 0,
+        carryover_from_previous_month: 0,
         today: nil
       )
         return nil unless plan
 
         today_day = (today || Date.today).day
-        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i
+        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i +
+                            carryover_from_previous_month.to_i
 
         pending_variable = pending_variable_income(income_sources, realized_income_by_source, today_day)
         pending_base     = pending_base_income(income_sources, realized_income_by_source, today_day)
@@ -74,21 +77,22 @@ module Finanzas
           end
 
         {
-          confirmed_balance:      confirmed_balance,
-          pending_income:         pending_income,
-          pending_variable:       pending_variable,
-          pending_base:           pending_base,
-          next_cycle_base:        next_cycle_base,
-          projected_eom_balance:  projected_eom_balance,
-          prepaid_recurring_obligations: prepaid_recurring_obligations.to_i,
-          recurring_obligations_due: recurring_obligations_due,
-          next_cycle_obligations: next_cycle_obligations,
-          credit_card_pending:    credit_card_pending.to_i,
-          protected_buffer:       protected_buffer,
-          free_after_obligations: free_after_obligations,
-          safe_to_deploy:         safe_to_deploy,
-          deployable_this_cycle:  deployable_this_cycle,
-          buffer_status:          classify_status(free_after_obligations, protected_buffer)
+          confirmed_balance:              confirmed_balance,
+          carryover_from_previous_month:  carryover_from_previous_month.to_i,
+          pending_income:                 pending_income,
+          pending_variable:               pending_variable,
+          pending_base:                   pending_base,
+          next_cycle_base:                next_cycle_base,
+          projected_eom_balance:          projected_eom_balance,
+          prepaid_recurring_obligations:  prepaid_recurring_obligations.to_i,
+          recurring_obligations_due:      recurring_obligations_due,
+          next_cycle_obligations:         next_cycle_obligations,
+          credit_card_pending:            credit_card_pending.to_i,
+          protected_buffer:               protected_buffer,
+          free_after_obligations:         free_after_obligations,
+          safe_to_deploy:                 safe_to_deploy,
+          deployable_this_cycle:          deployable_this_cycle,
+          buffer_status:                  classify_status(free_after_obligations, protected_buffer)
         }
       end
 
