@@ -71,8 +71,9 @@ RSpec.describe "Monthly Plans Wizard API" do
 
       context "with transaction history for the subcategory" do
         before do
-          # Three confirmed expense transactions in the last 3 months
+          # Three confirmed expense transactions in the last 3 months (ISO dates so PG parses correctly)
           3.times do |i|
+            ref = i.months.ago.to_date
             create(:transaction,
                    user: user,
                    account: account,
@@ -81,9 +82,9 @@ RSpec.describe "Monthly Plans Wizard API" do
                    amount: 100_000,
                    category: system_category,
                    subcategory: subcategory,
-                   date: i.months.ago.strftime("%d/%m"),
-                   month: i.months.ago.month,
-                   year: i.months.ago.year)
+                   date: ref.iso8601,
+                   month: ref.month,
+                   year: ref.year)
           end
         end
 
@@ -97,6 +98,33 @@ RSpec.describe "Monthly Plans Wizard API" do
           sub = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
           expect(sub).not_to be_nil
           expect(sub["confidence"]).to eq("medium")
+        end
+      end
+
+      context "with a confirmed budget from the previous month" do
+        before do
+          prev = Date.current.prev_month
+          create(:budget,
+                 user: user,
+                 account: account,
+                 category: system_category,
+                 subcategory: subcategory,
+                 amount_limit: 450_000,
+                 month: prev.month,
+                 year: prev.year)
+        end
+
+        it "carries forward the previous month budget with confidence 'medium' and source 'prev_plan'" do
+          get "/api/v1/monthly_plans/wizard_data", headers: headers
+
+          expect(response).to have_http_status(:ok)
+          data = JSON.parse(response.body)["data"]
+          cat  = data["categories"].find { |c| c["code"] == "discretionary" }
+          sub  = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
+
+          expect(sub["suggested_amount"]).to eq(450_000)
+          expect(sub["confidence"]).to eq("medium")
+          expect(sub["source"]).to eq("prev_plan")
         end
       end
 
