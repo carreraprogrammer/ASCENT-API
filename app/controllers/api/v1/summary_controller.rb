@@ -27,6 +27,10 @@ module Api
                                         credit_card_status: "pending")
                                  .sum(:amount)
         carryover_from_previous_month = previous_month_carryover(account_id, month, year)
+        balance = balance.merge(
+          carryover_from_previous_month: carryover_from_previous_month,
+          net_balance: balance[:balance_confirmed] + carryover_from_previous_month
+        )
         liquidity            = Finanzas::Interactors::LiquidityProjection.new.call(
                                  plan:                         plan,
                                  balance:                      balance,
@@ -681,15 +685,16 @@ module Api
         @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
       end
 
-      # Retorna el overflow_amount del último plan cerrado estrictamente anterior al período consultado.
-      # Representa dinero real que quedó disponible en el banco al cerrar ese mes.
+      # Saldo neto acumulado de todos los meses confirmados anteriores al período consultado.
+      # No depende de que el plan esté cerrado — usa las transacciones reales de la cuenta.
       def previous_month_carryover(account_id, month, year)
-        previous_plan = plan_repo.last_closed(account_id: account_id, limit: 1).first
-        return 0 unless previous_plan
-        return 0 unless previous_plan[:year] < year ||
-                        (previous_plan[:year] == year && previous_plan[:month] < month)
+        prior = ::Transaction
+          .where(account_id: account_id, status: "confirmed")
+          .where("(year < :year) OR (year = :year AND month < :month)", year: year, month: month)
 
-        previous_plan.dig(:execution_snapshot, "overflow_amount").to_i
+        income  = prior.where(transaction_type: "income").sum(:amount)
+        expense = prior.where(transaction_type: "expense").sum(:amount)
+        income - expense
       end
     end
   end
