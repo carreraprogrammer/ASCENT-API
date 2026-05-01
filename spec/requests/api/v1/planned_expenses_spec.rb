@@ -36,9 +36,14 @@ RSpec.describe "Planned Expenses API" do
              },
              headers: headers
       end.to change(PlannedExpense, :count).by(1)
+        .and change(SinkingFund, :count).by(1)
 
       expect(response).to have_http_status(:created)
-      expect(JSON.parse(response.body).dig("data", "planning_type")).to eq("mandatory_one_off")
+      data = JSON.parse(response.body)["data"]
+      expect(data["planning_type"]).to eq("mandatory_one_off")
+      expect(data.dig("sinking_fund", "name")).to eq("SOAT moto")
+      expect(data.dig("sinking_fund", "target_amount")).to eq(420_000)
+      expect(data.dig("sinking_fund", "planned_expense_id")).to eq(data["id"])
     end
 
     it "returns 422 for a subcategory from another category" do
@@ -59,6 +64,26 @@ RSpec.describe "Planned Expenses API" do
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
+
+    it "does not create a sinking fund for an already cancelled expense" do
+      expect do
+        post "/api/v1/planned_expenses",
+             params: {
+               name: "Compra descartada",
+               amount_estimated: 100_000,
+               target_date: (Date.current + 1.month).iso8601,
+               planning_type: "wish",
+               status: "cancelled",
+               category_id: category.id,
+               subcategory_id: subcategory.id
+             },
+             headers: headers
+      end.to change(PlannedExpense, :count).by(1)
+        .and change(SinkingFund, :count).by(0)
+
+      expect(response).to have_http_status(:created)
+      expect(JSON.parse(response.body).dig("data", "sinking_fund")).to be_nil
+    end
   end
 
   describe "PATCH /api/v1/planned_expenses/:id" do
@@ -73,6 +98,19 @@ RSpec.describe "Planned Expenses API" do
 
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body).dig("data", "status")).to eq("executed")
+    end
+
+    it "keeps the linked sinking fund aligned when editable fields change" do
+      fund = create(:sinking_fund, user: user, account: user.default_account, planned_expense: planned_expense)
+
+      patch "/api/v1/planned_expenses/#{planned_expense.id}",
+            params: { name: "SOAT actualizado", amount_estimated: 600_000 },
+            headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(fund.reload.name).to eq("SOAT actualizado")
+      expect(fund.target_amount).to eq(600_000)
+      expect(JSON.parse(response.body).dig("data", "sinking_fund", "target_amount")).to eq(600_000)
     end
   end
 end
