@@ -104,6 +104,8 @@ module Finanzas
         rows = []
 
         categories.each do |cat|
+          # Income categories don't belong in the expense budget wizard
+          next if cat.category_type == "income"
           # Skip the "unknown" category unless it has custom (user) subcategories
           next if cat.code == "unknown" && cat.subcategories.none? { |s| !s.system? }
 
