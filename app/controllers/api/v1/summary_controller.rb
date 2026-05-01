@@ -685,12 +685,19 @@ module Api
         @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
       end
 
-      # Saldo neto acumulado de todos los meses confirmados anteriores al período consultado.
-      # No depende de que el plan esté cerrado — usa las transacciones reales de la cuenta.
+      # Saldo neto del mes anterior al período consultado.
+      # Solo mira un mes atrás para evitar doble conteo con transacciones de ajuste de saldo inicial.
+      # Si el plan del mes anterior está cerrado, usa su overflow_amount (más preciso).
       def previous_month_carryover(account_id, month, year)
+        prev = Date.new(year, month, 1).prev_month
+
+        prev_plan = plan_repo.find_for_month(account_id: account_id, month: prev.month, year: prev.year)
+        if prev_plan && prev_plan[:closed_at]
+          return prev_plan.dig(:execution_snapshot, "overflow_amount").to_i
+        end
+
         prior = ::Transaction
-          .where(account_id: account_id, status: "confirmed")
-          .where("(year < :year) OR (year = :year AND month < :month)", year: year, month: month)
+          .where(account_id: account_id, status: "confirmed", month: prev.month, year: prev.year)
 
         income  = prior.where(transaction_type: "income").sum(:amount)
         expense = prior.where(transaction_type: "expense").sum(:amount)
