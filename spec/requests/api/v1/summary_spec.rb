@@ -331,5 +331,58 @@ RSpec.describe "Summary API" do
         plan.discretionary_limit
       )
     end
+
+    it "carries previous month net cash even when the previous plan overflow is zero" do
+      create(
+        :monthly_financial_plan,
+        user: user,
+        account: user.default_account,
+        month: 3,
+        year: 2026,
+        status: "confirmed",
+        confirmed_at: Time.current,
+        closed_at: Time.current,
+        execution_snapshot: {
+          "income_actual" => 5_000_000,
+          "expense_actual" => 3_000_000,
+          "overflow_amount" => 0
+        }
+      )
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 3, 5),
+        year: 2026,
+        month: 3,
+        amount: 5_000_000,
+        transaction_type: "income",
+        status: "confirmed",
+        source: "manual",
+        concept: "Ingreso marzo"
+      )
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 3, 25),
+        year: 2026,
+        month: 3,
+        amount: 3_000_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Gastos marzo"
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+
+      expect(data["balance"]["carryover_from_previous_month"]).to eq(2_000_000)
+      expect(data["balance"]["net_balance"]).to eq(11_300_000)
+      expect(data["liquidity"]["confirmed_balance"]).to eq(11_300_000)
+    end
   end
 end
