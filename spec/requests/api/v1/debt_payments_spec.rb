@@ -10,7 +10,7 @@ RSpec.describe "Debt payments API" do
       :debt,
       user: user,
       account: user.default_account,
-      name: "TC LifeMiles #7248",
+      name: "TC Ejemplo #1234",
       current_balance: 1_000_000,
       monthly_payment: 230_000
     )
@@ -22,7 +22,7 @@ RSpec.describe "Debt payments API" do
       account: user.default_account,
       category: category,
       subcategory: subcategory,
-      name: "TC LifeMiles — pago mínimo",
+      name: "TC ejemplo — pago mínimo",
       amount: 230_000,
       source_type: "Debt",
       source_id: debt.id
@@ -34,7 +34,7 @@ RSpec.describe "Debt payments API" do
       post "/api/v1/debts/#{debt.id}/payments",
            params: {
              date: "26/04/2026",
-             concept: "Débito automático TC LifeMiles — cuota iPhone",
+             concept: "Débito automático TC ejemplo — cuota compra",
              amount: 221_000,
              source: "telegram",
              payment_source: "debit",

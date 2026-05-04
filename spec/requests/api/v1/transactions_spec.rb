@@ -84,6 +84,25 @@ RSpec.describe "Transactions API" do
       expect(json.dig("data", "attributes", "status")).to eq("confirmed")
     end
 
+    it "infers credit card payment source from card-like product labels" do
+      post "/api/v1/transactions",
+           params: {
+             date: "01/05/2026",
+             concept: "Compra comercio ejemplo",
+             product: "TC1234",
+             amount: 146_300,
+             transaction_type: "expense",
+             status: "confirmed",
+             source: "gmail"
+           },
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json.dig("data", "attributes", "payment_source")).to eq("credit_card")
+      expect(json.dig("data", "attributes", "credit_card_status")).to eq("pending")
+    end
+
     it "auto-links expected income transactions to an income source" do
       source = create(
         :income_source,
@@ -276,6 +295,36 @@ RSpec.describe "Transactions API" do
         expect(second_fund.reload.current_balance).to eq(80_000)
         json = JSON.parse(response.body)
         expect(json.dig("data", "relationships", "sinking_fund", "data", "id")).to eq(second_fund.id.to_s)
+      end
+
+      it "defaults credit_card_status to pending when changing payment_source to credit_card" do
+        patch "/api/v1/transactions/#{transaction.id}",
+              params: { payment_source: "credit_card" },
+              headers: headers
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json.dig("data", "attributes", "payment_source")).to eq("credit_card")
+        expect(json.dig("data", "attributes", "credit_card_status")).to eq("pending")
+      end
+
+      it "clears credit_card_status when changing payment_source away from credit_card" do
+        card_transaction = create(
+          :transaction,
+          user: user,
+          account: user.default_account,
+          payment_source: "credit_card",
+          credit_card_status: "pending"
+        )
+
+        patch "/api/v1/transactions/#{card_transaction.id}",
+              params: { payment_source: "debit" },
+              headers: headers
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json.dig("data", "attributes", "payment_source")).to eq("debit")
+        expect(json.dig("data", "attributes", "credit_card_status")).to be_nil
       end
 
     it "returns 404 for unknown id" do

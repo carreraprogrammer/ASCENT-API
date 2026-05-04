@@ -166,7 +166,7 @@ POST /api/v1/transactions
 |-------|------|-----|-------------|
 | `date` | string DD/MM | ✅ | Fecha en hora Colombia |
 | `concept` | string | ✅ | Descripción libre |
-| `product` | string | ✅ | `nequi` · `tc7248` · `tc1322` · `debito` · `bre-b` |
+| `product` | string | ✅ | `nequi` · `tc1234` · `tc5678` · `debito` · `bre-b` |
 | `amount` | integer | ✅ | Pesos colombianos, siempre positivo |
 | `category_id` | integer | ✅ | |
 | `subcategory_id` | integer | — | |
