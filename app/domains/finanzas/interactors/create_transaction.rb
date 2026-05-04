@@ -65,9 +65,15 @@ module Finanzas
           sinking_fund_id: sinking_fund_id,
           structural_match: structural_match
         )
+        resolved_payment_source = payment_source.presence || infer_payment_source(
+          transaction_type: transaction_type,
+          concept: concept,
+          product: product,
+          metadata: metadata
+        )
 
         # Auto-set credit_card_status to pending when payment_source is credit_card
-        resolved_cc_status = if payment_source == "credit_card"
+        resolved_cc_status = if resolved_payment_source == "credit_card"
           credit_card_status || "pending"
         else
           nil
@@ -89,7 +95,7 @@ module Finanzas
 	          metadata: metadata,
 	          year: year,
 	          month: month,
-	          payment_source: payment_source,
+	          payment_source: resolved_payment_source,
 	          credit_card_status: resolved_cc_status,
 	          debt_id: debt_id,
 	          recurring_obligation_id: resolved_recurring_obligation_id,
@@ -105,6 +111,25 @@ module Finanzas
       end
 
       private
+
+      def infer_payment_source(transaction_type:, concept:, product:, metadata:)
+        return nil unless transaction_type == "expense"
+
+        text = [
+          concept,
+          product,
+          metadata["payment_source"],
+          metadata["payment_method"],
+          metadata["card"],
+          metadata["raw_text"],
+          metadata["subject"]
+        ].compact.join(" ").downcase
+
+        return "credit_card" if text.match?(/\btc\s*\d{3,4}\b/)
+        return "credit_card" if text.match?(/tarjeta\s+de\s+cr[eé]dito|tarjeta\s+credito|credit\s+card/)
+
+        nil
+      end
 
       def resolve_recurring_obligation_id(account_id:, transaction_type:, recurring_obligation_id:, structural_match:)
         return nil unless transaction_type == "expense"

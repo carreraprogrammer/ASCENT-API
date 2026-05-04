@@ -115,7 +115,7 @@ Subcategorías iniciales por categoría:
 id, user_id,
 date (string DD/MM),                    -- fecha en hora Colombia
 concept (string),                       -- descripción libre
-product (string),                       -- nequi | tc0004 | tc0002 | debito | bre-b
+product (string),                       -- nequi | tc0001 | tc0003 | debito | bre-b
 amount (integer),                       -- en pesos, siempre positivo
 transaction_type (string),              -- expense | income
 category_id, subcategory_id,

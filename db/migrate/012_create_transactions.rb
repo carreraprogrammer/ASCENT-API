@@ -4,7 +4,7 @@ class CreateTransactions < ActiveRecord::Migration[8.0]
       t.references :user, null: false, foreign_key: true
       t.string :date, null: false          # DD/MM — hora Colombia
       t.string :concept, null: false
-      t.string :product                    # nequi | tc0004 | tc0002 | debito | bre-b
+      t.string :product                    # nequi | tc0001 | tc0003 | debito | bre-b
       t.integer :amount, null: false       # en pesos, siempre positivo
       t.string :transaction_type, null: false, default: "expense"  # expense | income
       t.references :category, null: true, foreign_key: true

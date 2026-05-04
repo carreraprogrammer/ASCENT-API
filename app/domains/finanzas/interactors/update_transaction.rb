@@ -39,7 +39,24 @@ module Finanzas
           raise Finanzas::Errors::InvalidTransaction, "Sinking fund #{permitted[:sinking_fund_id]} not found" unless fund
         end
 
+        normalize_credit_card_status!(permitted, transaction)
+
         @repo.update(id, permitted, account_id: account_id)
+      end
+
+      private
+
+      def normalize_credit_card_status!(permitted, transaction)
+        return unless permitted.key?(:payment_source)
+
+        if permitted[:payment_source] == "credit_card"
+          permitted[:credit_card_status] =
+            permitted[:credit_card_status].presence ||
+            transaction.credit_card_status.presence ||
+            "pending"
+        else
+          permitted[:credit_card_status] = nil
+        end
       end
     end
   end

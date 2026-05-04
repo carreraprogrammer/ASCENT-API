@@ -3,7 +3,7 @@ FactoryBot.define do
     user
     date { "11/04" }
     concept { Faker::Commerce.product_name }
-    product { "tc0004" }
+    product { "tc0001" }
     amount { 50_000 }
     transaction_type { "expense" }
     source { "manual" }
