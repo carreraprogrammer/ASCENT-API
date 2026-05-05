@@ -320,17 +320,23 @@ module Api
           .group(:category_id)
           .sum(:amount)
 
+        # Gastos reales por subcategoría
+        spent_by_subcat = ::Transaction
+          .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
+          .where(status: %w[confirmed pending])
+          .where.not(subcategory_id: nil)
+          .group(:subcategory_id)
+          .sum(:amount)
+
         # Agrupar presupuestos por categoría sumando sus subcategorías.
-        # budgets puede tener N filas por categoría (una por subcategoría) cuando el wizard
-        # guarda a nivel subcategoría. Si comparamos el presupuesto individual de cada
-        # subcategoría contra el gasto total de la categoría obtenemos porcentajes absurdos.
         budget_by_cat = budgets
           .reject { |b| b[:category_id].nil? }
           .group_by { |b| b[:category_id] }
           .transform_values do |rows|
             {
-              category_name: rows.first[:category_name],
-              amount_limit:  rows.sum { |b| b[:amount_limit].to_i }
+              category_name:    rows.first[:category_name],
+              amount_limit:     rows.sum { |b| b[:amount_limit].to_i },
+              subcategory_rows: rows.reject { |b| b[:subcategory_id].nil? }
             }
           end
 
@@ -342,15 +348,25 @@ module Api
           on_track  = projected <= budget
           alert     = !on_track ? "⚠️ #{cat[:category_name]}: vas a #{format_cop(projected)} proyectados vs presupuesto de #{format_cop(budget)}" : nil
 
+          subcategories = cat[:subcategory_rows].map do |sr|
+            {
+              subcategory:    sr[:subcategory_name],
+              subcategory_id: sr[:subcategory_id],
+              budget:         sr[:amount_limit].to_i,
+              spent:          spent_by_subcat[sr[:subcategory_id]].to_i
+            }
+          end
+
           {
-            category:    cat[:category_name],
-            category_id: cat_id,
-            budget:      budget,
-            spent:       spent,
-            projected:   projected,
-            pct:         pct,
-            on_track:    on_track,
-            alert:       alert
+            category:      cat[:category_name],
+            category_id:   cat_id,
+            budget:        budget,
+            spent:         spent,
+            projected:     projected,
+            pct:           pct,
+            on_track:      on_track,
+            alert:         alert,
+            subcategories: subcategories
           }
         end
 
