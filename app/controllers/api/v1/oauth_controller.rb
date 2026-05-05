@@ -37,6 +37,13 @@ module Api
         server_auth_code = params[:server_auth_code].presence || params[:serverAuthCode].presence
         id_token = params[:id_token].presence || params[:idToken].presence
 
+        Rails.logger.info(
+          "[GoogleMobileAuth] received origin=#{request.origin.inspect} " \
+          "access_token=#{access_token.present?} " \
+          "id_token=#{id_token.present?} " \
+          "server_auth_code=#{server_auth_code.present?}"
+        )
+
         if access_token.blank? && server_auth_code.blank? && id_token.blank?
           raise ActionController::ParameterMissing, "access_token, serverAuthCode or idToken"
         end
@@ -76,13 +83,16 @@ module Api
           }
         }, status: :ok
       rescue ActionController::ParameterMissing
+        Rails.logger.warn("[GoogleMobileAuth] missing Google credential")
         render json: { errors: [{ status: "422", code: "missing_token", detail: "Google token is required" }] }, status: :unprocessable_entity
-      rescue Auth::Errors::Unauthorized
+      rescue Auth::Errors::Unauthorized => e
+        Rails.logger.warn("[GoogleMobileAuth] unauthorized #{e.class}: #{e.message}")
         render json: { errors: [{ status: "401", code: "invalid_token", detail: "Google token inválido o expirado" }] }, status: :unauthorized
       rescue Auth::Errors::InvalidEmail => e
+        Rails.logger.warn("[GoogleMobileAuth] invalid email #{e.message}")
         render json: { errors: [{ status: "422", code: "invalid_email", detail: e.message }] }, status: :unprocessable_entity
       rescue StandardError => e
-        Rails.logger.error("Google mobile auth error: #{e.message}")
+        Rails.logger.error("[GoogleMobileAuth] server error #{e.class}: #{e.message}")
         render json: { errors: [{ status: "500", code: "server_error", detail: "Error interno" }] }, status: :internal_server_error
       end
 
