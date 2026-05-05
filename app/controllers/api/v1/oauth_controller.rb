@@ -33,9 +33,19 @@ module Api
       end
 
       def google_mobile_callback
-        access_token = params.require(:access_token)
+        access_token = params[:access_token].presence
+        server_auth_code = params[:server_auth_code].presence || params[:serverAuthCode].presence
+        id_token = params[:id_token].presence || params[:idToken].presence
 
-        user = Auth::Interactors::LoginWithGoogleToken.new.call(access_token: access_token)
+        if access_token.blank? && server_auth_code.blank? && id_token.blank?
+          raise ActionController::ParameterMissing, "access_token, serverAuthCode or idToken"
+        end
+
+        user = Auth::Interactors::LoginWithGoogleToken.new.call(
+          access_token: access_token,
+          server_auth_code: server_auth_code,
+          id_token: id_token
+        )
         permissions = Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id)
         jwt = JwtService.encode_access_token(
           user_id: user.id,
@@ -66,7 +76,7 @@ module Api
           }
         }, status: :ok
       rescue ActionController::ParameterMissing
-        render json: { errors: [{ status: "422", code: "missing_token", detail: "access_token is required" }] }, status: :unprocessable_entity
+        render json: { errors: [{ status: "422", code: "missing_token", detail: "Google token is required" }] }, status: :unprocessable_entity
       rescue Auth::Errors::Unauthorized
         render json: { errors: [{ status: "401", code: "invalid_token", detail: "Google token inválido o expirado" }] }, status: :unauthorized
       rescue Auth::Errors::InvalidEmail => e
