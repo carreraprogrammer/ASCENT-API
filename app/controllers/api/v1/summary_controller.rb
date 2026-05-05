@@ -320,13 +320,24 @@ module Api
           .group(:category_id)
           .sum(:amount)
 
-        # Gastos reales por subcategoría
-        spent_by_subcat = ::Transaction
+        # Gastos por subcategoría con nombre, directo desde transacciones via JOIN
+        subcat_rows = ::Transaction
           .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
           .where(status: %w[confirmed pending])
           .where.not(subcategory_id: nil)
-          .group(:subcategory_id)
-          .sum(:amount)
+          .joins(:subcategory)
+          .group("transactions.category_id", "transactions.subcategory_id", "subcategories.name")
+          .sum("transactions.amount")
+          .map { |(cat_id, sub_id, sub_name), spent|
+            { category_id: cat_id, subcategory_id: sub_id, subcategory: sub_name, spent: spent }
+          }
+
+        subcat_by_cat = subcat_rows.group_by { |r| r[:category_id] }
+
+        # Presupuesto a nivel subcategoría (opcional — $0 si no hay)
+        budget_by_subcat = budgets
+          .reject { |b| b[:subcategory_id].nil? }
+          .each_with_object({}) { |b, h| h[b[:subcategory_id]] = b[:amount_limit].to_i }
 
         # Agrupar presupuestos por categoría sumando sus subcategorías.
         budget_by_cat = budgets
@@ -334,9 +345,8 @@ module Api
           .group_by { |b| b[:category_id] }
           .transform_values do |rows|
             {
-              category_name:    rows.first[:category_name],
-              amount_limit:     rows.sum { |b| b[:amount_limit].to_i },
-              subcategory_rows: rows.reject { |b| b[:subcategory_id].nil? }
+              category_name: rows.first[:category_name],
+              amount_limit:  rows.sum { |b| b[:amount_limit].to_i }
             }
           end
 
@@ -348,13 +358,8 @@ module Api
           on_track  = projected <= budget
           alert     = !on_track ? "⚠️ #{cat[:category_name]}: vas a #{format_cop(projected)} proyectados vs presupuesto de #{format_cop(budget)}" : nil
 
-          subcategories = cat[:subcategory_rows].map do |sr|
-            {
-              subcategory:    sr[:subcategory_name],
-              subcategory_id: sr[:subcategory_id],
-              budget:         sr[:amount_limit].to_i,
-              spent:          spent_by_subcat[sr[:subcategory_id]].to_i
-            }
+          subcategories = (subcat_by_cat[cat_id] || []).map do |row|
+            row.merge(budget: budget_by_subcat.fetch(row[:subcategory_id], 0))
           end
 
           {
