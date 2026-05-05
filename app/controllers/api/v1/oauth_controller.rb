@@ -32,6 +32,50 @@ module Api
         redirect_to_frontend_with_error("server_error")
       end
 
+      def google_mobile_callback
+        access_token = params.require(:access_token)
+
+        user = Auth::Interactors::LoginWithGoogleToken.new.call(access_token: access_token)
+        permissions = Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id)
+        jwt = JwtService.encode_access_token(
+          user_id: user.id,
+          email: user.email,
+          super_admin: user.super_admin,
+          permissions: permissions
+        )
+        refresh_result = Auth::Interactors::RefreshToken.new.call(
+          user_id: user.id,
+          raw_refresh_token: issue_initial_refresh_token_for(user.id)
+        )
+
+        render json: {
+          data: {
+            id: user.id,
+            attributes: {
+              email: user.email,
+              name: user.name,
+              avatar_url: user.avatar_url,
+              auth_provider: user.auth_provider,
+              permissions: permissions,
+              super_admin: user.super_admin
+            }
+          },
+          meta: {
+            access_token: jwt,
+            refresh_token: refresh_result[:refresh_token]
+          }
+        }, status: :ok
+      rescue ActionController::ParameterMissing
+        render json: { errors: [{ status: "422", code: "missing_token", detail: "access_token is required" }] }, status: :unprocessable_entity
+      rescue Auth::Errors::Unauthorized
+        render json: { errors: [{ status: "401", code: "invalid_token", detail: "Google token inválido o expirado" }] }, status: :unauthorized
+      rescue Auth::Errors::InvalidEmail => e
+        render json: { errors: [{ status: "422", code: "invalid_email", detail: e.message }] }, status: :unprocessable_entity
+      rescue StandardError => e
+        Rails.logger.error("Google mobile auth error: #{e.message}")
+        render json: { errors: [{ status: "500", code: "server_error", detail: "Error interno" }] }, status: :internal_server_error
+      end
+
       def failure
         redirect_to_frontend_with_error(params[:message] || "oauth_failed")
       end

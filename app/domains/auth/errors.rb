@@ -6,5 +6,6 @@ module Auth
     class ExpiredToken < StandardError; end
     class InvalidCredentials < StandardError; end
     class TokenReuse < StandardError; end
+    class Unauthorized < StandardError; end
   end
 end
