@@ -1,7 +1,7 @@
 # Finanzas — Tracker de Fases
 
 > Estado: documento vivo — actualizar con cada entrega
-> Última actualización: 2026-04-28
+> Última actualización: 2026-05-06
 
 Este documento es el **tracker de estado** del módulo. Para diseño y criterios técnicos de cada bloque, ver los specs individuales listados en cada fase.
 
@@ -43,7 +43,7 @@ Reglas:
 
 ## Fase 3 — Planeación Mensual y Completitud Contextual
 
-**Estado:** `en progreso`
+**Estado:** `completada` (2026-05-06)
 
 **Spec operativo principal:** [living-budget.md](./living-budget.md)
 
@@ -84,14 +84,15 @@ Fases A-D del spec [living-budget.md](./living-budget.md):
 
 ---
 
-### Pendiente
+### Completado — cierre de fase (2026-05-06)
 
-- ⬜ **Fase A** — Wizard: CTAs directos hacia la fuente de verdad cuando una línea es bloqueada (hoy muestra la fuente pero no navega a ella)
-- ⬜ **Fase E** — Coherencia backend / UI / agente: prompts del Brain actualizados para no contradecir validaciones del backend (crédito sin deuda, gasto futuro vs transacción)
-- ⬜ Plan rolling: banner en Dashboard con `rolling_changes` + confirmación desde UI
-- ⬜ Historial de planes: UI frontend (lista + detalle plan vs actual + botón "Cerrar mes")
-- ⬜ `ProposeBudget` con `historical_patterns`: aún usa solo historial bruto, no los patrones de planes cerrados
-- ⬜ Chat nativo dedicado — pantalla de conversación con historial e input (hoy el agente responde con componentes pero no hay UI de chat propia)
+- ✅ **Fase A** — Wizard: CTAs directos hacia fuente de verdad (`BudgetCategoryStep` navega a `/recurring` o `/planned-expenses` al tocar una línea bloqueada)
+- ✅ **Fase E** — Coherencia agente/backend/UI: `chat_prompts.py` actualizado — crédito sin deuda pide datos antes de crear; canal web redirige a fuentes fijas en vez de editarlas desde chat
+- ✅ Plan rolling: banner en Dashboard muestra `rolling_changes` detallados (campo a campo) cuando el plan está en `pending_confirmation`
+- ✅ Historial de planes: UI frontend con lista, plan vs actual y botón "Cerrar mes" en `BudgetsPage`
+- ✅ `ProposeBudget` con `historical_patterns`: detecta `consistently_over` e `income_overestimated` desde últimos 3 planes cerrados
+
+**Fuera de Fase 3 por decisión:** Chat nativo dedicado (pantalla propia con historial) — se define en conversación separada.
 
 ---
 
@@ -185,8 +186,8 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 - [x] completeness contextual antes de wizard o recomendación del agente
 - [x] `safe_to_deploy` como guardrail universal
 - [x] insights diarios con drift checker y Sonnet estructurado
-- [ ] wizard sin dependencia de ingresos legacy (plan rolling + confirmación desde UI)
-- [ ] `savings_goals` conectados al plan con aporte mensual calculado (UI)
+- [x] wizard sin dependencia de ingresos legacy (plan rolling + confirmación desde UI)
+- [x] `savings_goals` conectados al plan con aporte mensual calculado (UI)
 - [ ] deudas, ahorro y gamificación consumen el plan mensual como fuente de verdad
 - [ ] milestones y setbacks accesibles para el agente en insights
 - [ ] agente puede narrar progreso contextual: "2/5 deudas liquidadas, 8 meses para el objetivo"
