@@ -2,7 +2,7 @@
 
 > Estado: activo — en progreso
 > Última actualización: 2026-05-06
-> Backend Track A completado — pendiente frontend, agente y motor conductual
+> Backend Track A completado — avatar flotante + level switcher entregados; pendiente XP UI, agente y motor conductual
 > Propósito: definir la arquitectura de identidad de la aplicación y el camino hacia su distribución.
 
 ---
@@ -113,13 +113,20 @@ La cara viva y la distribución pública son proyectos distintos con retos disti
 - ✅ `SinkingFundsController#create` → `xp.sinking_fund_created` (25 XP)
 - ✅ `UpdateDebt` (paid_off) → `xp.first_debt_paid_off` (200 XP, solo la primera vez)
 
-*Frontend:* pendiente
-- [ ] Componente `AvatarNucleus`: renderiza estado visual del nivel usando `avatar_seed + level` como parámetros determinísticos
+*Frontend — avatar inicial:* ✅ completado (2026-05-06)
+- ✅ `avatarSeed.ts` — hash determinístico `seed → AvatarParams` (hue, saturation, shape, tiltPattern, pulseSpeed, glowAmplitude, coreSize, secondaryHue)
+- ✅ `progressStore` (Zustand) — `fetchProgress`, `setPreviewLevel`, `getEffectiveLevel`; bypass_readiness habilita previewLevel
+- ✅ `AvatarNucleus` atom — orbe de luz con 5 tilt animations, 3 shapes, glow progresivo, ring (nivel 2+), corona segundo color (nivel 4+), halo rotatorio (nivel 5)
+- ✅ `FloatingAgent` organism — FAB fijo bottom-right (z-index 150) que abre panel de chat shell; wired a progressStore
+- ✅ `FloatingAgent` montado en `AppLayout` junto a `AgentEventRenderer` y `CompletenessIndicator`
+- ✅ Level switcher en `ProfilePage` — visible solo cuando `bypass_readiness: true`; preview live del avatar + 6 botones (0-5); setPreviewLevel actualiza FAB simultáneamente
+
+*Frontend — pendiente:*
 - [ ] Barra XP hacia siguiente nivel en Dashboard
 - [ ] Indicador de racha
 - [ ] Panel `FeatureReadiness`: qué viene y qué falta para desbloquearlo
 - [ ] Notificación de desbloqueo cuando feature pasa a `available_to_unlock`
-- [ ] Chat dedicado: pantalla propia con historial persistente, input y estado del agente
+- [ ] Chat dedicado funcional: historial persistente, mensajes reales del agente
 
 *Agente:* pendiente
 - [ ] Los prompts reciben `user_level` y `readiness_score` en el contexto
