@@ -187,3 +187,55 @@ if service_token.present?
     puts "Seeded: service account token hash updated for #{sa.slug}"
   end
 end
+
+# ─── Gamificación: super usuario ─────────────────────────────────────────────
+#
+# El super usuario (dueño de la cuenta) arranca con bypass_readiness: true y
+# nivel 5 para poder testear todos los estados del sistema sin perder datos.
+
+SUPER_USER_EMAIL = "carreraprogrammer@gmail.com".freeze
+
+GAMIFICATION_FEATURES = %w[
+  nightly_review
+  agent_insights
+  recurring
+  debts
+  planned_expenses
+  sinking_funds
+  monthly_plan
+  liquidity_projection
+  propose_budget
+  motor_conductual
+  chat_dedicado
+  simulaciones
+].freeze
+
+super_user = User.find_by(email: SUPER_USER_EMAIL)
+
+if super_user
+  account = Account.find_by(owner_user: super_user)
+
+  if account
+    progress = AccountProgress.find_or_initialize_by(account_id: account.id)
+    progress.xp              = 8_000
+    progress.level           = 5
+    progress.streak_days     = 0
+    progress.readiness_score = 100
+    progress.avatar_seed     = account.id.to_s
+    progress.bypass_readiness = true
+    progress.save!
+
+    GAMIFICATION_FEATURES.each do |key|
+      flag = FeatureFlag.find_or_initialize_by(account_id: account.id, feature_key: key)
+      flag.status      = "active"
+      flag.unlocked_at ||= Time.current
+      flag.save!
+    end
+
+    puts "Seeded: account_progress (level 5, bypass) + #{GAMIFICATION_FEATURES.size} feature_flags for #{SUPER_USER_EMAIL}"
+  else
+    puts "Skipped gamification seed: no account found for #{SUPER_USER_EMAIL}"
+  end
+else
+  puts "Skipped gamification seed: user #{SUPER_USER_EMAIL} not found"
+end

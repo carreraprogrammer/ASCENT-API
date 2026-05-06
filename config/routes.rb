@@ -98,6 +98,11 @@ Rails.application.routes.draw do
       get "summary",        to: "summary#show"
       get "budget_context", to: "budget_context#show"
 
+      # Gamificación — Track A
+      get  "me/progress",                to: "progress#show"
+      get  "me/features",                to: "progress#features"
+      post "me/features/:key/unlock",    to: "progress#unlock"
+
       # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"
       get  "telegram/updates", to: "telegram#updates"

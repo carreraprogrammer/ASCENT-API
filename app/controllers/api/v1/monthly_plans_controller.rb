@@ -101,6 +101,7 @@ module Api
           )
         end
 
+        EventBus.publish("xp.plan_confirmed", account_id: current_account.id, plan_id: plan[:id])
         render json: { data: plan }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found

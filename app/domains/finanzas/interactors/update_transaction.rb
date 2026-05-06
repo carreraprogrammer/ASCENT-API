@@ -41,7 +41,20 @@ module Finanzas
 
         normalize_credit_card_status!(permitted, transaction)
 
-        @repo.update(id, permitted, account_id: account_id)
+        was_pending = transaction.status == "pending"
+        updated = @repo.update(id, permitted, account_id: account_id)
+
+        if was_pending && permitted[:status] == "confirmed"
+          EventBus.publish("xp.pending_resolved", account_id: account_id, transaction_id: id)
+        end
+
+        if permitted[:subcategory_id].present? && permitted[:status] == "confirmed"
+          EventBus.publish("xp.transaction_with_subcategory", account_id: account_id, transaction_id: id)
+        elsif permitted[:subcategory_id].present?
+          EventBus.publish("xp.category_corrected", account_id: account_id, transaction_id: id)
+        end
+
+        updated
       end
 
       private

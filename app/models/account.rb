@@ -12,6 +12,9 @@ class Account < ApplicationRecord
   has_many :financial_contexts, dependent: :nullify
   has_many :categories, dependent: :nullify
   has_many :delegations, dependent: :destroy
+  has_one :account_progress, dependent: :destroy
+  has_many :feature_flags, dependent: :destroy
+  has_many :xp_events, dependent: :destroy
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true
