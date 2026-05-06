@@ -1,7 +1,7 @@
 # Medios de Pago y Tarjetas de Crédito
 
-> Estado: 🔲 spec listo — pendiente de implementar (Fase 3.5)
-> Última actualización: 2026-04-24
+> Estado: ✅ completado — todos los componentes implementados
+> Última actualización: 2026-05-06
 
 ---
 
