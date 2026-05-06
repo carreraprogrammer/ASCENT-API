@@ -60,10 +60,8 @@ module Api
 
       private
 
-      LEVEL_THRESHOLDS = Finanzas::Interactors::ComputeXP::LEVEL_THRESHOLDS
-
       def next_level_xp(level)
-        LEVEL_THRESHOLDS[level + 1]
+        Finanzas::Interactors::ComputeXP::LEVEL_THRESHOLDS[level + 1]
       end
     end
   end

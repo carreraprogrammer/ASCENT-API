@@ -25,7 +25,7 @@ module Finanzas
         score = compute_score(dimensions)
 
         progress.readiness_score = score
-        progress.save! unless progress.new_record? && !progress.persisted?
+        progress.save! if progress.persisted?
 
         { readiness_score: score, dimensions: dimensions, progress: progress }
       end
