@@ -98,7 +98,7 @@ Fases A-D del spec [living-budget.md](./living-budget.md):
 
 ## Fase 3.5 — Medios de Pago y Tarjetas de Crédito
 
-**Estado:** `spec definido — pendiente de implementar`
+**Estado:** `completada`
 
 Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mensual al banco contabilizados dos veces. Introduce `payment_source` y `credit_card_status: pending | settled` con liquidación FIFO.
 
