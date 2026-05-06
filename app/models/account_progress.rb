@@ -1,4 +1,6 @@
 class AccountProgress < ApplicationRecord
+  self.table_name = "account_progress"
+
   belongs_to :account
 
   LEVELS = [0, 1, 2, 3, 4, 5].freeze
