@@ -36,13 +36,16 @@ module Finanzas
           closed_at: Time.current.iso8601
         }
 
-        @plan_repo.close(
+        result = @plan_repo.close(
           plan.id,
           snapshot: snapshot,
           income_actual: income_actual,
           expense_actual: expense_actual,
           account_id: account_id
         )
+
+        EventBus.publish("xp.month_closed_with_snapshot", account_id: account_id, plan_id: plan.id)
+        result
       end
 
       private

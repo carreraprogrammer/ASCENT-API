@@ -17,6 +17,7 @@ module Api
         fund = SinkingFund.create!(
           fund_params.merge(user_id: current_owner_user_id, account_id: current_account.id)
         )
+        EventBus.publish("xp.sinking_fund_created", account_id: current_account.id, sinking_fund_id: fund.id)
         render json: { data: fund_json(fund) }, status: :created
       rescue ActiveRecord::RecordInvalid => e
         render_unprocessable(e.record.errors.full_messages.to_sentence)

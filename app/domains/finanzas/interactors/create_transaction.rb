@@ -107,6 +107,13 @@ module Finanzas
           txn.structural_match = structural_match
         end
 
+        if status == "confirmed"
+          EventBus.publish("xp.transaction_confirmed", account_id: account_id, transaction_id: txn.id)
+          if subcategory_id.present?
+            EventBus.publish("xp.transaction_with_subcategory", account_id: account_id, transaction_id: txn.id)
+          end
+        end
+
         txn
       end
 
