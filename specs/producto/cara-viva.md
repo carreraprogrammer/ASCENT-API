@@ -1,7 +1,8 @@
 # Spec — La Cara Viva
 
-> Estado: activo — guía de implementación
+> Estado: activo — en progreso
 > Última actualización: 2026-05-06
+> Backend Track A completado — pendiente frontend, agente y motor conductual
 > Propósito: definir la arquitectura de identidad de la aplicación y el camino hacia su distribución.
 
 ---
@@ -89,40 +90,41 @@ La cara viva y la distribución pública son proyectos distintos con retos disti
 
 **Tareas:**
 
-*Backend — nuevas entidades:*
-- `account_progress`: xp, level (0-5), streak_days, readiness_score, bypass_readiness
-- `feature_flags`: feature_key, status (`locked | available_to_unlock | active | paused | needs_context`), unlocked_at
-- `xp_events`: action_type, xp_amount, account_id, created_at
+*Backend — nuevas entidades:* ✅ completado (2026-05-06)
+- ✅ `account_progress`: xp, level (0-5), streak_days, readiness_score, bypass_readiness, avatar_seed
+- ✅ `feature_flags`: feature_key, status (`locked | available_to_unlock | active | paused | needs_context`), unlocked_at
+- ✅ `xp_events`: action_type, xp_amount, metadata, account_id, created_at
 
-*Backend — nuevos interactors:*
-- `ComputeXP`: recibe `action_type` y acredita XP según tabla de valores
-- `EvaluateReadiness`: evalúa dimensiones de Agent Readiness y determina desbloqueos
-- `UnlockFeature`: transiciona un feature_flag a `active`
+*Backend — nuevos interactors:* ✅ completado (2026-05-06)
+- ✅ `ComputeXP`: recibe `action_type` y acredita XP según tabla de valores; calcula nivel automáticamente
+- ✅ `EvaluateReadiness`: evalúa 9 dimensiones de Agent Readiness, score 0-100
+- ✅ `UnlockFeature`: transiciona un feature_flag a `active`
 
-*Backend — endpoints:*
-- `GET /api/v1/me/progress` — xp, level, streak, readiness_score, avatar_seed
-- `GET /api/v1/me/features` — lista de features con su estado
-- `POST /api/v1/me/features/:key/unlock` — confirma desbloqueo
+*Backend — endpoints:* ✅ completado (2026-05-06)
+- ✅ `GET /api/v1/me/progress` — xp, level, streak, readiness_score, avatar_seed, next_level_xp
+- ✅ `GET /api/v1/me/features` — lista de features con su estado
+- ✅ `POST /api/v1/me/features/:key/unlock` — confirma desbloqueo
 
-*Backend — hooks XP en interactors existentes (vía EventBus, sin tocar lógica interna):*
-- `transaction_confirmed` → 10 XP
-- `plan_closed` → 75 XP
-- `debt_paid_off` → 200 XP
-- `sinking_fund_created` → 25 XP
-- (tabla completa en sección 5)
+*Backend — hooks XP vía EventBus:* ✅ completado (2026-05-06)
+- ✅ `CreateTransaction` → `xp.transaction_confirmed` (10 XP) + `xp.transaction_with_subcategory` (+5 XP)
+- ✅ `UpdateTransaction` → `xp.pending_resolved` (15 XP) / `xp.category_corrected` (10 XP)
+- ✅ `CloseMonthlyPlan` → `xp.month_closed_with_snapshot` (75 XP)
+- ✅ `MonthlyPlansController#confirm` → `xp.plan_confirmed` (50 XP)
+- ✅ `SinkingFundsController#create` → `xp.sinking_fund_created` (25 XP)
+- ✅ `UpdateDebt` (paid_off) → `xp.first_debt_paid_off` (200 XP, solo la primera vez)
 
-*Frontend:*
-- Componente `AvatarNucleus`: renderiza estado visual del nivel usando `avatar_seed + level` como parámetros determinísticos
-- Barra XP hacia siguiente nivel en Dashboard
-- Indicador de racha
-- Panel `FeatureReadiness`: qué viene y qué falta para desbloquearlo
-- Notificación de desbloqueo cuando feature pasa a `available_to_unlock`
-- Chat dedicado: pantalla propia con historial persistente, input y estado del agente
+*Frontend:* pendiente
+- [ ] Componente `AvatarNucleus`: renderiza estado visual del nivel usando `avatar_seed + level` como parámetros determinísticos
+- [ ] Barra XP hacia siguiente nivel en Dashboard
+- [ ] Indicador de racha
+- [ ] Panel `FeatureReadiness`: qué viene y qué falta para desbloquearlo
+- [ ] Notificación de desbloqueo cuando feature pasa a `available_to_unlock`
+- [ ] Chat dedicado: pantalla propia con historial persistente, input y estado del agente
 
-*Agente:*
-- Los prompts reciben `user_level` y `readiness_score` en el contexto
-- El nightly agent adapta profundidad del coaching al nivel del usuario
-- Motor conductual: perfil inferido en 6 ejes, intervenciones COM-B
+*Agente:* pendiente
+- [ ] Los prompts reciben `user_level` y `readiness_score` en el contexto
+- [ ] El nightly agent adapta profundidad del coaching al nivel del usuario
+- [ ] Motor conductual: perfil inferido en 6 ejes, intervenciones COM-B
 
 **Criterio de éxito del Track A:**
 - Cada nivel se siente diferente en la UI y en el tono del agente

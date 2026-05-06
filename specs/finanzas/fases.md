@@ -132,7 +132,7 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 
 ## Fase 5 — La Cara Viva
 
-**Estado:** `pendiente — Fases 3 y 4 cerradas, listo para iniciar`
+**Estado:** `en progreso — backend gamificación completado (2026-05-06)`
 
 La Fase 5 no es una sola feature. Es la convergencia de tres capas que juntas le dan un rostro, carácter y personalidad a la aplicación:
 
@@ -155,6 +155,28 @@ Chat dedicado (expresión)
 ```
 
 Esta fase es también el motor de distribución: la gamificación es el onboarding para usuarios nuevos, el chat es la interfaz principal, y el motor conductual es lo que diferencia el producto de cualquier app financiera genérica.
+
+### Completado — backend gamificación (2026-05-06)
+
+- ✅ EventBus upgrade: pub/sub real con claves string, backward-compatible con eventos de auth
+- ✅ `account_progress`: xp, level (0-5), streak_days, readiness_score, avatar_seed, bypass_readiness
+- ✅ `feature_flags`: feature_key, status (`locked | available_to_unlock | active | paused | needs_context`), unlocked_at
+- ✅ `xp_events`: action_type, xp_amount, metadata, account_id
+- ✅ `ComputeXP`: acredita XP por action_type, calcula nivel automáticamente
+- ✅ `EvaluateReadiness`: 9 dimensiones, score 0-100
+- ✅ `UnlockFeature`: transiciona feature_flag a `active`
+- ✅ `GET /api/v1/me/progress` — xp, level, streak, readiness_score, avatar_seed, next_level_xp
+- ✅ `GET /api/v1/me/features` — lista de features con su estado
+- ✅ `POST /api/v1/me/features/:key/unlock` — confirma desbloqueo
+- ✅ Hooks XP vía EventBus: `CreateTransaction`, `UpdateTransaction`, `CloseMonthlyPlan`, `UpdateDebt`, sinking funds, plan confirmation
+- ✅ Seeds: super usuario arranca en nivel 5 + bypass_readiness + 12 features activos
+
+### Pendiente
+
+- [ ] Frontend: `AvatarNucleus`, barra XP, indicador de racha, panel `FeatureReadiness`
+- [ ] Agente: `user_level` y `readiness_score` en contexto de prompts
+- [ ] Motor conductual: perfil en 6 ejes, intervenciones COM-B (ver [capa-conductual.md](./capa-conductual.md))
+- [ ] Chat dedicado: pantalla propia con historial persistente (ver spec separado)
 
 **Specs:**
 - [../producto/cara-viva.md](../producto/cara-viva.md) — plan de implementación y distribución
