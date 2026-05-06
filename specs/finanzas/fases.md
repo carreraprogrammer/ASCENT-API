@@ -132,7 +132,7 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 
 ## Fase 5 — La Cara Viva
 
-**Estado:** `en progreso — backend gamificación completado (2026-05-06)`
+**Estado:** `en progreso — backend gamificación + avatar flotante completados (2026-05-06)`
 
 La Fase 5 no es una sola feature. Es la convergencia de tres capas que juntas le dan un rostro, carácter y personalidad a la aplicación:
 
@@ -171,12 +171,21 @@ Esta fase es también el motor de distribución: la gamificación es el onboardi
 - ✅ Hooks XP vía EventBus: `CreateTransaction`, `UpdateTransaction`, `CloseMonthlyPlan`, `UpdateDebt`, sinking funds, plan confirmation
 - ✅ Seeds: super usuario arranca en nivel 5 + bypass_readiness + 12 features activos
 
+### Completado — avatar flotante + level switcher (2026-05-06)
+
+- ✅ `avatarSeed.ts` — hash determinístico `seed → AvatarParams` (hue, shape, tiltPattern, pulseSpeed, glowAmplitude, coreSize, secondaryHue)
+- ✅ `progressStore` (Zustand) — `fetchProgress`, `setPreviewLevel`, `getEffectiveLevel`
+- ✅ `AvatarNucleus` atom — orbe de luz con 5 tilt animations, 3 shapes, glow/ring/corona/halo por nivel
+- ✅ `FloatingAgent` organism — FAB fijo bottom-right, abre chat panel shell, montado en `AppLayout`
+- ✅ Level switcher en `ProfilePage` — solo visible con `bypass_readiness: true`; preview live del avatar
+
 ### Pendiente
 
-- [ ] Frontend: `AvatarNucleus`, barra XP, indicador de racha, panel `FeatureReadiness`
+- [ ] Frontend: barra XP hacia siguiente nivel en Dashboard, indicador de racha
+- [ ] Frontend: panel `FeatureReadiness` + notificación de desbloqueo
+- [ ] Frontend: chat dedicado funcional (historial persistente, mensajes reales del agente)
 - [ ] Agente: `user_level` y `readiness_score` en contexto de prompts
 - [ ] Motor conductual: perfil en 6 ejes, intervenciones COM-B (ver [capa-conductual.md](./capa-conductual.md))
-- [ ] Chat dedicado: pantalla propia con historial persistente (ver spec separado)
 
 **Specs:**
 - [../producto/cara-viva.md](../producto/cara-viva.md) — plan de implementación y distribución
