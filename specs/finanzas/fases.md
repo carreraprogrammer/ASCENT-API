@@ -130,13 +130,37 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 
 ---
 
-## Fase 5 — Motor Conductual
+## Fase 5 — La Cara Viva
 
-**Estado:** `pendiente — no iniciar hasta cerrar Fases 3 y 4`
+**Estado:** `pendiente — Fases 3 y 4 cerradas, listo para iniciar`
 
-Perfil conductual inferido (6 ejes: money_management_domains, motivation_quality, self_efficacy, monitoring_habit, credit_reliance, stress_and_shame_risk) + intervenciones COM-B + trazabilidad trigger→intervención→respuesta→resultado.
+La Fase 5 no es una sola feature. Es la convergencia de tres capas que juntas le dan un rostro, carácter y personalidad a la aplicación:
 
-**Spec:** [capa-conductual.md](./capa-conductual.md) · [../research/deep-research-report.md](../research/deep-research-report.md)
+**Chat dedicado** — la pantalla donde el agente vive. No un widget flotante sino una conversación con un sistema que recuerda, adapta su tono y expresa una personalidad consistente. Historial persistente, estado visible del agente, respuestas personalizadas.
+
+**Motor conductual** — la inteligencia detrás de las respuestas del agente. Perfil en 6 ejes (money_management_domains, motivation_quality, self_efficacy, monitoring_habit, credit_reliance, stress_and_shame_risk), intervenciones COM-B, trazabilidad trigger → intervención → respuesta → resultado. El agente responde diferente a dos usuarios con el mismo saldo porque los conoce distinto.
+
+**Gamificación madura** — la progresión visible del sistema. XP basado en calidad de contexto, avatar único por usuario (generado desde `account_id`), 6 niveles de madurez (Huevo → Pulso → Conciencia → Estructura → Estrategia → Sistema Nervioso), Agent Readiness como mecanismo de desbloqueo, feature flags por cuenta. No premia clics — premia consistencia real.
+
+Los tres pilares se alimentan entre sí:
+
+```
+Nivel del sistema (gamificación)
+        ↓
+Perfil conductual (motor)
+        ↓
+Tono + tipo de intervención
+        ↓
+Chat dedicado (expresión)
+```
+
+Esta fase es también el motor de distribución: la gamificación es el onboarding para usuarios nuevos, el chat es la interfaz principal, y el motor conductual es lo que diferencia el producto de cualquier app financiera genérica.
+
+**Specs:**
+- [../producto/cara-viva.md](../producto/cara-viva.md) — plan de implementación y distribución
+- [gamificacion.md](./gamificacion.md) — spec completo de gamificación y avatar
+- [capa-conductual.md](./capa-conductual.md) — motor conductual COM-B
+- [../research/deep-research-report.md](../research/deep-research-report.md) — investigación base
 
 ---
 
