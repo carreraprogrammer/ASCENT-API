@@ -1,8 +1,7 @@
 # Living Budget Integration
 
-> Estado: 🟡 Fases B · C · D completadas — Fase A parcial — Fase E pendiente
-> Última actualización: 2026-04-28
-> Prioridad: CTAs del wizard hacia fuentes de verdad (Fase A) + coherencia Brain/prompts (Fase E)
+> Estado: ✅ Fases A · B · C · D · E completadas — spec cerrado
+> Última actualización: 2026-05-06
 
 ---
 
@@ -352,6 +351,4 @@ El agente debe tener instrucciones explícitas para:
 
 ### Pendiente
 
-- [ ] CTAs desde wizard hacia fuente de verdad (Fase A)
-- [ ] agente, backend y UI comparten las mismas reglas (Fase E — prompts del Brain)
-- [ ] front-end del wizard navega a fuente de verdad al tocar línea bloqueada
+_(ninguno — spec cerrado 2026-05-06)_
