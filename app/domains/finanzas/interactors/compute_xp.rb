@@ -1,6 +1,6 @@
 module Finanzas
   module Interactors
-    class ComputeXP
+    class ComputeXp
       XP_TABLE = {
         "transaction_confirmed"          => 10,
         "transaction_with_subcategory"   => 5,
