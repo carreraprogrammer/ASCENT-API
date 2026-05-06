@@ -39,7 +39,11 @@ module Api
       # PATCH /api/v1/debts/:id
       def update
         return unless require_scope!("debts:update")
-        debt = repo.update(params[:id], allowed_update_params, account_id: current_account.id)
+        debt = Finanzas::Interactors::UpdateDebt.new.call(
+          id: params[:id],
+          account_id: current_account.id,
+          attrs: allowed_update_params
+        )
         render json: { data: debt }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
