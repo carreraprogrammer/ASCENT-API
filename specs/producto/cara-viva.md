@@ -16,6 +16,32 @@ El repositorio actual es el laboratorio. Cada feature que funciona aquí es una 
 
 ---
 
+## 1.1 Invariante de datos — nunca se pierde nada
+
+**El nivel controla qué features son visibles. Nunca controla qué datos existen.**
+
+Los datos del usuario (transacciones, planes, deudas, recurrentes, insights, milestones) son permanentes e independientes del nivel del sistema. Cambiar de nivel 5 a nivel 1 para testear no toca ninguna fila de ninguna tabla de datos. Solo cambia qué secciones de la UI están activas y qué tan profundo va el agente en sus respuestas.
+
+Esto es especialmente crítico para el super usuario: meses de datos reales acumulados no se ven afectados por ninguna operación sobre `account_progress` o `feature_flags`.
+
+```
+Capa de datos (permanente, inmutable por el sistema de niveles)
+────────────────────────────────────────────────────────────────
+transactions, monthly_plans, debts, recurring_obligations,
+income_sources, sinking_funds, savings_goals, agent_insights,
+user_milestones, planned_expenses
+
+Capa de progresión (controla visibilidad y comportamiento del agente)
+────────────────────────────────────────────────────────────────────
+account_progress (xp, level, streak)
+feature_flags (qué está activo)
+xp_events (log de acciones)
+```
+
+**Regla de implementación:** ningún interactor del sistema de gamificación puede hacer `delete`, `update` ni `destroy` sobre entidades de la capa de datos. Solo lee de ahí para calcular XP y readiness.
+
+---
+
 ## 2. Los tres pilares
 
 La cara viva de la aplicación es la convergencia de tres capas:
