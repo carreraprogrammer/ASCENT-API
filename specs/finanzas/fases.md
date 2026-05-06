@@ -108,7 +108,7 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 
 ## Fase 4 — Deudas, Metas y Gamificación Guiadas por el Plan
 
-**Estado:** `parcial`
+**Estado:** `completada` (2026-05-06)
 
 ### Completado (2026-04-25)
 
@@ -119,12 +119,12 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 - ✅ Nightly agent: `create_milestone` tool + detección automática (balance positivo, discretionary bajo presupuesto, overflow, plan sin confirmar)
 - ✅ UI: badge último logro (dorado) + contador metas activas en Hero
 
-### Pendiente
+### Completado — cierre de fase (2026-05-06)
 
-- ⬜ Flujo deuda liquidada: desactivar la obligación recurrente vinculada (`source_type=Debt, source_id=X`)
-- ⬜ Milestones en `agent_insights.signals` — el generador diario no los consume todavía
-- ⬜ Narrativa de progreso contextual: "2/5 deudas liquidadas, ritmo actual: 8 meses para el objetivo"
-- ⬜ Overflow rules: si el plan define overflow a deuda/ahorro, el summary lo refleja
+- ✅ Flujo deuda liquidada: `UpdateDebt` interactor desactiva automáticamente la `RecurringObligation` vinculada (`source_type=Debt, source_id=X`) al marcar `paid_off`
+- ✅ Milestones en `agent_insights.signals` — ya consumidos por el generador diario desde antes (drift check + bloque en prompt Sonnet)
+- ✅ Narrativa de progreso contextual: nightly agent llama `get_debts` cuando `phase=debt_payoff` y reporta "X/Y deudas, ~Z meses" con `months_to_payoff` calculado
+- ✅ Overflow rules: Dashboard muestra "destino según plan: abono a deuda / fondo de emergencia / inversión" cuando `overflow_status.rule` está definido
 
 **Spec:** [gamificacion.md](./gamificacion.md)
 
@@ -188,6 +188,6 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 - [x] insights diarios con drift checker y Sonnet estructurado
 - [x] wizard sin dependencia de ingresos legacy (plan rolling + confirmación desde UI)
 - [x] `savings_goals` conectados al plan con aporte mensual calculado (UI)
-- [ ] deudas, ahorro y gamificación consumen el plan mensual como fuente de verdad
-- [ ] milestones y setbacks accesibles para el agente en insights
-- [ ] agente puede narrar progreso contextual: "2/5 deudas liquidadas, 8 meses para el objetivo"
+- [x] deudas, ahorro y gamificación consumen el plan mensual como fuente de verdad
+- [x] milestones y setbacks accesibles para el agente en insights
+- [x] agente puede narrar progreso contextual: "2/5 deudas liquidadas, 8 meses para el objetivo"
