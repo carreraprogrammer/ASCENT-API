@@ -1,32 +1,24 @@
-# Spec — La Cara Viva: Plan de distribución y gamificación
+# Spec — La Cara Viva
 
 > Estado: activo — guía de implementación
 > Última actualización: 2026-05-06
-> Propósito: definir la estrategia de productización, el orden de implementación y la arquitectura de la capa de identidad de la aplicación.
+> Propósito: definir la arquitectura de identidad de la aplicación y el camino hacia su distribución.
 
 ---
 
-## 1. Decisión estratégica: generalizar en el repo actual
+## 1. Decisión estratégica
 
-Daniel 15K no se bifurca en un repositorio nuevo. Se generaliza en el existente.
+Daniel 15K no se bifurca. Se generaliza en el repositorio actual.
 
-**Por qué:**
+`account_id` ya está en cada entidad. Los interactors ya lo reciben como parámetro. La arquitectura DDD ya es de producción. Bifurcar significa re-implementar meses de trabajo batallado — el momentum muere antes de llegar a ningún lado.
 
-- `account_id` ya está en cada entidad del sistema. El 70% del trabajo de multi-tenancy ya está hecho.
-- Los interactors ya reciben `account_id` como parámetro. La separación de datos ya existe.
-- El patrón DDD (repositorios, interactors, entidades PORO) es arquitectura de producción, no código personal.
-- Bifurcar significa re-implementar meses de trabajo batallado. El momentum muere.
-- El repositorio actual es el laboratorio. Cada feature que funciona aquí es una feature validada para producción.
-
-**Cómo funciona el rol del super usuario:**
-
-El dueño de la cuenta personal opera con `bypass_readiness: true` en su account. Puede cambiar de nivel libremente para testear la experiencia de cada estado. No hay diferencia técnica entre "super usuario" y "usuario beta" — solo un flag en la cuenta.
+El repositorio actual es el laboratorio. Cada feature que funciona aquí es una feature validada para producción.
 
 ---
 
-## 2. Los tres pilares de la cara viva
+## 2. Los tres pilares
 
-La Fase 5 del producto no es una sola cosa. Es la convergencia de tres capas que juntas le dan un **rostro, carácter y personalidad** a la aplicación:
+La cara viva de la aplicación es la convergencia de tres capas:
 
 ```
 Chat dedicado          Motor conductual       Gamificación madura
@@ -35,46 +27,13 @@ La cara visible        La inteligencia        La progresión visible
 del agente             detrás del agente      del sistema
 ```
 
-### 2.1 Chat dedicado — la cara visible
+**Chat dedicado** — la pantalla donde el agente vive. Historial persistente, personalidad consistente, estado visible del agente. No un widget flotante sino una conversación con un sistema que recuerda y adapta su tono.
 
-El chat no es un widget flotante ni un comando de voz. Es la pantalla donde el agente vive. El usuario entra a hablar con un sistema que lo conoce, lo recuerda y responde de acuerdo a quién es él — no a una plantilla genérica.
+**Motor conductual** — lo que hace que el agente responda diferente a dos usuarios con el mismo saldo. Perfil en 6 ejes, intervenciones COM-B, trazabilidad de cada intervención.
 
-El chat tiene historial persistente, personalidad consistente y expresiones visuales del estado del agente (respondiendo, pensando, esperando).
+**Gamificación madura** — la progresión visible del sistema. XP basado en calidad de contexto, avatar único por usuario, 6 niveles de madurez, Agent Readiness como mecanismo de desbloqueo. No premia clics — premia consistencia real.
 
-### 2.2 Motor conductual — la inteligencia
-
-El motor conductual es lo que hace que el agente responda diferente a dos usuarios con el mismo saldo. Infiere un perfil en 6 ejes:
-
-```
-money_management_domains   — qué áreas maneja bien o mal
-motivation_quality         — motivación intrínseca vs extrínseca
-self_efficacy              — cree que puede cambiar o no
-monitoring_habit           — revisa sus datos o los ignora
-credit_reliance            — dependencia estructural del crédito
-stress_and_shame_risk      — riesgo de bloqueo emocional
-```
-
-Con ese perfil, elige el tipo de intervención correcta: confrontar, validar, celebrar, preguntar, proponer o esperar. No todos los usuarios necesitan el mismo mensaje ante el mismo dato.
-
-El motor usa el framework COM-B (Capability, Opportunity, Motivation → Behavior) y deja trazabilidad de cada intervención para medir si funcionó.
-
-### 2.3 Gamificación madura — la progresión
-
-La gamificación es el mecanismo por el cual el sistema se vuelve más sofisticado a medida que el usuario demuestra consistencia real.
-
-No premia clics. Premia calidad de contexto.
-
-El spec completo vive en [gamificacion.md](../finanzas/gamificacion.md).
-
----
-
-## 3. Cómo se conectan los tres pilares
-
-El motor conductual alimenta al chat: determina el tono, el tipo de intervención y cuándo hablar vs cuándo esperar.
-
-La gamificación alimenta al motor: el nivel del usuario define qué tan profundo puede ir el agente. Un usuario en nivel 1 recibe coaching básico. Un usuario en nivel 5 recibe simulaciones, confrontaciones y análisis conductual.
-
-El chat es la expresión de ambos: la pantalla donde el agente muestra su personalidad, adaptada al perfil conductual del usuario y al nivel del sistema.
+Los tres se alimentan entre sí:
 
 ```
 Nivel del sistema (gamificación)
@@ -88,122 +47,117 @@ Chat dedicado (expresión)
 
 ---
 
-## 4. Plan de implementación — 4 fases
+## 3. Dos proyectos separados
 
-### Fase I — Capa de gamificación en el repo actual
+La cara viva y la distribución pública son proyectos distintos con retos distintos. No se mezclan.
 
-**Objetivo:** darle al sistema una identidad visible y medible. El usuario ve su progreso, su nivel, su racha y lo que sigue.
+---
 
-**Backend — nuevas entidades:**
+### Track A — La cara viva (repo actual, usuario único)
 
-- `account_progress`: xp total, level (0-5), streak_days, readiness_score, bypass_readiness
+**Qué es:** implementar la gamificación, el chat dedicado y el motor conductual en el repo actual. El único usuario es el dueño de la cuenta. El objetivo es iterar, testear y validar la experiencia antes de que la vea cualquier otra persona.
+
+**Por qué primero:** si la gamificación no funciona bien para el único usuario que la conoce a fondo, no va a funcionar para nadie. Este track construye la identidad del producto.
+
+**Cómo se testea:** el dueño de la cuenta opera con `bypass_readiness: true` y puede cambiar de nivel libremente para reproducir cada estado del sistema. Es el QA y el product manager al mismo tiempo.
+
+**Tareas:**
+
+*Backend — nuevas entidades:*
+- `account_progress`: xp, level (0-5), streak_days, readiness_score, bypass_readiness
 - `feature_flags`: feature_key, status (`locked | available_to_unlock | active | paused | needs_context`), unlocked_at
-- `xp_events`: action_type, xp_amount, account_id, created_at (log auditivo)
+- `xp_events`: action_type, xp_amount, account_id, created_at
 
-**Backend — nuevos interactors:**
+*Backend — nuevos interactors:*
+- `ComputeXP`: recibe `action_type` y acredita XP según tabla de valores
+- `EvaluateReadiness`: evalúa dimensiones de Agent Readiness y determina desbloqueos
+- `UnlockFeature`: transiciona un feature_flag a `active`
 
-- `ComputeXP`: recibe un `action_type` (ej: `transaction_confirmed`, `plan_closed`) y acredita XP según tabla de valores
-- `EvaluateReadiness`: corre las dimensiones de Agent Readiness y determina qué features pueden desbloquearse
-- `UnlockFeature`: transiciona un feature_flag de `available_to_unlock` a `active`
-
-**Backend — nuevos endpoints:**
-
+*Backend — endpoints:*
 - `GET /api/v1/me/progress` — xp, level, streak, readiness_score, avatar_seed
-- `GET /api/v1/me/features` — lista de features con su estado actual
-- `POST /api/v1/me/features/:key/unlock` — confirma desbloqueo de un feature disponible
+- `GET /api/v1/me/features` — lista de features con su estado
+- `POST /api/v1/me/features/:key/unlock` — confirma desbloqueo
 
-**Backend — hooks en interactors existentes:**
+*Backend — hooks XP en interactors existentes (vía EventBus, sin tocar lógica interna):*
+- `transaction_confirmed` → 10 XP
+- `plan_closed` → 75 XP
+- `debt_paid_off` → 200 XP
+- `sinking_fund_created` → 25 XP
+- (tabla completa en sección 5)
 
-Los interactors existentes publican eventos XP al final de su ejecución vía `EventBus`. No se modifica su lógica interna.
-
-Ejemplos:
-```ruby
-EventBus.publish("xp.transaction_confirmed", account_id: account_id, amount: 10)
-EventBus.publish("xp.plan_closed", account_id: account_id, amount: 50)
-EventBus.publish("xp.debt_paid_off", account_id: account_id, amount: 100)
-```
-
-**Frontend:**
-
-- Componente `AvatarNucleus`: renderiza el estado visual del nivel (0-5) usando `avatar_seed` + `level` como parámetros determinísticos
-- Barra de progreso XP hacia siguiente nivel en Dashboard
+*Frontend:*
+- Componente `AvatarNucleus`: renderiza estado visual del nivel usando `avatar_seed + level` como parámetros determinísticos
+- Barra XP hacia siguiente nivel en Dashboard
 - Indicador de racha
-- Panel `FeatureReadiness`: muestra qué viene y qué falta para desbloquearlo
-- Notificación de desbloqueo cuando un feature pasa a `available_to_unlock`
+- Panel `FeatureReadiness`: qué viene y qué falta para desbloquearlo
+- Notificación de desbloqueo cuando feature pasa a `available_to_unlock`
+- Chat dedicado: pantalla propia con historial persistente, input y estado del agente
 
-**Agente:**
+*Agente:*
+- Los prompts reciben `user_level` y `readiness_score` en el contexto
+- El nightly agent adapta profundidad del coaching al nivel del usuario
+- Motor conductual: perfil inferido en 6 ejes, intervenciones COM-B
 
-- Los prompts del Brain reciben `user_level` y `readiness_score` en el contexto
-- El nightly agent adapta la profundidad del coaching al nivel del usuario
-
----
-
-### Fase II — Brain multi-cuenta
-
-**Objetivo:** el agente puede operar para múltiples usuarios simultáneamente sin configuración hardcodeada.
-
-**Cambios en `daniel15k-agents`:**
-
-- `account_id` se pasa en cada request al API vía header `X-Account-Id` (ya existe para service accounts)
-- Scheduler: cada cuenta tiene su propio job registrado con `account_id` como parámetro
-- Gmail: las credenciales se almacenan por cuenta (tabla `account_integrations` en el API)
-- Telegram: `chat_id` se almacena por cuenta, no en env vars globales
-- Conversation store: namespaceado por `account_id`
-- Insight generator: parametrizado por `account_id`
-
-**Cambios en `daniel15k-api`:**
-
-- Nueva tabla `account_integrations`: tipo (`gmail`, `telegram`), credenciales cifradas, estado
-- `GET/POST /api/v1/me/integrations` — gestión de credenciales externas por cuenta
-- Las integraciones son un feature del nivel 2+ (requieren Agent Readiness)
+**Criterio de éxito del Track A:**
+- Cada nivel se siente diferente en la UI y en el tono del agente
+- El XP refleja acciones reales de valor, no clics
+- El avatar se siente como una biografía visual, no una skin
+- El chat tiene personalidad consistente
 
 ---
 
-### Fase III — Registro y onboarding
+### Track B — Generalización y distribución pública
 
-**Objetivo:** un usuario nuevo puede crear una cuenta y vivir la experiencia desde nivel 0.
+**Qué es:** convertir Daniel 15K en un producto que puede ser usado por otras personas. Solo empieza cuando el Track A está validado.
 
-**Backend:**
+**Por qué después:** generalizar antes de validar la experiencia es construir infraestructura para algo que todavía no funciona bien. Primero tiene que funcionar perfecto para un usuario.
 
-- `POST /api/v1/auth/register` — crea user + account + account_progress (level 0, xp 0)
-- Email de verificación
-- Wizard de onboarding: 3 pasos (nombre, contexto financiero inicial, primer registro)
-- Al crear la cuenta: `avatar_seed` generado una sola vez desde `account_id`
+**Retos reales de este track** (son de otra naturaleza que el Track A):
 
-**Frontend:**
+- Renombrar la aplicación (branding, dominio, identidad)
+- Multi-tenancy real: múltiples usuarios con datos completamente aislados
+- Quitar tokens hardcodeados del Brain (Telegram chat_id, Gmail credentials, service token)
+- Credenciales por cuenta: cada usuario conecta su propio Gmail, su propio Telegram
+- Acceso al email en iOS: las apps nativas no pueden hacer IMAP directamente — requiere OAuth con Google, background refresh, o un enfoque alternativo
+- Registro y onboarding: el usuario nuevo vive la experiencia desde nivel 0 sin instrucciones externas
+- Infraestructura multi-cuenta en Railway: schedulers, workers, variables de entorno por tenant
+- Privacidad y aislamiento verificable
+- App Store: distribución iOS con sus propias reglas (privacidad, pagos, revisión)
 
-- Pantalla de registro con el mensaje del nivel 0: *"Tu sistema acaba de nacer."*
-- Onboarding de 3 pasos que no abruma
-- Dashboard en estado nivel 0: UI simplificada, avatar núcleo, única tarea visible: registrar
+**Tareas de alto nivel:**
 
-**Agente:**
+- [ ] Definir nombre y branding final
+- [ ] Migrar credenciales externas a tabla `account_integrations` (por cuenta)
+- [ ] Parametrizar scheduler del Brain por `account_id`
+- [ ] Resolver acceso al email en iOS (OAuth Google vs webhook vs alternativa)
+- [ ] `POST /api/v1/auth/register` con creación de account + account_progress
+- [ ] Onboarding flow (pantallas de nivel 0)
+- [ ] Infraestructura multi-tenant en Railway
+- [ ] Checklist de aislamiento de datos antes del primer beta externo
 
-- Prompt de onboarding: tono más guiado, menos asunciones, más preguntas
-- El nightly agent no corre hasta nivel 1 (feature `nightly_review: locked`)
+**Criterio de entrada al Track B:** Track A completo y validado con al menos 30 días de uso real.
 
 ---
 
-### Fase IV — Primer usuario externo beta
+## 4. Tabla de niveles
 
-**Objetivo:** validar que la experiencia funciona para alguien que no sos vos.
+| Nivel | Nombre | XP requerido | Feature desbloqueado |
+|-------|--------|-------------|----------------------|
+| 0 | Huevo | 0 | Registro básico, historial |
+| 1 | Pulso | 200 | Señales de comportamiento, alertas básicas |
+| 2 | Conciencia | 600 | Revisión nocturna, agent insights |
+| 3 | Estructura | 1.500 | Recurrentes, deudas, planned expenses, sinking funds |
+| 4 | Estrategia | 3.500 | Plan mensual, LiquidityProjection, ProposeBudget |
+| 5 | Sistema Nervioso | 8.000 | Motor conductual, chat dedicado completo, simulaciones |
 
-**Checklist:**
-
-- [ ] Aislamiento de datos verificado (ningún `account_id` filtra datos de otro)
-- [ ] El agente opera con las credenciales del cuenta del usuario, no las globales
-- [ ] El nivel 0 es funcional y no abrumador
-- [ ] Los mensajes de desbloqueo son claros y no frustrantes
-- [ ] El chat dedicado está disponible desde el primer día
-- [ ] Existe un mecanismo de feedback (formulario o canal directo)
-- [ ] Railway deployado con variables de entorno por cuenta, no hardcodeadas
-- [ ] El super usuario puede cambiar de nivel para reproducir bugs reportados
+Los valores de XP requerido se calibran con datos reales de los primeros ciclos.
 
 ---
 
 ## 5. Tabla de valores XP
 
 | Acción | XP |
-|--------|-----|
+|--------|----|
 | Transacción confirmada | 10 |
 | Transacción con subcategoría asignada | +5 |
 | Pendiente resuelto | 15 |
@@ -219,26 +173,11 @@ EventBus.publish("xp.debt_paid_off", account_id: account_id, amount: 100)
 | Primera deuda liquidada | 200 |
 | Presupuesto discrecional cumplido | 40 |
 
-Acciones sin XP: abrir la app, crear y borrar datos, registrar sin categoría repetidamente.
+Acciones sin XP: abrir la app, crear y borrar datos repetidamente, registrar sin categoría.
 
 ---
 
-## 6. Tabla de niveles
-
-| Nivel | Nombre | XP requerido | Feature desbloqueado |
-|-------|--------|-------------|----------------------|
-| 0 | Huevo | 0 | Registro básico, historial |
-| 1 | Pulso | 200 | Señales de comportamiento, alertas básicas |
-| 2 | Conciencia | 600 | Revisión nocturna, agent insights |
-| 3 | Estructura | 1.500 | Recurrentes, deudas, planned expenses, sinking funds |
-| 4 | Estrategia | 3.500 | Plan mensual, LiquidityProjection, ProposeBudget |
-| 5 | Sistema Nervioso | 8.000 | Motor conductual, simulaciones avanzadas, chat dedicado completo |
-
-El XP requerido puede calibrarse con datos reales de los primeros usuarios.
-
----
-
-## 7. Agent Readiness — dimensiones
+## 6. Agent Readiness — dimensiones
 
 Evolución del `DetectCompletenessState` existente. Las mismas 5 dimensiones más 3 nuevas:
 
@@ -254,38 +193,22 @@ streak_quality           — missing | partial | sufficient   ← nueva
 closed_months            — missing | partial | sufficient   ← nueva
 ```
 
-El `readiness_score` es un número 0-100 derivado del estado de las dimensiones. No es un promedio simple: las dimensiones críticas pesan más.
+El `readiness_score` es 0-100. Las dimensiones críticas pesan más que las secundarias.
 
 ---
 
-## 8. Lo que el agente sabe sobre su propio nivel
+## 7. Lo que el agente sabe sobre su nivel
 
-En cada conversación, el agente recibe:
+En cada conversación el agente recibe:
 
 ```json
 {
   "user_level": 3,
   "readiness_score": 72,
-  "active_features": ["nightly_review", "recurring", "debts", "planned_expenses"],
+  "active_features": ["nightly_review", "recurring", "debts"],
   "locked_features": ["monthly_plan", "motor_conductual"],
   "behavioral_profile": null
 }
 ```
 
-Con eso:
-- Ajusta la profundidad del coaching
-- No recomienda features que no están activas
-- Explica qué falta para desbloquear lo que viene
-- Adapta el tono al nivel de madurez del usuario
-
----
-
-## 9. Criterio de éxito de la distribución
-
-El producto funciona para distribución cuando:
-
-- Un usuario nuevo puede registrarse, entender qué hacer y ver progreso sin instrucciones externas
-- El agente opera correctamente con los datos de ese usuario sin intervención manual
-- El nivel 0-2 se puede completar en los primeros 30 días naturalmente
-- El usuario siente que la app está viva, no que llena formularios
-- Cada acción de calidad se siente recompensada sin volverse un juego vacío
+Con eso ajusta profundidad del coaching, no recomienda features inactivas, y explica qué falta para desbloquear lo que viene.
