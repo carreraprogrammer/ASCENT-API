@@ -1,7 +1,7 @@
 class CreateAccountProgress < ActiveRecord::Migration[8.0]
   def change
     create_table :account_progress do |t|
-      t.references :account, null: false, foreign_key: true
+      t.references :account, null: false, foreign_key: true, index: false
       t.integer :xp, null: false, default: 0
       t.integer :level, null: false, default: 0
       t.integer :streak_days, null: false, default: 0
