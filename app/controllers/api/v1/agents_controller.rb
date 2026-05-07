@@ -9,7 +9,7 @@ module Api
 
       # POST /api/v1/agents/chat
       def chat
-        session_id = SecureRandom.uuid
+        session_id = params[:session_id].presence || SecureRandom.uuid
         WebChatJob.perform_later(
           account_id: current_account.id,
           session_id: session_id,

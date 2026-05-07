@@ -4,6 +4,7 @@ class AgentUiEvent < ApplicationRecord
   EVENT_TYPES = %w[
     show_plan_proposal
     show_card
+    show_quick_replies
     show_form
     request_confirmation
     navigate
