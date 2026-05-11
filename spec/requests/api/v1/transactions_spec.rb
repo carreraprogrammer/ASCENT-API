@@ -84,6 +84,49 @@ RSpec.describe "Transactions API" do
       expect(json.dig("data", "attributes", "status")).to eq("confirmed")
     end
 
+    it "does not create a UI refresh event for user-created transactions" do
+      expect {
+        post "/api/v1/transactions", params: valid_params, headers: headers
+      }.not_to change(AgentUiEvent, :count)
+    end
+
+    it "creates a pending UI refresh event when a delegated agent creates a transaction" do
+      service_token = "test-service-token"
+      service_account = ServiceAccount.create!(name: "Finance Agent", slug: "finance-agent")
+      service_account.store_raw_token!(service_token)
+      agent_type = AgentType.create!(name: "Finance Coach", slug: "finance_coach")
+      Delegation.create!(
+        user: user,
+        account: user.default_account,
+        service_account: service_account,
+        agent_type: agent_type,
+        scopes: [ "transactions:create" ],
+        granted_at: Time.current
+      )
+
+      post "/api/v1/transactions",
+           params: valid_params.merge(source: "telegram"),
+           headers: {
+             "Authorization" => "Bearer #{service_token}",
+             "X-Account-Id" => user.default_account.id.to_s,
+             "X-Agent-Type" => "finance_coach"
+           }
+
+      expect(response).to have_http_status(:created)
+      event = AgentUiEvent.last
+      expect(event).to have_attributes(
+        account_id: user.default_account.id,
+        event_type: "data_changed",
+        consumed_at: nil
+      )
+      expect(event.payload).to include(
+        "resource" => "transactions",
+        "action" => "created",
+        "invalidates" => include("transactions", "summary")
+      )
+      expect(event.payload.dig("transaction", "attributes", "concept")).to eq("Domicilio pizza")
+    end
+
     it "infers credit card payment source from card-like product labels" do
       post "/api/v1/transactions",
            params: {

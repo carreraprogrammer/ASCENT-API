@@ -70,6 +70,7 @@ module Api
           "month=#{transaction.month.inspect} status=#{transaction.status.inspect} " \
           "source=#{transaction.source.inspect}"
         )
+        publish_transaction_change("created", transaction)
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction), status: :created
       rescue Finanzas::Errors::DuplicateTransaction => e
         Rails.logger.warn(
@@ -107,6 +108,7 @@ module Api
           "date=#{transaction.date.inspect} year=#{transaction.year.inspect} " \
           "month=#{transaction.month.inspect} status=#{transaction.status.inspect}"
         )
+        publish_transaction_change("updated", transaction)
         render json: Finanzas::Presenters::TransactionPresenter.single(transaction)
       rescue Finanzas::Errors::TransactionNotFound => e
         Rails.logger.warn("[TransactionsController#update] not_found transaction_id=#{params[:id].inspect}")
@@ -142,6 +144,7 @@ module Api
         Rails.logger.info(
           "[TransactionsController#batch] created=#{results.size} errors=#{errors.size} account_id=#{current_account&.id}"
         )
+        publish_transaction_batch_change(results)
         render json: { data: results, errors: errors }, status: :created
       end
 
@@ -163,7 +166,9 @@ module Api
 
       def destroy
         return unless require_scope!("transactions:delete")
+        transaction_id = params[:id].to_s
         Finanzas::Interactors::DestroyTransaction.new.call(id: params[:id], account_id: current_account.id)
+        publish_transaction_change("deleted", id: transaction_id)
         head :no_content
       rescue Finanzas::Errors::TransactionNotFound => e
         render json: { errors: [ { status: "404", title: "Not Found", detail: e.message } ] },
@@ -174,10 +179,10 @@ module Api
 
       def transaction_create_params
         p = params.permit(
-	          :date, :concept, :product, :amount, :transaction_type,
-	          :category_id, :subcategory_id, :category_code, :subcategory_code,
-	          :source, :status, :payment_source, :credit_card_status,
-	          :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, metadata: {}
+          :date, :concept, :product, :amount, :transaction_type,
+          :category_id, :subcategory_id, :category_code, :subcategory_code,
+          :source, :status, :payment_source, :credit_card_status,
+          :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
@@ -185,10 +190,10 @@ module Api
       def batch_transaction_params
         params.require(:transactions).map do |txn|
           p = txn.permit(
-	            :date, :concept, :product, :amount, :transaction_type,
-	            :category_id, :subcategory_id, :category_code, :subcategory_code,
-	            :source, :status, :payment_source, :credit_card_status,
-	            :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, metadata: {}
+            :date, :concept, :product, :amount, :transaction_type,
+            :category_id, :subcategory_id, :category_code, :subcategory_code,
+            :source, :status, :payment_source, :credit_card_status,
+            :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, metadata: {}
           ).to_h.symbolize_keys
           category_repo.resolve_codes(p, account_id: current_account.id)
         end
@@ -196,10 +201,10 @@ module Api
 
       def transaction_update_params
         p = params.permit(
-	          :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
-	          :concept, :product, :amount, :date, :source, :clarification_resolved_at,
-	          :payment_source, :credit_card_status, :debt_id, :recurring_obligation_id,
-	          :income_source_id, :sinking_fund_id, metadata: {}
+          :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
+          :concept, :product, :amount, :date, :source, :clarification_resolved_at,
+          :payment_source, :credit_card_status, :debt_id, :recurring_obligation_id,
+          :income_source_id, :sinking_fund_id, metadata: {}
         ).to_h.symbolize_keys
         category_repo.resolve_codes(p, account_id: current_account.id)
       end
@@ -217,6 +222,56 @@ module Api
           category_id: normalized_presence(params[:category_id]),
           subcategory_id: normalized_presence(params[:subcategory_id])
         }.compact
+      end
+
+      def publish_transaction_change(action, transaction = nil, id: nil)
+        return unless service_account_request?
+
+        transaction_id = id || transaction&.id&.to_s
+        payload = {
+          resource: "transactions",
+          action: action,
+          transaction_id: transaction_id,
+          invalidates: [ "transactions", "summary", "budget_context", "monthly_plans" ],
+          actor: {
+            type: current_actor_type,
+            agent_type: current_agent_type&.slug
+          }
+        }
+
+        if transaction.present?
+          payload[:transaction] = Finanzas::Presenters::TransactionPresenter.resource(transaction)
+          payload[:period] = { month: transaction.month, year: transaction.year }
+        end
+
+        AgentUiEvent.create!(
+          account_id: current_account.id,
+          event_type: "data_changed",
+          payload: payload
+        )
+      end
+
+      def publish_transaction_batch_change(results)
+        return unless service_account_request?
+        return if results.empty?
+
+        transactions = results.map { |result| result[:data] || result["data"] }.compact
+
+        AgentUiEvent.create!(
+          account_id: current_account.id,
+          event_type: "data_changed",
+          payload: {
+            resource: "transactions",
+            action: "batch_created",
+            transaction_ids: transactions.map { |transaction| transaction[:id] || transaction["id"] },
+            transactions: transactions,
+            invalidates: [ "transactions", "summary", "budget_context", "monthly_plans" ],
+            actor: {
+              type: current_actor_type,
+              agent_type: current_agent_type&.slug
+            }
+          }
+        )
       end
     end
   end

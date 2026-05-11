@@ -11,7 +11,9 @@ class EventBus
       return true if key.nil?
 
       @subscribers[key].each do |handler|
-        handler.call(payload)
+        ActiveRecord::Base.transaction(requires_new: true) do
+          handler.call(payload)
+        end
       rescue StandardError => e
         Rails.logger.error("[EventBus] Handler error for #{key}: #{e.message}")
       end

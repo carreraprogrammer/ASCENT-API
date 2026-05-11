@@ -1,290 +1,743 @@
-# Gamificación y Milestones
+# Spec — Gamificación madura y aplicación viva
 
-> Estado: 🟡 parcial — milestones implementados, DB migrada; streaks pendientes
-> Última actualización: 2026-04-24
-
----
-
-## 1. Propósito
-
-La gamificación no es puntos ni badges decorativos — es el mecanismo que hace que el usuario progrese naturalmente por los niveles de madurez financiera sin sentirlo como obligación. El sistema reconoce logros reales (primera transacción registrada, primera deuda liquidada, primer mes con plan cumplido) y los usa como señales para desbloquear el siguiente nivel.
-
-Referencia: el modelo de progresión de Duolingo aplicado a finanzas personales. El usuario no "estudia finanzas" — simplemente usa la app y el sistema detecta cuándo está listo para más.
-
-**Principio clave:** el mismo evento tiene distinto significado según la fase del usuario. Adquirir una deuda cuando la fase es `debt_payoff` es un setback. Adquirirla cuando la fase es `wealth_building` para financiar un activo puede ser neutral o positivo. El agente es quien interpreta — el sistema solo registra el hecho y el contexto.
+> Producto: Daniel 15K / versión productizable futura
+> Estado: borrador estratégico
+> Propósito: definir una estrategia de gamificación progresiva, madura y coherente con una aplicación de coaching personal basada en agentes.
 
 ---
 
-## 2. Los 6 niveles
+## 1. Visión
 
-### Nivel 1 — Registro
-**Nombre display:** "Registrador"
-**Qué tiene disponible:** Solo registro de transacciones. Sin presupuesto, sin análisis.
-**Prerequisito para subir:** ≥10 transacciones registradas en el último mes.
-**Mensaje de desbloqueo:** "Ya tenés 10 movimientos registrados. Estás listo para darle sentido a tus números."
+Daniel 15K no debe sentirse como una app financiera tradicional ni como un juego superficial pegado encima de un dashboard. La experiencia debe sentirse como un sistema vivo que madura junto con el usuario.
 
-### Nivel 2 — Perfil
-**Nombre display:** "Organizado"
-**Qué tiene disponible:** Registro de ingresos y gastos recurrentes. Completeness indicator activo.
-**Prerequisito para subir:** income_profile completo + al menos 1 recurring_obligation registrado.
-**Mensaje de desbloqueo:** "Tu perfil financiero está tomando forma. Ahora podemos hablar de estrategia."
+La aplicación funciona como un sistema nervioso personal: recibe señales de la vida diaria, las estructura, permite que un agente razone sobre ellas y devuelve decisiones, alertas, coaching y dirección.
 
-### Nivel 3 — Estrategia
-**Nombre display:** "Estratega"
-**Qué tiene disponible:** Definición de fase financiera y estrategia (snowball/avalanche). El agente puede dar recomendaciones.
-**Prerequisito para subir:** financial_context.phase + strategy definidos + debts registradas (o confirmación explícita de que no hay deudas).
-**Mensaje de desbloqueo:** "Tenés una estrategia clara. Es momento de convertirla en un plan mensual."
+La gamificación no busca entretener por entretener. Su objetivo es reforzar paciencia, consistencia, claridad conductual y construcción progresiva de contexto confiable.
 
-### Nivel 4 — Presupuesto
-**Nombre display:** "Planificador"
-**Qué tiene disponible:** Plan mensual ZBB con categorías dinámicas, bolsillos (sinking funds), wizard conversacional del agente.
-**Prerequisito para subir:** ≥3 meses consecutivos con plan mensual confirmado Y phase cambia a investing o wealth_building.
-**Mensaje de desbloqueo:** "Tres meses seguidos con tu plan cumplido. Las deudas están bajo control. Hablemos de hacer crecer tu plata."
+La idea central:
 
-### Nivel 5 — Inversión
-**Nombre display:** "Inversor"
-**Qué tiene disponible:** Presupuesto orientado a crecimiento, tracking de inversiones, estrategias de ingreso pasivo.
-**Prerequisito para subir:** ≥12 meses en nivel 5 con métricas de patrimonio creciente.
-**Mensaje de desbloqueo:** "Ya no solo administrás tu dinero — lo hacés trabajar. Hablemos de patrimonio."
-
-### Nivel 6 — Patrimonio
-**Nombre display:** "Constructor de patrimonio"
-**Qué tiene disponible:** Todo. Proyecciones de largo plazo, diversificación, conceptos avanzados.
-**Prerequisito:** No hay siguiente nivel. El objetivo es mantenerse.
+> La app no desbloquea poder porque el usuario pagó o hizo clic. Desbloquea poder porque el usuario demostró suficiente consistencia para que el agente pueda aconsejar sin contaminar el contexto.
 
 ---
 
-## 3. Hitos y penalizaciones por fase
+## 2. Principio rector
 
-Los eventos tienen `tone: achievement | setback` y su interpretación depende de la fase activa del usuario. El agente es quien comunica el significado — la tabla solo registra el hecho y el tono.
+El usuario no recibe todas las funcionalidades desde el día uno.
 
-### 3.1 Hitos únicos (ocurren una sola vez, `unique: true`)
+Primero debe construir una base de datos limpia, estable y suficiente. El agente necesita conocer al usuario antes de ofrecer coaching avanzado. Si se activan muchas capacidades demasiado pronto, el sistema puede razonar sobre información incompleta, generar recomendaciones débiles o perder credibilidad.
 
-| Código | Descripción | Cuándo ocurre |
-|--------|-------------|---------------|
-| `first_transaction` | Primera transacción registrada | Al crear la primera |
-| `first_income_source` | Primer ingreso registrado | Al crear el primero |
-| `first_recurring_obligation` | Primer gasto recurrente registrado | Al crear el primero |
-| `first_debt_registered` | Primera deuda registrada | Al crear la primera |
-| `first_strategy_set` | Primera estrategia financiera definida | Al guardar financial_context con phase + strategy |
-| `first_monthly_plan` | Primer plan mensual confirmado | Al confirmar el primer plan |
-| `first_debt_paid_off` | Primera deuda liquidada | Al marcar un debt como paid_off |
-| `three_months_planned` | 3 meses consecutivos con plan | Calculado al confirmar el tercer plan |
-| `first_sinking_fund` | Primer bolsillo creado | Al crear el primero |
-| `income_diversified` | Segundo ingreso registrado | Al agregar un segundo income_source |
-| `emergency_fund_reached` | Fondo de emergencia completo | Cuando savings_goal de tipo emergency_fund alcanza target |
-| `debt_free` | Sin deudas activas | Cuando todas las deudas pasan a paid_off |
-| `level_2_unlocked` | Desbloqueó nivel 2 | Automático |
-| `level_3_unlocked` | Desbloqueó nivel 3 | Automático |
-| `level_4_unlocked` | Desbloqueó nivel 4 | Automático |
-| `level_5_unlocked` | Desbloqueó nivel 5 | Automático |
-| `level_6_unlocked` | Desbloqueó nivel 6 | Automático |
+Por eso, la progresión de funcionalidades debe sentirse como entrenamiento, no como restricción.
 
-### 3.2 Hitos recurrentes (pueden ocurrir múltiples veces, `unique: false`)
+Mensaje conceptual al usuario:
 
-Estos se registran cada vez que ocurren y son la base del coaching contextual del agente.
-
-| Código | Tono | Descripción | Cuándo ocurre |
-|--------|------|-------------|---------------|
-| `debt_paid_off` | achievement | Deuda liquidada | Al marcar cualquier debt como paid_off |
-| `extra_debt_payment` | achievement | Abono extra sobre el mínimo | Cuando el agente detecta pago > monthly_payment |
-| `new_debt_acquired` | setback | Nueva deuda registrada | Al crear un debt en fase debt_payoff |
-| `payment_missed` | setback | Atraso en obligación | Cuando una recurring_obligation vence sin transacción confirmada |
-| `emergency_fund_tranche` | achievement | Tramo del fondo alcanzado | Al cruzar 25%, 50%, 75%, 100% del target de emergency_fund |
-| `investment_started` | achievement | Primera inversión del mes | Primera transacción con subcategory investment en el mes |
-| `investment_streak` | achievement | Meses consecutivos invirtiendo | Al confirmar N meses seguidos con al menos una inversión |
-| `savings_goal_tranche` | achievement | Tramo de meta de ahorro alcanzado | Al cruzar umbrales de cualquier savings_goal |
-| `discretionary_under_budget` | achievement | Mes discrecional bajo presupuesto | Al cerrar el mes con gasto discrecional < discretionary_limit |
-| `overflow_deployed` | achievement | Excedente asignado correctamente | Cuando el overflow_rule se ejecuta sin tocar el presupuesto base |
-| `month_positive_balance` | achievement | Mes con balance positivo | Al cerrar el mes con balance_confirmed > 0 |
-
-### 3.3 Setbacks contextuales
-
-Un setback no es una penalización moral — es información. El agente lo presenta como dato, no como reproche.
-
-| Código | Fase donde aplica | Descripción |
-|--------|-------------------|-------------|
-| `new_debt_acquired` | debt_payoff | Nueva deuda mientras el objetivo es pagar las existentes |
-| `payment_missed` | todas | Obligación recurrente sin ejecutar pasada su fecha |
-| `discretionary_over_budget` | todas | Gasto discrecional supera el límite del plan |
-| `emergency_fund_withdrawn` | emergency_fund | Retiro del fondo antes de alcanzar el target |
-| `investment_withdrawn` | investing / wealth_building | Retiro anticipado de inversión |
-| `plan_not_confirmed` | todas | Mes sin plan confirmado después del día 5 |
-
-**Regla del agente:** nunca presentar un setback como fracaso. Siempre encuadrarlo en el contexto del plan: "Registré la nueva deuda. Actualicé el orden del snowball. Tu próximo objetivo sigue siendo el CrediExpress."
+> Durante los primeros días, tu única misión es registrar. No vamos a apresurar el coaching hasta que tu sistema tenga suficiente verdad sobre ti.
 
 ---
 
-## 4. Modelo de datos
+## 3. Objetivos de la gamificación
 
-### 4.1 `financial_level` en accounts
+1. Aumentar consistencia de registro.
+2. Reducir ansiedad financiera mediante progreso visible.
+3. Construir contexto confiable para el agente.
+4. Evitar que el usuario se abrume con demasiadas herramientas.
+5. Convertir funcionalidades avanzadas en recompensas merecidas.
+6. Hacer que la app se sienta viva, no estática.
+7. Reforzar identidad: el usuario no solo “usa una app”, está construyendo una versión más consciente de sí mismo.
 
-Campo cacheado que indica el nivel actual. **No es una fuente de verdad independiente** — siempre se deriva de datos existentes:
+---
 
+## 4. No objetivos
+
+La gamificación no debe:
+
+* Infantilizar el producto.
+* Convertir finanzas personales en un juego irresponsable.
+* Premiar únicamente gastar menos.
+* Castigar al usuario con vergüenza.
+* Crear dependencia emocional del avatar.
+* Desbloquear features críticas demasiado tarde si el usuario necesita ayuda urgente.
+* Forzar una estética tipo videojuego genérico.
+
+---
+
+## 5. Modelo conceptual
+
+La experiencia se compone de tres metáforas complementarias:
+
+### 5.1 La app como cuerpo
+
+La aplicación es el cuerpo del sistema. Al inicio es simple, casi desnuda. Con el tiempo gana órganos, sentidos, memoria y capacidad de acción.
+
+Ejemplo:
+
+* Nivel inicial: registro de transacciones e historial básico.
+* Nivel medio: revisión nocturna, presupuestos, obligaciones recurrentes.
+* Nivel avanzado: simulaciones, escenarios, motor conductual, agente estratégico.
+
+### 5.2 El avatar como conciencia
+
+El avatar representa la conciencia financiera/conductual del usuario. No debe ser una mascota infantil, sino una entidad simbólica, premium y viva.
+
+Puede empezar como un huevo, semilla o núcleo. Evoluciona con la consistencia del usuario y con la madurez del contexto.
+
+### 5.3 La montaña como camino
+
+La montaña representa el journey completo. Comunica ascenso lento, esfuerzo, paciencia, recuperación y progreso real.
+
+La montaña no necesariamente debe ser el avatar principal. Puede funcionar como mapa de progreso, roadmap visual o narrativa de niveles.
+
+---
+
+## 6. Dirección visual recomendada
+
+La opción más fuerte es combinar las tres ideas:
+
+> La app es el cuerpo. El avatar es la conciencia. La montaña es el camino.
+
+Visualmente, el producto debe sentirse como una mezcla entre:
+
+* sistema nervioso personal,
+* tamagotchi premium,
+* dashboard financiero,
+* journey de transformación,
+* coach conductual.
+
+El avatar no debe parecer un clon de Pokémon o Digimon. Debe inspirarse más en una entidad simbólica evolutiva:
+
+* huevo,
+* semilla,
+* núcleo,
+* pulso,
+* guardián,
+* oráculo,
+* sistema nervioso.
+
+---
+
+## 7. Evolución del avatar
+
+### Nivel 0 — Huevo / Semilla
+
+Estado del usuario: acaba de empezar.
+Estado del sistema: no conoce suficiente contexto.
+Funcionalidad disponible: registro básico de transacciones.
+
+Visual:
+
+* Núcleo pequeño.
+* Movimiento mínimo.
+* Poca luz.
+* UI simple.
+
+Mensaje:
+
+> Tu sistema está naciendo. Por ahora, solo necesita una cosa: verdad diaria.
+
+---
+
+### Nivel 1 — Pulso
+
+Estado del usuario: registra con cierta consistencia.
+Estado del sistema: empieza a detectar patrones simples.
+Funcionalidad desbloqueada: revisión semanal o señales básicas.
+
+Visual:
+
+* El núcleo empieza a latir.
+* Aparecen líneas suaves o partículas.
+* La UI gana una tarjeta de progreso.
+
+Mensaje:
+
+> Ya hay suficiente señal para empezar a ver patrones.
+
+---
+
+### Nivel 2 — Conciencia
+
+Estado del usuario: tiene historial suficiente.
+Estado del sistema: puede hacer revisión nocturna con menor riesgo.
+Funcionalidad desbloqueada: revisión nocturna.
+
+Visual:
+
+* El avatar abre una especie de ojo simbólico o centro de luz.
+* Mayor movimiento.
+* Aparecen insights nocturnos.
+
+Mensaje:
+
+> Tu sistema ya puede observar tu día y devolverte una lectura.
+
+---
+
+### Nivel 3 — Estructura
+
+Estado del usuario: ya registra y revisa con constancia.
+Estado del sistema: puede modelar obligaciones e ingresos.
+Funcionalidad desbloqueada: ingresos recurrentes, gastos recurrentes, obligaciones.
+
+Visual:
+
+* El avatar gana anillos, estructura, capas o nodos.
+* La UI gana secciones de fuentes de verdad.
+
+Mensaje:
+
+> Ya no solo registramos movimientos. Ahora modelamos tu flujo de vida.
+
+---
+
+### Nivel 4 — Estrategia
+
+Estado del usuario: tiene datos suficientes para planificar.
+Estado del sistema: puede simular escenarios y presupuestos.
+Funcionalidad desbloqueada: presupuesto mensual, escenarios, safe-to-deploy, deuda snowball.
+
+Visual:
+
+* El avatar parece más inteligente y estable.
+* La montaña muestra mayor altitud.
+* La UI incorpora gráficos, proyecciones y recomendaciones.
+
+Mensaje:
+
+> Tu sistema ya puede ayudarte a decidir antes de equivocarte.
+
+---
+
+### Nivel 5 — Sistema Nervioso
+
+Estado del usuario: contexto maduro.
+Estado del sistema: puede operar como copiloto personal avanzado.
+Funcionalidad desbloqueada: agente estratégico, motor conductual, simulaciones avanzadas, coaching multi-módulo.
+
+Visual:
+
+* Avatar completamente formado.
+* Red de conexiones vivas.
+* UI sofisticada, con más profundidad visual y narrativa.
+
+Mensaje:
+
+> Tu sistema no solo recuerda. Conecta, razona y te acompaña.
+
+---
+
+## 8. Unicidad del avatar
+
+Cada avatar debe ser único e irrepetible. No basta con que todos los usuarios pasen por los mismos estados visuales de evolución. El sistema debe asignar características físicas aleatorias o semi-aleatorias en cada nivel para que el avatar se sienta como una entidad viva propia de cada usuario.
+
+La evolución debe combinar dos dimensiones:
+
+1. **Nivel de madurez compartido**: todos los usuarios atraviesan etapas similares como huevo, pulso, conciencia, estructura, estrategia y sistema nervioso.
+2. **Rasgos únicos individuales**: cada avatar desarrolla variaciones visuales distintas dentro de esas etapas.
+
+Ejemplos de rasgos posibles:
+
+* Forma base del núcleo: redondo, alargado, cristalino, orgánico, irregular.
+* Textura: lisa, fractal, mineral, líquida, nerviosa, luminosa.
+* Color dominante: asignado al inicio o derivado del comportamiento del usuario.
+* Patrón de brillo: pulsos suaves, destellos, líneas internas, ondas.
+* Rasgos por nivel: anillos, alas abstractas, filamentos, raíces, cuernos simbólicos, placas, ojos, circuitos, ramificaciones.
+* Movimiento: flotar, respirar, girar, vibrar, expandirse, contraerse.
+* Aura: calmada, eléctrica, cálida, fría, densa, transparente.
+
+Estos rasgos no deben ser puramente decorativos. Idealmente pueden estar ligados a dimensiones conductuales o financieras del usuario, sin volverlo demasiado obvio ni juzgador.
+
+Ejemplos:
+
+```txt
+Alta consistencia → pulso más estable
+Muchas correcciones resueltas → líneas internas más ordenadas
+Primer presupuesto confirmado → aparece un anillo estructural
+Primera deuda liquidada → marca luminosa permanente
+Mes cerrado con buen score → aura más clara
+Uso frecuente de simulaciones → rasgos más estratégicos/cristalinos
 ```
-financial_context.phase = nil y sin income_sources  → level 1
-financial_context.phase = nil pero hay income data   → level 2-3
-financial_context.phase = 'debt_payoff'              → level 4
-financial_context.phase = 'investing'                → level 5
-financial_context.phase = 'wealth_building'          → level 6
+
+El avatar debe tener memoria visual. Algunas marcas importantes no desaparecen al subir de nivel. Esto permite que el usuario vea una historia acumulada en su avatar, no solo una skin reemplazada.
+
+### Regla de diseño
+
+El avatar no debe evolucionar como una simple barra de progreso. Debe sentirse como una biografía visual del usuario.
+
+### Sistema de generación sugerido
+
+Al crear la cuenta:
+
+```txt
+avatar_seed = random UUID o hash estable por account_id
+base_shape = generado desde avatar_seed
+base_palette = generado desde avatar_seed
+base_motion = generado desde avatar_seed
 ```
 
-**Fuente de verdad:** `financial_context.phase` + completeness de datos.
-`financial_level` es solo un valor cacheado para queries rápidos. Si hay discrepancia, `financial_context.phase` gana siempre.
+En cada nivel:
 
-```ruby
-add_column :accounts, :financial_level, :integer, null: false, default: 1
+```txt
+level_traits = deterministic_random(account_id + level)
+behavior_traits = derivados de logros, consistencia y datos reales
+permanent_marks = hitos importantes desbloqueados
 ```
 
-### 4.2 `user_milestones` — registro de hitos y setbacks
+Así el avatar puede ser único sin depender de generar imágenes nuevas manualmente para cada usuario. La UI puede renderizar combinaciones de componentes visuales parametrizados.
 
-```ruby
-create_table :user_milestones do |t|
-  t.references :account,        null: false, foreign_key: true
-  t.string     :code,           null: false   # slug del hito
-  t.string     :tone,           null: false, default: 'achievement'  # achievement | setback
-  t.string     :phase_at_time                 # fase del usuario cuando ocurrió
-  t.string     :reference_type                # 'Debt' | 'SavingsGoal' | 'RecurringObligation' | nil
-  t.integer    :reference_id                  # id del recurso relacionado
-  t.jsonb      :metadata,       null: false, default: {}
-  t.datetime   :achieved_at,    null: false, default: -> { 'CURRENT_TIMESTAMP' }
-  t.timestamps
-end
+### Tipos de rasgos
 
-# Hitos únicos: un solo registro por cuenta
-add_index :user_milestones, [:account_id, :code],
-          unique: true,
-          where: "code IN ('first_transaction','first_debt_paid_off','debt_free', ...)"
-
-# Hitos recurrentes: múltiples registros permitidos
-add_index :user_milestones, [:account_id, :code, :achieved_at]
+```txt
+base_traits        → nacen con el avatar y permanecen
+level_traits       → aparecen al subir de nivel
+behavior_traits    → cambian según hábitos recientes
+milestone_marks    → marcas permanentes por logros relevantes
+seasonal_traits    → opcionales, por ciclos mensuales o fases de vida
 ```
 
-**Campos `metadata` por hito:**
+### Por qué importa
 
-| Hito | Metadata ejemplo |
-|------|-----------------|
-| `debt_paid_off` | `{ debt_name: "CrediExpress", amount: 2757501, months_took: 8, strategy: "snowball" }` |
-| `extra_debt_payment` | `{ debt_name: "CrediExpress", extra_amount: 500000, new_balance: 2257501 }` |
-| `emergency_fund_tranche` | `{ pct: 50, current_amount: 3000000, target: 6000000 }` |
-| `investment_streak` | `{ months: 3, total_invested: 1500000 }` |
-| `first_monthly_plan` | `{ month: 5, year: 2026, free_margin: 2052851 }` |
+La unicidad crea apego. Si el avatar de cada usuario es distinto, el progreso se siente personal. El usuario no está desbloqueando “el avatar nivel 4”; está viendo cómo su propio sistema interno toma forma.
 
-Este contexto permite al agente hacer referencias específicas en el futuro: "Hace 3 meses liquidaste el CrediExpress. Ahora el CrediBank es el siguiente."
+Esto refuerza la idea central del producto:
 
-### 4.3 `streaks` — rachas activas (futuro)
-
-```ruby
-create_table :streaks do |t|
-  t.references :account, null: false, foreign_key: true
-  t.string  :streak_type    # under_budget_discretionary | monthly_investment | daily_log | positive_balance
-  t.integer :current_count, null: false, default: 0
-  t.integer :best_count,    null: false, default: 0
-  t.date    :last_activity_date
-  t.timestamps
-end
-```
+> La app está viva porque responde a tu historia, no porque tenga animaciones.
 
 ---
 
-## 5. Detección de hitos
+## 9. Progresión de funcionalidades
 
-Hay dos fuentes de detección:
+### Fase 1 — Registro
 
-### 5.1 Chat agent (declarativo)
-El usuario dice "liquidé el CrediExpress" → el agente:
-1. Busca la deuda por nombre (`get_debts`)
-2. La marca como `paid_off` (`update_debt`)
-3. Desactiva la obligación recurrente vinculada (`update_recurring_obligation`)
-4. Crea el milestone `debt_paid_off` via `POST /api/v1/milestones`
-5. Emite celebración contextual: "Eso es $X/mes liberados. Tu siguiente objetivo en snowball es Y."
+Duración sugerida: primeros 30 días.
 
-### 5.2 Nightly agent (automático)
-Cada noche compara el estado actual contra el snapshot del insight anterior:
-- Deuda que pasó a `paid_off` → crea `debt_paid_off`
-- Nueva deuda registrada en fase `debt_payoff` → crea `new_debt_acquired` (setback)
-- Mes cerrado bajo presupuesto discrecional → crea `discretionary_under_budget`
-- Tramo de fondo de emergencia cruzado → crea `emergency_fund_tranche`
+Funcionalidades:
 
-### 5.3 Rails callbacks (automático, sin LLM)
-Algunos hitos se pueden detectar directamente en el modelo sin pasar por el agente:
-- `after_save :check_first_transaction` en Transaction
-- `after_save :check_debt_paid_off` en Debt
-- Estos son los de menor costo — Ruby puro, $0
+* Crear transacciones.
+* Editar transacciones.
+* Eliminar transacciones.
+* Ver historial básico.
+* Ver racha de registro.
+* Ver porcentaje de transacciones categorizadas.
+
+Criterios de avance sugeridos:
+
+* Registrar gastos al menos 20 de 30 días.
+* Mantener menos de 10% de transacciones sin categoría.
+* Registrar manualmente correcciones cuando el sistema se equivoca.
+
+Desbloqueo:
+
+* Revisión nocturna o revisión semanal simple.
 
 ---
 
-## 6. Cómo el agente usa los hitos
+### Fase 2 — Observación
 
-El agente tiene acceso a los últimos N hitos del usuario en su contexto. Esto le permite:
+Funcionalidades:
 
-- **Celebrar logros**: "Acabás de pagar tu primera deuda. Eso es $83.000/mes liberados para el siguiente objetivo."
-- **Contextualizar setbacks sin reproche**: "Registré la nueva deuda. Actualicé el orden del snowball."
-- **Mostrar progreso narrativo**: "Llevas 2/5 deudas liquidadas. Al ritmo actual, terminás en ~8 meses."
-- **Detectar cuándo el usuario está listo para subir de nivel**: "Tres meses consecutivos con plan cumplido. ¿Hablamos de inversión?"
-- **Personalizar el tono**: con un usuario en nivel 1 habla diferente que con uno en nivel 5.
+* Revisión nocturna.
+* Alertas simples.
+* Patrones de gasto.
+* Señales de comportamiento.
 
-El agente NUNCA menciona "niveles" ni "puntos" explícitamente en niveles 1-2. La progresión debe sentirse natural. En niveles 4+ el usuario ya entiende el sistema y puede referenciarlo directamente.
+Criterios de avance:
 
-### Contexto que el agente recibe
+* Revisar al menos 10 reportes nocturnos.
+* Resolver pendientes de aclaración.
+* Mantener consistencia de registro por 2 semanas adicionales.
 
-```json
-{
-  "milestones": {
-    "recent": [
-      { "code": "debt_paid_off", "tone": "achievement", "achieved_at": "2026-04-15",
-        "metadata": { "debt_name": "CrediExpress", "amount": 2757501 } }
-    ],
-    "total_achievements": 7,
-    "total_setbacks": 1,
-    "active_plan_progress": "2/5 deudas liquidadas en snowball"
-  }
-}
+Desbloqueo:
+
+* Ingresos recurrentes.
+* Gastos recurrentes.
+* Obligaciones.
+
+---
+
+### Fase 3 — Estructura
+
+Funcionalidades:
+
+* Ingresos recurrentes.
+* Obligaciones recurrentes.
+* Deudas.
+* Planned expenses.
+* Sinking funds básicos.
+
+Criterios de avance:
+
+* Completar perfil de ingresos.
+* Completar obligaciones principales.
+* Registrar deudas activas.
+* Confirmar fuentes de verdad.
+
+Desbloqueo:
+
+* Presupuesto mensual.
+* Plan financiero.
+
+---
+
+### Fase 4 — Planificación
+
+Funcionalidades:
+
+* Presupuesto mensual.
+* Plan quincenal/mensual.
+* Safe-to-deploy.
+* Simulaciones conversacionales.
+* Abonos sugeridos a deuda.
+
+Criterios de avance:
+
+* Confirmar un plan mensual.
+* Mantener ejecución del plan por un ciclo.
+* Cerrar un mes con snapshot de ejecución.
+
+Desbloqueo:
+
+* Escenarios avanzados.
+* Comparación contra escenarios.
+* Motor conductual básico.
+
+---
+
+### Fase 5 — Coaching avanzado
+
+Funcionalidades:
+
+* Perfil conductual.
+* Intervenciones personalizadas.
+* Comparación de comportamiento real vs escenario.
+* Narrativa de progreso.
+* Multi-módulo: cuerpo, mente, social.
+
+Criterios:
+
+* Historial suficiente.
+* Datos recurrentes confiables.
+* Planes cerrados.
+* Señales conductuales suficientes.
+
+---
+
+## 9. XP y progreso
+
+El usuario gana XP por acciones que aumentan la calidad del sistema, no por acciones vacías.
+
+Acciones con XP:
+
+* Registrar transacción confirmada.
+* Corregir categoría.
+* Resolver pendiente.
+* Revisar reporte nocturno.
+* Confirmar ingreso recurrente.
+* Confirmar obligación recurrente.
+* Cerrar plan mensual.
+* Mantener racha.
+* Cumplir presupuesto discrecional.
+* Reducir deuda.
+* Crear sinking fund para gasto futuro.
+
+Acciones sin XP o XP bajo:
+
+* Abrir la app sin hacer nada.
+* Crear y borrar datos repetidamente.
+* Registrar datos incompletos.
+* Ignorar aclaraciones pendientes.
+
+El XP debe premiar calidad de contexto, no solo actividad.
+
+---
+
+## 10. Métricas de consistencia
+
+La consistencia debe medirse en varias dimensiones:
+
+1. Días con al menos un registro.
+2. Porcentaje de transacciones confirmadas.
+3. Porcentaje de transacciones con categoría/subcategoría.
+4. Pendientes sin resolver.
+5. Plan confirmado.
+6. Revisión nocturna leída.
+7. Obligaciones actualizadas.
+8. Cierre de mes realizado.
+
+Estas métricas deben alimentar:
+
+* XP,
+* nivel del avatar,
+* desbloqueo de funcionalidades,
+* confianza del agente,
+* calidad del coaching.
+
+---
+
+## 11. Concepto de Agent Readiness
+
+Antes de activar funcionalidades avanzadas, el sistema debe evaluar si el agente tiene suficiente contexto para operar.
+
+Ejemplo de dimensiones:
+
+```txt
+transaction_history: missing | partial | sufficient
+categories: missing | partial | sufficient
+income_profile: missing | partial | sufficient
+recurring_obligations: missing | partial | sufficient
+debts: missing | partial | sufficient
+monthly_plan: missing | partial | sufficient
 ```
 
+El usuario no desbloquea una función solo por tiempo transcurrido. La desbloquea cuando el sistema tiene suficiente readiness.
+
 ---
 
-## 7. Integración con Agent Insights
+## 12. Estados de desbloqueo
 
-El insight diario (`AgentInsight`) ya existe y tiene un campo `signals`. Los milestones se reflejan ahí:
+Cada funcionalidad puede tener uno de estos estados:
 
-```json
-{
-  "signals": [
-    { "type": "ok", "category": "debt", "message": "Liquidaste el CrediExpress. $83.000/mes liberados." },
-    { "type": "warn", "category": "debt", "message": "Nueva deuda registrada mientras el plan es snowball." }
-  ]
-}
+```txt
+locked
+available_to_unlock
+active
+paused
+needs_context
 ```
 
-Esto evita duplicar información: el insight es la superficie de presentación, los milestones son la fuente de verdad persistida.
+### locked
+
+El usuario todavía no cumple condiciones.
+
+### available_to_unlock
+
+El usuario cumplió condiciones, pero debe aceptar activar la funcionalidad.
+
+### active
+
+Funcionalidad disponible.
+
+### paused
+
+Funcionalidad temporalmente desactivada por datos inconsistentes.
+
+### needs_context
+
+El sistema necesita información antes de operar con seguridad.
 
 ---
 
-## 8. Estado de implementación
+## 13. Cómo comunicar bloqueos
 
-| Componente | Estado |
-|-----------|--------|
-| Spec documentado | ✅ |
-| Migración `user_milestones` | ⬜ Pendiente |
-| Migración `financial_level` en accounts | ⬜ Pendiente |
-| Migración `streaks` | ⬜ Pendiente |
-| Endpoints `GET/POST /api/v1/milestones` | ⬜ Pendiente |
-| Chat agent: flujo "deuda liquidada" completo | ⬜ Pendiente |
-| Nightly agent: detección automática de hitos | ⬜ Pendiente |
-| Rails callbacks para hitos sin LLM | ⬜ Pendiente |
-| Integración hitos en Agent Insights signals | ⬜ Pendiente |
-| UI: badge de último logro en Hero del Dashboard | ⬜ Pendiente |
-| UI: vista de progreso / historial de hitos | ⬜ Pendiente |
-| Sistema de rachas (streaks) | ⬜ Pendiente |
+No usar lenguaje tipo:
+
+> Esta funcionalidad está bloqueada.
+
+Usar lenguaje tipo:
+
+> Tu agente todavía no tiene suficiente contexto para aconsejarte sobre presupuestos. Registra unos días más y resuelve tus pendientes para activar esta capa.
+
+O:
+
+> Antes de simular deuda, necesitamos conocer tus obligaciones fijas. Eso evita recomendaciones peligrosas.
 
 ---
 
-## 9. Qué NO se implementa en la siguiente iteración
+## 14. La app como interfaz evolutiva
 
-- UI de progreso / badges completa
-- Notificaciones push de desbloqueo
-- Cálculo automático de `three_months_planned`
-- Sistema de rachas completo
+La sofisticación visual de la aplicación debe crecer con el nivel del usuario.
 
-La siguiente iteración prioritaria es: migración + endpoints + flujo del chat agent para deuda liquidada + integración en signals del insight.
+### Nivel bajo
+
+* UI minimalista.
+* Pocas tarjetas.
+* Enfoque en registro.
+* Menos gráficos.
+* Avatar simple.
+
+### Nivel medio
+
+* Dashboard con señales.
+* Revisión nocturna.
+* Progreso visible.
+* Primeros gráficos.
+* Avatar con movimiento.
+
+### Nivel alto
+
+* Proyecciones.
+* Simulaciones.
+* Mapa de progreso.
+* Insights conductuales.
+* Avatar sofisticado.
+* Más densidad de información sin perder claridad.
+
+La app se vuelve más sofisticada porque el usuario construyó la capacidad de usarla.
+
+---
+
+## 15. Riesgos
+
+### Riesgo 1 — Infantilización
+
+Si el avatar parece demasiado caricaturesco, el producto puede perder seriedad.
+
+Mitigación:
+
+* Usar estética simbólica, elegante y tecnológica.
+* Evitar criaturas demasiado infantiles.
+* Mantener lenguaje maduro.
+
+### Riesgo 2 — Frustración por bloqueo
+
+El usuario puede sentir que no recibe valor suficiente al inicio.
+
+Mitigación:
+
+* Hacer que el registro inicial ya sea satisfactorio.
+* Mostrar progreso visible desde el día uno.
+* Explicar que el desbloqueo protege la calidad del agente.
+
+### Riesgo 3 — Gamificación vacía
+
+El usuario puede perseguir XP sin mejorar realmente.
+
+Mitigación:
+
+* XP basado en calidad de contexto y consistencia real.
+* Penalizar o ignorar acciones repetitivas sin valor.
+
+### Riesgo 4 — Alucinación del agente
+
+Si el agente opera con datos incompletos, puede dar recomendaciones incorrectas.
+
+Mitigación:
+
+* Agent Readiness.
+* Preflight antes de recomendaciones avanzadas.
+* Herramientas de consulta claras.
+* Tools de edición con validaciones.
+* Confirmación humana para cambios estructurales importantes.
+
+---
+
+## 16. Decisiones técnicas iniciales
+
+### 16.1 No copiar todo Daniel 15K de golpe
+
+El repositorio actual funciona como laboratorio personal. La versión productizable debe migrar funcionalidades poco a poco.
+
+Orden sugerido:
+
+1. Auth + accounts.
+2. Transacciones.
+3. Categorías conductuales.
+4. Historial básico.
+5. XP/racha/avatar nivel 0-1.
+6. Revisión nocturna simple.
+7. Recurrentes.
+8. Presupuestos.
+9. Agente avanzado.
+
+### 16.2 Multi-tenant antes que API por usuario
+
+La recomendación inicial es una API compartida multi-tenant, con separación estricta por `account_id` / `tenant_id`.
+
+El contexto personalizado vive en:
+
+* financial_context,
+* agent_profile,
+* cache namespaced,
+* prompts personalizados,
+* service accounts scoped,
+* memoria por cuenta.
+
+### 16.3 Cache personalizado por cuenta
+
+Ejemplos:
+
+```txt
+account:{account_id}:summary:{month}:{year}
+account:{account_id}:dashboard_snapshot:{date}
+account:{account_id}:agent_context:v1
+account:{account_id}:readiness
+```
+
+### 16.4 Credenciales externas como feature avanzada
+
+No activar Gmail/mail en onboarding inicial. Primero permitir registro manual/chat.
+
+Integraciones externas deben desbloquearse cuando:
+
+* el usuario entiende el sistema,
+* el agente tiene contexto suficiente,
+* hay permisos claros,
+* existe control de privacidad.
+
+---
+
+## 17. MVP de gamificación
+
+Primera versión suficiente:
+
+1. Racha de registro.
+2. XP por transacciones confirmadas.
+3. Nivel del sistema.
+4. Avatar núcleo simple.
+5. Barra de progreso hacia la siguiente capacidad.
+6. Mensajes de desbloqueo.
+7. `agent_readiness` básico.
+8. Feature flags por cuenta.
+
+No incluir todavía:
+
+* tienda de recompensas,
+* rankings,
+* competencia social,
+* avatar complejo,
+* animaciones excesivas,
+* economía interna.
+
+---
+
+## 18. Ejemplo de experiencia inicial
+
+Día 1:
+
+> Tu sistema acaba de nacer. Durante los próximos días solo vamos a construir verdad: registra tus movimientos y corrige lo que no entiendas.
+
+Día 7:
+
+> Ya hay suficiente señal para detectar tus primeras tendencias. Sigue registrando para activar la revisión nocturna.
+
+Día 20:
+
+> Tu registro fue consistente. Tu agente ya puede observar tus días y darte una lectura nocturna.
+
+Día 30:
+
+> Completaste tu primera base de contexto. Ahora podemos empezar a modelar ingresos, obligaciones y presupuesto sin adivinar.
+
+---
+
+## 19. Frase de producto
+
+Opciones:
+
+1. Daniel 15K es un sistema nervioso personal para transformar señales diarias en decisiones mejores.
+2. No es una app de finanzas. Es un agente que madura contigo.
+3. Primero construye verdad. Luego desbloquea inteligencia.
+4. Tu vida no cambia por ver dashboards. Cambia cuando tu sistema aprende a leerte.
+
+---
+
+## 20. Criterio de éxito
+
+La gamificación funciona si el usuario siente:
+
+* que la app está viva,
+* que su esfuerzo diario alimenta algo mayor,
+* que desbloquear funciones es consecuencia de madurez real,
+* que el agente lo conoce cada vez mejor,
+* que la interfaz evoluciona con él,
+* que el progreso no es solo financiero, sino identitario.
+
+El objetivo final no es que el usuario use más pantallas. El objetivo es que construya un sistema personal confiable que le ayude a decidir mejor.
