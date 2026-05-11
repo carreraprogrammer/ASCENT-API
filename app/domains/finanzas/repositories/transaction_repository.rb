@@ -14,7 +14,7 @@ module Finanzas
       MAX_PER_PAGE = 100
 
       def for_month(account_id:, month:, year:, filters: {}, sort_by: "date", sort_dir: "desc", page: 1, per_page: DEFAULT_PER_PAGE)
-        records = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
+        records = ::Transaction.includes(:category).where(account_id: account_id, month: month.to_i, year: year.to_i)
         records = apply_filters(records, filters)
         records = apply_sort(records, sort_by, sort_dir)
         page_number = normalize_page(page)
@@ -174,6 +174,7 @@ module Finanzas
           transaction_type: record.transaction_type,
           category_id: record.category_id,
           subcategory_id: record.subcategory_id,
+          category_type: record.category&.category_type,
           source: record.source,
           status: record.status,
           clarification_requested_at: record.clarification_requested_at,

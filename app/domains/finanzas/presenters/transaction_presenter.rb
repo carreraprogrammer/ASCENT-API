@@ -21,6 +21,7 @@ module Finanzas
             product: transaction.product,
             amount: transaction.amount,
             transaction_type: transaction.transaction_type,
+            category_type: transaction.category_type,
             source: transaction.source,
             source_event_id: transaction.source_event_id,
             status: transaction.status,

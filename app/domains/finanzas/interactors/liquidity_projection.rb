@@ -76,6 +76,11 @@ module Finanzas
             0
           end
 
+        # Carry-over mínimo para no quedarse sin flujo de caja al mes siguiente.
+        # Responde: "¿cuánto necesito guardar al cerrar el mes?"
+        # Si el ingreso base del próximo ciclo cubre todas las obligaciones, es 0.
+        cash_flow_gap = [ next_cycle_obligations - plan[:base_budget_income].to_i, 0 ].max
+
         {
           confirmed_balance:              confirmed_balance,
           carryover_from_previous_month:  carryover_from_previous_month.to_i,
@@ -92,7 +97,15 @@ module Finanzas
           free_after_obligations:         free_after_obligations,
           safe_to_deploy:                 safe_to_deploy,
           deployable_this_cycle:          deployable_this_cycle,
-          buffer_status:                  classify_status(free_after_obligations, protected_buffer)
+          cash_flow_gap:                  cash_flow_gap,
+          buffer_status:                  classify_status(free_after_obligations, protected_buffer),
+          _field_notes: {
+            cash_flow_gap:          "Carry-over mínimo necesario al cerrar el mes para que el ingreso base del próximo ciclo cubra todas las obligaciones. Si es 0, tu ingreso base del próximo mes alcanza sin necesidad de arrastrar saldo.",
+            next_cycle_obligations: "Total de compromisos del próximo ciclo: recurrentes + mínimos de deuda + discrecional + tarjeta de crédito pendiente.",
+            protected_buffer:       "Margen de seguridad del modelo presupuestal (5% del ingreso base). NO es el carry-over mínimo de flujo de caja — ese campo es cash_flow_gap.",
+            safe_to_deploy:         "Guardia interna del sistema. NO lo menciones al usuario ni lo uses como monto accionable directo.",
+            free_after_obligations: "Proyección de saldo restante después de cubrir todas las obligaciones del próximo ciclo, incluyendo ingresos aún no llegados."
+          }
         }
       end
 

@@ -426,7 +426,10 @@ module Api
           reward_pct:               plan[:reward_pct],
           debt_strategy:            plan[:debt_strategy],
           assumptions:              plan[:assumptions],
-          confirmed_at:             plan[:confirmed_at]
+          confirmed_at:             plan[:confirmed_at],
+          _field_notes: {
+            protected_buffer_amount: "Margen de seguridad del plan presupuestal (5% del ingreso base). No representa el carry-over mínimo de flujo de caja — ese cálculo está en liquidity.cash_flow_gap."
+          }
         }
       end
 

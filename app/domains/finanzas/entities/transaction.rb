@@ -2,7 +2,7 @@ module Finanzas
   module Entities
     class Transaction
       attr_reader :id, :user_id, :date, :concept, :product, :amount,
-                  :transaction_type, :category_id, :subcategory_id,
+                  :transaction_type, :category_id, :subcategory_id, :category_type,
 	                  :source, :status, :clarification_requested_at,
 	                  :clarification_resolved_at, :metadata, :source_event_id,
 	                  :year, :month, :payment_source, :credit_card_status,
@@ -21,6 +21,7 @@ module Finanzas
         @transaction_type            = attrs[:transaction_type] || "expense"
         @category_id                 = attrs[:category_id]
         @subcategory_id              = attrs[:subcategory_id]
+        @category_type               = attrs[:category_type]
         @source                      = attrs[:source] || "manual"
         @status                      = attrs[:status] || "confirmed"
         @clarification_requested_at  = attrs[:clarification_requested_at]
