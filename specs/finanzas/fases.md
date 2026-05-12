@@ -58,8 +58,8 @@ Reglas:
 - ✅ `wizard_data` con propuesta calculada (recurrentes bloqueados, income_sources como base, planned_expenses como sugerencia de bolsillo)
 - ✅ `BudgetWizardModal` con 7 pasos, pre-carga desde fuentes de verdad, líneas bloqueadas
 - ✅ `LiquidityProjection` — `safe_to_deploy` como guardrail universal
-- ✅ `AgentInsights` — generación diaria con drift checker + Haiku validity gate + Sonnet structured output
-- ✅ Dashboard reestructurado (Hero + Snapshot + Detalle) con recharts + agent insights
+- ⚠️ `AgentInsights` — esquema mensual plano reemplazado por arquitectura polimórfica. Ver [analisis-nocturno.md](./analisis-nocturno.md)
+- ✅ Dashboard reestructurado (Hero + zonas conductuales)
 - ✅ `TransactionsPage` hero: barra apilada por tipo conductual + spotlight inteligente
 - ✅ Historial de planes: `GET /monthly_plans` paginado + `POST /monthly_plans/:id/close`
 - ✅ `CloseMonthlyPlan` interactor + `execution_snapshot`
@@ -221,7 +221,8 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 | [living-budget.md](./living-budget.md) | Spec operativo del bloque Living Budget (Fases A-E) | ✅ vigente — fuente de verdad actual |
 | [gastos-planeados.md](./gastos-planeados.md) | Entidad `planned_expenses`: qué es, qué no es, contrato | ✅ vigente |
 | [historial-planes.md](./historial-planes.md) | Historial de planes, CloseMonthlyPlan, ProposeBudget con historial | ✅ vigente |
-| [dashboard.md](./dashboard.md) | safe_to_deploy, LiquidityProjection, AgentInsights | ✅ vigente |
+| [dashboard.md](./dashboard.md) | safe_to_deploy, LiquidityProjection, AgentInsights | ⛔ obsoleto — ver cash-flow-runway.md y analisis-nocturno.md |
+| [analisis-nocturno.md](./analisis-nocturno.md) | NightAnalysis polimórfico, pre-contextualización, coach con contexto | 🟢 activo — pendiente implementación |
 | [motion-feedback.md](./motion-feedback.md) | Guía de motion y feedback visual — aplica a toda UI del módulo | ✅ vigente |
 | [gamificacion.md](./gamificacion.md) | Niveles de madurez, milestones, streaks | ✅ vigente |
 | [capa-conductual.md](./capa-conductual.md) | Motor conductual futuro (Fase 5) | 🔲 futuro |
