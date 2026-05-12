@@ -96,10 +96,15 @@ module Finanzas
         active = Array(income_sources).select { |s| s[:active] }
         return nil if active.empty?
 
-        future = active
-          .map { |s| s[:expected_day_from].to_i }
-          .select { |d| d > 0 && d >= today_day }
-          .min
+        # For sources with schedules (e.g. biweekly), each schedule carries its
+        # own expected_day_from. Use those rather than the parent's denormalized
+        # minimum so mid-month payments aren't skipped once the first one passes.
+        all_days = active.flat_map do |s|
+          schedules = Array(s[:schedules])
+          schedules.any? ? schedules.map { |sc| sc[:expected_day_from].to_i } : [s[:expected_day_from].to_i]
+        end
+
+        future = all_days.select { |d| d > 0 && d >= today_day }.min
 
         future || Date.new(today.year, today.month, -1).day
       end
