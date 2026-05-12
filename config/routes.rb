@@ -92,9 +92,10 @@ Rails.application.routes.draw do
       patch "agent_events/:id/consume", to: "agent_ui_events#consume"
 
       # Análisis nocturno polimórfico
-      post  "night_analyses",        to: "night_analyses#create"
-      get   "night_analyses",        to: "night_analyses#index"
-      get   "night_analyses/:date",  to: "night_analyses#show",  constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+      post  "night_analyses",          to: "night_analyses#create"
+      get   "night_analyses",          to: "night_analyses#index"
+      get   "night_analyses/metrics",  to: "night_analyses#metrics"
+      get   "night_analyses/:date",    to: "night_analyses#show",  constraints: { date: /\d{4}-\d{2}-\d{2}/ }
 
       # Agent Insights — capa de coaching ligada a un análisis
       get   "agent_insights/latest", to: "agent_insights#latest"
