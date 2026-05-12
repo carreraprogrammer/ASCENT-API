@@ -1,11 +1,15 @@
 # Dashboard — Liquidity Projection y Agent Insights
 
-> Estado: ⛔ OBSOLETO — modelo de liquidez reemplazado por cash-flow-runway.md
+> Estado: ⛔ OBSOLETO — completamente reemplazado
 > Última actualización: 2026-05-12
 >
+> **Modelo de liquidez:** reemplazado por [cash-flow-runway.md](./cash-flow-runway.md)
+> **Fase 3 — Agent Insights (esquema mensual plano):** reemplazada por [analisis-nocturno.md](./analisis-nocturno.md)
+>
 > Los campos `liquidity.*`, `safe_to_deploy`, `free_after_obligations`, `buffer_status`,
-> `deployable_overflow` y `monthly_surplus_estimate` ya no son la fuente de verdad.
-> Ver [cash-flow-runway.md](./cash-flow-runway.md) para el modelo vigente.
+> `deployable_overflow`, `monthly_surplus_estimate`, `key_metrics_snapshot`,
+> `safe_to_deploy_amount` y el esquema `agent_insights` mensual ya no son la fuente de verdad.
+> Este archivo se conserva solo como registro histórico.
 
 ## Contexto y motivación
 
