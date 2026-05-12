@@ -77,6 +77,7 @@ module Finanzas
           user_id:        record.user_id,
           category_id:    record.category_id,
           category_name:  record.category&.name,
+          category_type:  record.category&.category_type,
           subcategory_id: record.subcategory_id,
           month:          record.month,
           year:           record.year,

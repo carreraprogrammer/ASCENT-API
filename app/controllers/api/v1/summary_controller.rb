@@ -347,6 +347,7 @@ module Api
           .transform_values do |rows|
             {
               category_name: rows.first[:category_name],
+              category_type: rows.first[:category_type],
               amount_limit:  rows.sum { |b| b[:amount_limit].to_i }
             }
           end
@@ -365,6 +366,7 @@ module Api
 
           {
             category:      cat[:category_name],
+            category_type: cat[:category_type],
             category_id:   cat_id,
             budget:        budget,
             spent:         spent,
