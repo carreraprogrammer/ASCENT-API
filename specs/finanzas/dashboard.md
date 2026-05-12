@@ -1,7 +1,11 @@
 # Dashboard — Liquidity Projection y Agent Insights
 
-> Estado: ✅ implementado y desplegado
-> Última actualización: 2026-04-28
+> Estado: ⛔ OBSOLETO — modelo de liquidez reemplazado por cash-flow-runway.md
+> Última actualización: 2026-05-12
+>
+> Los campos `liquidity.*`, `safe_to_deploy`, `free_after_obligations`, `buffer_status`,
+> `deployable_overflow` y `monthly_surplus_estimate` ya no son la fuente de verdad.
+> Ver [cash-flow-runway.md](./cash-flow-runway.md) para el modelo vigente.
 
 ## Contexto y motivación
 

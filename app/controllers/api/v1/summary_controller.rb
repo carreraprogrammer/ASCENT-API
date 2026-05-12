@@ -21,25 +21,27 @@ module Api
         plan                 = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
         income_sources       = income_source_repo.active_for_account(account_id)
         realized_income_by_source = income_realized_by_source(account_id, month, year)
-        prepaid_recurring_obligations = prepaid_recurring_obligations_total(account_id, month, year)
-        credit_card_pending  = ::Transaction
-                                 .where(account_id: account_id, payment_source: "credit_card",
-                                        credit_card_status: "pending")
-                                 .sum(:amount)
         carryover_from_previous_month = previous_month_carryover(account_id, month, year)
         balance = balance.merge(
           carryover_from_previous_month: carryover_from_previous_month,
           net_balance: balance[:balance_confirmed] + carryover_from_previous_month
         )
-        liquidity            = Finanzas::Interactors::LiquidityProjection.new.call(
-                                 plan:                         plan,
-                                 balance:                      balance,
-                                 income_sources:               income_sources,
-                                 realized_income_by_source:    realized_income_by_source,
-                                 credit_card_pending:          credit_card_pending,
-                                 prepaid_recurring_obligations: prepaid_recurring_obligations,
-                                 carryover_from_previous_month: carryover_from_previous_month,
-                                 today:                        now_col.to_date
+
+        confirmed_balance    = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i +
+                               carryover_from_previous_month.to_i
+        period               = Date.new(year, month, 1)
+        realized_obligations = realized_recurring_obligations_for_period(account_id, period)
+        recurring_obs        = ::RecurringObligation.where(account_id: account_id, active: true)
+                                 .map { |o| { id: o.id, name: o.name, amount: o.amount, due_day: o.due_day, active: o.active } }
+        necessary_txns       = necessary_transactions_for_burn(account_id, now_col.to_date)
+
+        cash_flow_runway     = Finanzas::Interactors::CashFlowRunway.new.call(
+                                 confirmed_balance:      confirmed_balance,
+                                 necessary_transactions: necessary_txns,
+                                 income_sources:         income_sources,
+                                 recurring_obligations:  recurring_obs,
+                                 realized_obligations:   realized_obligations,
+                                 today:                  now_col.to_date
                                )
 
         savings_goals = ::SavingsGoal
@@ -51,23 +53,22 @@ module Api
                        target_date: g.target_date, status: g.status } }
 
         overflow = build_overflow_status(
-                     plan, balance, ctx, debts, liquidity,
+                     plan, balance, ctx, debts,
                      income_sources, realized_income_by_source,
                      carryover_from_previous_month
                    )
 
         render json: {
-          period:               { month: month, year: year },
-          balance:              balance,
-          month_execution:      build_month_execution(account_id, month, year, income_sources),
-          burn_rate:            build_burn_rate(account_id, month, year, budgets, now_col),
-          debts:                build_debts_summary(debts),
-          monthly_plan:         build_monthly_plan_summary(plan),
-          overflow_status:      overflow,
-          financial_context:    build_context_summary(ctx, plan, debts, liquidity, overflow&.dig(:deployable_overflow).to_i),
-          liquidity:            liquidity,
-          credit_card_pending:  credit_card_pending,
-          savings_goals:        savings_goals
+          period:            { month: month, year: year },
+          balance:           balance,
+          month_execution:   build_month_execution(account_id, month, year, income_sources),
+          burn_rate:         build_burn_rate(account_id, month, year, budgets, now_col),
+          debts:             build_debts_summary(debts),
+          monthly_plan:      build_monthly_plan_summary(plan),
+          overflow_status:   overflow,
+          financial_context: build_context_summary(ctx, plan, debts),
+          cash_flow_runway:  cash_flow_runway,
+          savings_goals:     savings_goals
         }
       end
 
@@ -419,7 +420,6 @@ module Api
           expected_variable_income: plan[:expected_variable_income],
           recurring_obligations_total: plan[:recurring_obligations_total],
           debt_minimums_total:      plan[:debt_minimums_total],
-          protected_buffer_amount:  plan[:protected_buffer_amount],
           discretionary_limit:      plan[:discretionary_limit],
           overflow_rule:            plan[:overflow_rule],
           overflow_rule_detail:     plan[:overflow_rule_detail],
@@ -427,9 +427,6 @@ module Api
           debt_strategy:            plan[:debt_strategy],
           assumptions:              plan[:assumptions],
           confirmed_at:             plan[:confirmed_at],
-          _field_notes: {
-            protected_buffer_amount: "Margen de seguridad del plan presupuestal (5% del ingreso base). No representa el carry-over mínimo de flujo de caja — ese cálculo está en liquidity.cash_flow_gap."
-          }
         }
       end
 
@@ -438,7 +435,6 @@ module Api
         balance,
         ctx,
         debts,
-        liquidity = nil,
         income_sources = [],
         realized_income_by_source = {},
         carryover_from_previous_month = 0
@@ -446,7 +442,7 @@ module Api
         return nil unless plan
 
         base_budget_income = plan[:base_budget_income].to_i
-        confirmed_income = balance[:income_confirmed].to_i
+        confirmed_income   = balance[:income_confirmed].to_i
         expected_variable_income = plan[:expected_variable_income].to_i
         realized_expected_variable_income = realized_expected_variable_income(
           income_sources,
@@ -457,40 +453,26 @@ module Api
           confirmed_income - base_budget_income - realized_expected_variable_income,
           0
         ].max
-        safe_to_deploy    = liquidity&.dig(:safe_to_deploy).to_i
-        confirmed_balance = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i +
-                            carryover_from_previous_month.to_i
-        protected_buffer  = plan[:protected_buffer_amount].to_i
-        # El deployable está limitado por lo que queda del balance DESPUÉS de reservar el buffer.
-        # Si el balance actual no supera el buffer, no hay nada desplegable hoy — el buffer
-        # cubre la brecha hasta el próximo ingreso (ej: quincena) antes de que venzan obligaciones.
-        deployable_cap      = [confirmed_balance - protected_buffer, 0].max
-        deployable_overflow = [realized_overflow, safe_to_deploy, deployable_cap].min
-        blocked_by_liquidity = realized_overflow.positive? && deployable_overflow <= 0
-        target = overflow_target_for(plan, ctx, debts)
         remaining_expected_overflow = [
           expected_variable_income - realized_expected_variable_income,
           0
         ].max
+        target = overflow_target_for(plan, ctx, debts)
 
         {
-          rule: plan[:overflow_rule],
-          rule_detail: plan[:overflow_rule_detail] || {},
-          base_budget_income: base_budget_income,
-          confirmed_income: confirmed_income,
-          expected_variable_income: expected_variable_income,
+          rule:                              plan[:overflow_rule],
+          rule_detail:                       plan[:overflow_rule_detail] || {},
+          base_budget_income:                base_budget_income,
+          confirmed_income:                  confirmed_income,
+          expected_variable_income:          expected_variable_income,
           realized_expected_variable_income: realized_expected_variable_income,
-          realized_overflow: realized_overflow,
-          safe_to_deploy: safe_to_deploy,
-          deployable_overflow: deployable_overflow,
-          blocked_by_liquidity: blocked_by_liquidity,
-          remaining_expected_overflow: remaining_expected_overflow,
-          status: overflow_status(realized_overflow, deployable_overflow),
-          suggested_destination: target,
-          suggested_action: overflow_action(
+          realized_overflow:                 realized_overflow,
+          remaining_expected_overflow:       remaining_expected_overflow,
+          status:                            overflow_status(realized_overflow),
+          suggested_destination:             target,
+          suggested_action:                  overflow_action(
             plan,
             realized_overflow,
-            deployable_overflow,
             target,
             realized_expected_variable_income,
             remaining_expected_overflow
@@ -498,51 +480,18 @@ module Api
         }
       end
 
-      def overflow_status(realized_overflow, deployable_overflow)
-        return "waiting" unless realized_overflow.positive?
-        return "blocked_by_liquidity" unless deployable_overflow.positive?
-
-        "available"
+      def overflow_status(realized_overflow)
+        realized_overflow.positive? ? "available" : "waiting"
       end
 
-      def build_context_summary(ctx, plan, debts, liquidity = nil, deployable_overflow = 0)
+      def build_context_summary(ctx, plan, debts)
         return nil unless ctx
 
-        # monthly_surplus_estimate se mantiene para referencia histórica (calculado desde el plan).
-        # La recomendación de acción usa safe_to_deploy de liquidity — nunca el surplus teórico.
-        surplus = if plan
-          plan[:base_budget_income].to_i -
-            plan[:recurring_obligations_total].to_i -
-            plan[:debt_minimums_total].to_i -
-            plan[:protected_buffer_amount].to_i -
-            plan[:discretionary_limit].to_i
-        end
-
-        safe_to_deploy    = liquidity&.dig(:safe_to_deploy).to_i
-        active_debts      = debts.select { |d| d[:status] == "active" }
-        recommended_action = build_recommended_action(ctx, active_debts, safe_to_deploy, deployable_overflow)
-
         {
-          phase:                    ctx[:phase],
-          strategy:                 ctx[:strategy],
-          monthly_plan_status:      plan&.dig(:status) || "missing",
-          monthly_surplus_estimate: surplus,
-          recommended_action:       recommended_action
+          phase:               ctx[:phase],
+          strategy:            ctx[:strategy],
+          monthly_plan_status: plan&.dig(:status) || "missing"
         }
-      end
-
-      def build_recommended_action(ctx, active_debts, safe_to_deploy, _deployable_overflow = 0)
-        return nil if active_debts.empty?
-
-        # El sistema agrega ingreso mensual pero no modela el timing intra-mes
-        # (quincenas, fechas de vencimiento de obligaciones). Dar un monto específico
-        # de abono sin ese modelo produce recomendaciones irresponsables.
-        # Solo se muestra el estado del ciclo; el insight del agente maneja la recomendación.
-        if safe_to_deploy <= 0
-          "Priorizá cubrir las obligaciones del próximo ciclo antes de mover dinero."
-        else
-          "El próximo ciclo está cubierto."
-        end
       end
 
       def overflow_target_for(plan, ctx, debts)
@@ -576,7 +525,6 @@ module Api
       def overflow_action(
         plan,
         realized_overflow,
-        deployable_overflow,
         target,
         realized_expected_variable_income = 0,
         remaining_expected_overflow = 0
@@ -593,20 +541,16 @@ module Api
           return "Todavía no hay ingreso extra confirmado sobre la base del plan."
         end
 
-        if deployable_overflow <= 0
-          return "Entraron #{format_cop(realized_overflow)} por encima de tu base, pero no están libres para mover: primero hay que cubrir obligaciones próximas y el buffer."
-        end
-
         case plan[:overflow_rule]
         when "debt"
           debt_name = target&.dig(:debt_name) || "deuda prioritaria"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para mover; según tu plan debería ir a #{debt_name}."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base; según tu plan debería ir a #{debt_name}."
         when "emergency_fund"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para reforzar tu colchón."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Reforzá tu colchón."
         when "investment"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para inversión."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Disponible para inversión."
         when "mixed"
-          "Entraron #{format_cop(realized_overflow)} por encima de tu base. De eso, #{format_cop(deployable_overflow)} está disponible para repartir sin inflar tu presupuesto base."
+          "Entraron #{format_cop(realized_overflow)} por encima de tu base. Repartilo sin inflar el presupuesto base."
         else
           nil
         end
@@ -630,23 +574,24 @@ module Api
           .sum(:amount)
       end
 
-      def prepaid_recurring_obligations_total(account_id, month, year)
-        next_cycle = Date.new(year, month, 1).next_month
-
+      def necessary_transactions_for_burn(account_id, today)
+        cutoff = today - 31
         ::Transaction
-          .includes(:recurring_obligation)
+          .where(account_id: account_id, transaction_type: "expense", status: "confirmed")
+          .joins(:category)
+          .where(categories: { category_type: "necessary" })
           .where(
-            account_id: account_id,
-            month: month,
-            year: year,
-            transaction_type: "expense",
-            status: "confirmed"
+            "(year > :cy) OR (year = :cy AND month >= :cm)",
+            cy: cutoff.year, cm: cutoff.month
           )
-          .where.not(recurring_obligation_id: nil)
-          .select { |transaction| applies_to_period?(transaction.metadata, next_cycle) }
-          .sum do |transaction|
-            expected_amount = transaction.recurring_obligation&.amount.to_i
-            expected_amount.positive? ? [ transaction.amount.to_i, expected_amount ].min : transaction.amount.to_i
+          .pluck(:amount, :date, :year)
+          .filter_map do |amount, date_str, yr|
+            next unless date_str.present?
+            day, mon = date_str.to_s.split("/").map(&:to_i)
+            next unless day&.positive? && mon&.positive?
+            date = Date.new(yr, mon, day) rescue nil
+            next unless date
+            { amount: amount, date: date }
           end
       end
 
