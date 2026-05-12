@@ -37,6 +37,24 @@ module Api
         render_unprocessable(e.message)
       end
 
+      # GET /api/v1/night_analyses/metrics?date=YYYY-MM-DD
+      # Pre-contextualiza los datos del día para el agente.
+      def metrics
+        return unless require_scope!("summary:read")
+
+        date = params[:date].present? ? Date.parse(params[:date].to_s) : Date.current
+
+        result = Finanzas::Interactors::BuildNightMetrics.new.call(
+          account_id: current_account.id,
+          date:       date
+        )
+
+        render json: { data: result }
+
+      rescue Date::Error
+        render_unprocessable("date inválida — usar formato YYYY-MM-DD")
+      end
+
       # GET /api/v1/night_analyses/:date
       # Devuelve el análisis de una noche específica con su insight.
       def show
