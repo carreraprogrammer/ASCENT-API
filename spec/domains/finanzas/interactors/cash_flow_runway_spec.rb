@@ -14,6 +14,17 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
     { active: true, expected_day_from: day_from }
   end
 
+  def biweekly_source(day1:, day2:)
+    {
+      active: true,
+      expected_day_from: day1,
+      schedules: [
+        { expected_day_from: day1, expected_day_to: day1 + 3, expected_amount: 3_200_000 },
+        { expected_day_from: day2, expected_day_to: day2 + 3, expected_amount: 3_200_000 }
+      ]
+    }
+  end
+
   def obligation(id:, name:, amount:, due_day:, paid: 0)
     { id: id, name: name, amount: amount, due_day: due_day, active: true }
   end
@@ -139,6 +150,23 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
         income_sources:         [income_source(day_from: 5), income_source(day_from: 20)],
+        recurring_obligations:  [],
+        today:                  today
+      )
+
+      expect(result[:next_income_day]).to eq(20)
+      expect(result[:days_to_next_income]).to eq(8)
+    end
+
+    it "usa la próxima cuota de una fuente quincenal (schedules) en lugar del día_from del padre" do
+      # EMAPTA registrado como una sola fuente con schedules día 5 y día 20.
+      # expected_day_from del padre = 5 (mínimo). Hoy = 12 → padre filtrado.
+      # Sin el fix, next_income_day sería el ingreso variable (día 26).
+      # Con el fix, los schedules exponen el día 20 → next_income_day = 20.
+      result = interactor.call(
+        confirmed_balance:      1_000_000,
+        necessary_transactions: txns(daily: daily_burn, days: 30),
+        income_sources:         [biweekly_source(day1: 5, day2: 20), income_source(day_from: 26)],
         recurring_obligations:  [],
         today:                  today
       )
