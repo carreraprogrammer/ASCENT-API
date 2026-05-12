@@ -1,21 +1,21 @@
 class AgentInsight < ApplicationRecord
   belongs_to :account
+  belongs_to :insightable, polymorphic: true
 
-  TRIGGER_REASONS = %w[initial month_change balance_drift track_change deploy_drift manual].freeze
+  KINDS    = %w[tip congratulation alert proposal achievement].freeze
+  STATUSES = %w[new seen actioned dismissed].freeze
 
-  validates :period_month, :period_year, :generated_at, presence: true
-  validates :trigger_reason, inclusion: { in: TRIGGER_REASONS }, allow_nil: true
+  validates :insight_kind, inclusion: { in: KINDS }
+  validates :status,       inclusion: { in: STATUSES }
+  validates :title,        presence: true
+  validates :body,         presence: true
+  validates :generated_at, presence: true
 
-  scope :for_period, ->(month, year) { where(period_month: month, period_year: year) }
+  scope :for_account, ->(account_id) { where(account_id: account_id) }
+  scope :visible,     -> { where.not(status: "dismissed") }
+  scope :latest,      -> { order(generated_at: :desc) }
 
-  def self.current_for(account_id:, month:, year:)
-    where(account_id: account_id)
-      .for_period(month, year)
-      .order(generated_at: :desc)
-      .first
-  end
-
-  def stale?
-    generated_at < 7.days.ago
+  def self.latest_for(account_id:)
+    for_account(account_id).visible.latest.first
   end
 end

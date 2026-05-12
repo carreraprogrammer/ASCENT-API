@@ -91,9 +91,14 @@ Rails.application.routes.draw do
       post "agent_events",         to: "agent_ui_events#create"
       patch "agent_events/:id/consume", to: "agent_ui_events#consume"
 
-      # Agent Insights — recomendaciones diarias con guardrail
-      get  "agent_insights/current", to: "agent_insights#current"
-      post "agent_insights",         to: "agent_insights#create"
+      # Análisis nocturno polimórfico
+      post  "night_analyses",        to: "night_analyses#create"
+      get   "night_analyses",        to: "night_analyses#index"
+      get   "night_analyses/:date",  to: "night_analyses#show",  constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+
+      # Agent Insights — capa de coaching ligada a un análisis
+      get   "agent_insights/latest", to: "agent_insights#latest"
+      patch "agent_insights/:id",    to: "agent_insights#update_status"
 
       get "summary",        to: "summary#show"
       get "budget_context", to: "budget_context#show"
