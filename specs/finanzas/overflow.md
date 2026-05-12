@@ -1,7 +1,10 @@
 # Overflow y Uso Operativo del Plan
 
-> Estado: ⚠️ parcialmente implementado — ver fases.md para detalle
-> Última actualización: 2026-04-17
+> Estado: ⛔ OBSOLETO — los campos `deployable_overflow`, `blocked_by_liquidity` y
+> `safe_to_deploy` fueron eliminados en la restructuración del modelo de liquidez (2026-05-12).
+> El concepto de overflow sigue vigente pero su implementación pendiente de rediseño.
+> Ver [cash-flow-runway.md](./cash-flow-runway.md) para el modelo de salud operativo actual.
+> Última actualización: 2026-05-12
 
 ## Objetivo
 
