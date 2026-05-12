@@ -163,18 +163,9 @@ module Finanzas
           recurring_amount = recurring_by_subcategory[sub.id].to_i
           planned_amount   = planned_by_subcategory[sub.id].to_i
 
-          if confirmed_amount
-            direct_recurring_covered += recurring_amount if recurring_amount > 0
-            rows << build_subcategory_row(
-              sub,
-              suggested_amount: confirmed_amount,
-              confidence: "confirmed",
-              source: "confirmed_budget",
-              locked: false,
-              source_of_truth: "budgets",
-              edit_hint: "Monto del plan confirmado para este mes."
-            )
-          elsif recurring_amount > 0
+          if recurring_amount > 0
+            # recurring_obligations.amount is the source of truth for monthly cash impact.
+            # Always prefer it over the confirmed budget so updates propagate to the wizard.
             direct_recurring_covered += recurring_amount
             rows << build_subcategory_row(
               sub,
@@ -184,6 +175,16 @@ module Finanzas
               locked: true,
               source_of_truth: "recurring_obligations",
               edit_hint: "Se edita desde gastos recurrentes."
+            )
+          elsif confirmed_amount
+            rows << build_subcategory_row(
+              sub,
+              suggested_amount: confirmed_amount,
+              confidence: "confirmed",
+              source: "confirmed_budget",
+              locked: false,
+              source_of_truth: "budgets",
+              edit_hint: "Monto del plan confirmado para este mes."
             )
           elsif planned_amount > 0
             rows << build_subcategory_row(

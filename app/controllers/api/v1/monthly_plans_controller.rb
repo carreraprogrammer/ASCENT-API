@@ -75,13 +75,15 @@ module Api
 
         if params[:lines].present?
           # Wizard flow: lines = [{ subcategory_code:, amount: }]
-          # Budget granularity is category-level; we resolve subcategory_code → category_id.
-          # Multiple lines in the same category are aggregated (last-write wins per spec
-          # since the wizard sends one line per subcategory and the upsert key is
-          # (account_id, category_id, month, year)).
-          #
-          # NOTE: A unique constraint on (account_id, subcategory_id, month, year) cannot
-          # be added until Budget gains a subcategory_id column (separate migration task).
+          # Delete all existing budgets for the period first so stale category-level
+          # records from the legacy flow don't persist alongside the new subcategory-level
+          # ones and create duplicate/doubled totals in the plan view.
+          ::Budget.where(
+            account_id: current_account.id,
+            month: plan[:month],
+            year: plan[:year]
+          ).delete_all
+
           resolved = resolve_wizard_lines(params[:lines])
           budget_repo.upsert_bulk(
             user_id: current_owner_user_id,
