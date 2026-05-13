@@ -99,6 +99,31 @@ docker compose exec web bundle exec rails console
 docker compose exec web bundle exec rails db:migrate
 ```
 
+### Sincronizar base de datos desde Railway
+
+Para debug local con una copia de Railway:
+
+```bash
+script/sync_railway_db
+```
+
+El script usa Railway CLI sobre el proyecto/servicio linkeado, crea un dump en `tmp/db_snapshots/`, restaura sobre la base local de development y luego ejecuta `bin/rails db:migrate`.
+Por seguridad pide confirmación antes de reemplazar la base local.
+Si no hay sesión activa en Railway CLI, ejecuta `railway login`.
+
+Opciones útiles:
+
+```bash
+# Solo crear el dump, sin restaurar localmente
+script/sync_railway_db --dump-only
+
+# Restaurar un dump existente
+script/sync_railway_db --restore-only tmp/db_snapshots/railway-20260513120000.dump
+
+# Ejecutar sin prompt interactivo
+script/sync_railway_db --yes
+```
+
 ---
 
 ## Arquitectura

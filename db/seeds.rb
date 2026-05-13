@@ -25,7 +25,7 @@ SYSTEM_CATEGORIES = [
     ]
   },
   {
-    name: "Discrecional", code: "discretionary", category_type: "discretionary",
+    name: "Flexible", code: "discretionary", category_type: "discretionary",
     color: "#C9980A", icon: "pricetagOutline",
     subcategories: [
       { name: "Restaurantes",   code: "restaurantes",  icon: "restaurantOutline" },

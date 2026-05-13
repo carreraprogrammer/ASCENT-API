@@ -38,7 +38,8 @@
       "Bash(XCODES_USERNAME=\"carreraprogrammer@gmail.com\" XCODES_PASSWORD=\"Dacp1759987017\" xcodes install \"26.4.1\" --experimental-unxip)",
       "Bash(pkgutil --payload-files /Applications/Xcode-26.4.1.app/Contents/Resources/Packages/MobileDevice.pkg)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(identify \"/Users/danielcarrera/Documents/Claude/Projects/DANIEL 15K/daniel15k-web/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png\" \"/Users/danielcarrera/Documents/Claude/Projects/DANIEL 15K/daniel15k-web/ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png\")"
+      "Bash(identify \"/Users/danielcarrera/Documents/Claude/Projects/DANIEL 15K/daniel15k-web/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png\" \"/Users/danielcarrera/Documents/Claude/Projects/DANIEL 15K/daniel15k-web/ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png\")",
+      "Bash(curl -s -X POST https://daniel15k-agents-production.up.railway.app/agents/nightly -H 'Content-Type: application/json')"
     ]
   }
 }

@@ -21,7 +21,7 @@ FactoryBot.define do
     end
 
     trait :discretionary do
-      name { "Discrecional" }
+      name { "Flexible" }
       code { "discretionary" }
       category_type { "discretionary" }
     end
