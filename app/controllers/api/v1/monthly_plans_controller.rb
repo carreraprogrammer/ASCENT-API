@@ -253,6 +253,7 @@ module Api
           cat_total     = cat_confirmed + cat_spend[:pending]
           cat_projected = (cat_confirmed * projection_scale).round
           cat_budgeted  = cat_budgets.sum(&:amount_limit)
+          cat_behavior  = financial_behavior_for(category: cat)
 
           subcategory_rows = cat_budgets.map do |b|
             sub   = b.subcategory
@@ -260,6 +261,7 @@ module Api
             sub_confirmed = sub_spend[:confirmed]
             sub_total     = sub_confirmed + sub_spend[:pending]
             sub_projected = (sub_confirmed * projection_scale).round
+            sub_behavior  = financial_behavior_for(category: cat, subcategory: sub)
             sub_signal    = build_budget_signal(category: cat, subcategory: sub, budgeted: b.amount_limit, spent: sub_total)
 
             {
@@ -270,6 +272,16 @@ module Api
               budgeted:  b.amount_limit,
               spent:     sub_total,
               projected: sub_projected,
+              behavior:  sub_behavior,
+              primary_metric: budget_primary_metric(
+                behavior: sub_behavior,
+                name: sub&.name || sub&.code || "Esta línea",
+                budgeted: b.amount_limit,
+                spent: sub_total,
+                projected: sub_projected,
+                elapsed: elapsed,
+                days_in: days_in
+              ),
               signal_kind:   sub_signal[:kind],
               signal_label:  sub_signal[:label],
               signal_detail: sub_signal[:detail]
@@ -291,6 +303,16 @@ module Api
             budgeted:      cat_budgeted,
             spent:         cat_total,
             projected:     cat_projected,
+            behavior:      cat_behavior,
+            primary_metric: budget_primary_metric(
+              behavior: cat_behavior,
+              name: cat&.name || cat&.code || "Esta categoría",
+              budgeted: cat_budgeted,
+              spent: cat_total,
+              projected: cat_projected,
+              elapsed: elapsed,
+              days_in: days_in
+            ),
             signal_kind:   category_signal[:kind],
             signal_label:  category_signal[:label],
             signal_detail: category_signal[:detail],
@@ -369,6 +391,115 @@ module Api
 
       def signal(kind, label, detail)
         { kind: kind, label: label, detail: detail }
+      end
+
+      def financial_behavior_for(category:, subcategory: nil)
+        text = [
+          category&.category_type,
+          category&.code,
+          category&.name,
+          subcategory&.code,
+          subcategory&.name
+        ].compact.join(" ").downcase
+
+        return "debt_payment" if text.match?(/debt|deuda|credit|cr[eé]dito|prestamo|pr[eé]stamo|loan|tarjeta/)
+        return "savings_goal" if text.match?(/saving|savings|ahorro|inversi[oó]n|investment|fondo|emergencia/)
+        return "fixed_once" if text.match?(/rent|arriendo|alquiler|seguro|insurance|predial|matr[ií]cula/)
+        return "fixed_recurring" if text.match?(/subscription|suscrip|netflix|spotify|internet|celular|phone|gimnasio|gym|servicio|utility|utilities/)
+        return "variable_spiky" if text.match?(/health|salud|ropa|regalo|gift|reparaci[oó]n|repair|imprevisto|travel|viaje/)
+        return "variable_linear" if text.match?(/food|comida|groceries|mercado|transport|transporte|dining|domicilio|restaurant|cafe|caf[eé]|snack|salida/)
+
+        case category&.category_type.to_s
+        when "committed"
+          "fixed_recurring"
+        when "necessary", "discretionary", "social"
+          "variable_linear"
+        when "investment"
+          "savings_goal"
+        else
+          "variable_spiky"
+        end
+      end
+
+      def budget_primary_metric(behavior:, name:, budgeted:, spent:, projected:, elapsed:, days_in:)
+        ratio = budgeted.to_i.positive? ? spent.to_f / budgeted.to_i : 0
+        projected_over = projected.to_i - budgeted.to_i
+
+        case behavior
+        when "variable_linear"
+          status = if budgeted.to_i.positive? && projected > budgeted
+                     "critical"
+          elsif budgeted.to_i.positive? && ratio >= month_progress_ratio(elapsed, days_in) + 0.2
+                     "warning"
+          else
+                     "comfortable"
+          end
+          {
+            kind: "month_end_projection",
+            status: status,
+            title: status == "critical" ? "Vas más rápido de lo planeado" : "Estimado a fin de mes",
+            body: projected_over.positive? ?
+              "A este ritmo cerrarías #{format_cop(projected_over)} por encima del presupuesto." :
+              "A este ritmo cerrarías dentro del presupuesto.",
+            value: projected,
+            budget: budgeted
+          }
+        when "fixed_once", "fixed_recurring"
+          pending = [ budgeted.to_i - spent.to_i, 0 ].max
+          {
+            kind: "payment_status",
+            status: pending.positive? ? "warning" : "comfortable",
+            title: pending.positive? ? "Pago pendiente" : "Pago cubierto",
+            body: pending.positive? ?
+              "Aún faltan #{format_cop(pending)} por cubrir en #{name}." :
+              "#{name} ya está cubierto este mes.",
+            value: pending,
+            budget: budgeted
+          }
+        when "savings_goal"
+          pct = budgeted.to_i.positive? ? ((spent.to_f / budgeted.to_i) * 100).round : 0
+          {
+            kind: "goal_progress",
+            status: pct >= 100 ? "comfortable" : pct >= 60 ? "warning" : "critical",
+            title: "Avance de meta",
+            body: "Llevas #{pct}% de la meta mensual.",
+            value: pct,
+            budget: budgeted
+          }
+        when "debt_payment"
+          pct = budgeted.to_i.positive? ? ((spent.to_f / budgeted.to_i) * 100).round : 0
+          {
+            kind: "debt_progress",
+            status: spent.to_i.positive? ? "comfortable" : "warning",
+            title: spent.to_i.positive? ? "Pago a deuda registrado" : "Pago pendiente",
+            body: spent.to_i.positive? ?
+              "Este pago ayuda a reducir deuda y sostiene tu plan." :
+              "Todavía no hay pago registrado para esta deuda.",
+            value: pct,
+            budget: budgeted
+          }
+        else
+          pct = budgeted.to_i.positive? ? ((spent.to_f / budgeted.to_i) * 100).round : 0
+          status = pct >= 100 ? "critical" : pct >= 70 ? "warning" : "comfortable"
+          {
+            kind: "spiky_context",
+            status: status,
+            title: status == "comfortable" ? "Gasto puntual bajo control" : "Gasto puntual relevante",
+            body: "Este gasto consumió #{pct}% del presupuesto asignado.",
+            value: pct,
+            budget: budgeted
+          }
+        end
+      end
+
+      def month_progress_ratio(elapsed, days_in)
+        return 0 if days_in.to_i <= 0
+
+        elapsed.to_f / days_in.to_i
+      end
+
+      def format_cop(amount)
+        "$#{amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1.').reverse}"
       end
 
       def debt_like_subcategory?(subcategory)
