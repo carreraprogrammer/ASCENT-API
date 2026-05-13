@@ -34,7 +34,7 @@ RSpec.describe "Monthly Plans Current API" do
     create(
       :category,
       :system,
-      name: "Discrecional",
+      name: "Flexible",
       code: "discretionary",
       category_type: "discretionary",
       color: "#C9980A",

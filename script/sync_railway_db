@@ -1,0 +1,291 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEFAULT_LOCAL_DATABASE_URL="postgresql://postgres:password@localhost:5432/daniel15k_development"
+DUMP_DIR="${DUMP_DIR:-tmp/db_snapshots}"
+TIMESTAMP="$(date +%Y%m%d%H%M%S)"
+DUMP_FILE="${DUMP_FILE:-${DUMP_DIR}/railway-${TIMESTAMP}.dump}"
+RUN_MIGRATIONS=1
+CONFIRM=0
+MODE="pull"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  script/sync_railway_db [options]
+
+Copies the Railway PostgreSQL database into the local development database.
+
+Optional:
+  RAILWAY_DATABASE_URL   Source database URL from Railway. If omitted, the script
+                         uses Railway CLI over SSH with the linked project/service.
+  DATABASE_URL           Local target database URL.
+                         Defaults to postgresql://postgres:password@localhost:5432/daniel15k_development
+  DUMP_FILE              Path for the dump file.
+  DUMP_DIR               Directory for timestamped dumps. Defaults to tmp/db_snapshots.
+
+Options:
+  --yes                  Run without interactive confirmation.
+  --dump-only            Only create the Railway dump; do not restore locally.
+  --restore-only FILE    Restore an existing dump file; does not contact Railway.
+  --skip-migrate         Do not run bin/rails db:migrate after restore.
+  -h, --help             Show this help.
+
+Examples:
+  script/sync_railway_db
+  RAILWAY_DATABASE_URL="postgresql://..." script/sync_railway_db
+  RAILWAY_DATABASE_URL="postgresql://..." script/sync_railway_db --dump-only
+  script/sync_railway_db --restore-only tmp/db_snapshots/railway-20260513120000.dump
+USAGE
+}
+
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing required command: $1" >&2
+    exit 1
+  fi
+}
+
+confirm_destructive_restore() {
+  if [[ "$CONFIRM" == "1" ]]; then
+    return
+  fi
+
+  echo "This will replace your local development database with the Railway snapshot."
+  echo "Target: ${LOCAL_DATABASE_URL}"
+  printf "Type 'sync local db' to continue: "
+  read -r answer
+
+  if [[ "$answer" != "sync local db" ]]; then
+    echo "Aborted."
+    exit 1
+  fi
+}
+
+assert_local_target() {
+  local url="$1"
+
+  if [[ "$url" == *"railway"* || "$url" == *"proxy.rlwy.net"* || "$url" == *".railway.internal"* ]]; then
+    echo "Refusing to restore into what looks like a Railway database URL." >&2
+    exit 1
+  fi
+
+  if [[ "$url" != *"localhost"* && "$url" != *"127.0.0.1"* && "$url" != *"@db:"* ]]; then
+    echo "Refusing to restore into a non-local-looking DATABASE_URL: $url" >&2
+    echo "Use a localhost, 127.0.0.1, or docker-compose @db target." >&2
+    exit 1
+  fi
+}
+
+ensure_railway_login() {
+  require_command railway
+
+  if railway whoami >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "Railway CLI is not logged in."
+  echo "Opening Railway login..."
+  railway login
+
+  if ! railway whoami >/dev/null 2>&1; then
+    echo "Railway login did not complete." >&2
+    exit 1
+  fi
+}
+
+decode_base64_file() {
+  local source_file="$1"
+  local target_file="$2"
+
+  require_command ruby
+
+  ruby -rbase64 -e 'STDOUT.binmode; STDOUT.write(Base64.strict_decode64(STDIN.read))' \
+    < "$source_file" \
+    > "$target_file"
+}
+
+dump_railway_with_url() {
+  require_command pg_dump
+
+  mkdir -p "$(dirname "$DUMP_FILE")"
+
+  echo "Creating Railway dump via direct database URL: ${DUMP_FILE}"
+  pg_dump "$RAILWAY_DATABASE_URL" \
+    --format=custom \
+    --no-owner \
+    --no-acl \
+    --file "$DUMP_FILE"
+}
+
+dump_railway_with_ssh() {
+  local encoded_dump_file="${DUMP_FILE}.b64"
+
+  ensure_railway_login
+  mkdir -p "$(dirname "$DUMP_FILE")"
+
+  echo "Creating Railway dump via railway ssh: ${DUMP_FILE}"
+  railway ssh -- 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-acl | base64 | tr -d "\n"' \
+    > "$encoded_dump_file"
+
+  decode_base64_file "$encoded_dump_file" "$DUMP_FILE"
+  rm -f "$encoded_dump_file"
+}
+
+dump_railway() {
+  if [[ -n "${RAILWAY_DATABASE_URL:-}" && "$RAILWAY_DATABASE_URL" != *".railway.internal"* ]]; then
+    dump_railway_with_url
+    return
+  fi
+
+  if [[ -n "${RAILWAY_DATABASE_URL:-}" && "$RAILWAY_DATABASE_URL" == *".railway.internal"* ]]; then
+    echo "RAILWAY_DATABASE_URL is private (*.railway.internal), so the script will dump through railway ssh."
+  fi
+
+  dump_railway_with_ssh
+}
+
+restore_local() {
+  if [[ ! -f "$DUMP_FILE" ]]; then
+    echo "Dump file does not exist: $DUMP_FILE" >&2
+    exit 1
+  fi
+
+  assert_local_target "$LOCAL_DATABASE_URL"
+  confirm_destructive_restore
+
+  if command -v pg_restore >/dev/null 2>&1 && pg_restore --list "$DUMP_FILE" >/dev/null 2>&1; then
+    restore_local_with_host_pg_restore
+  elif can_restore_with_docker_postgres_17; then
+    restore_local_with_docker_postgres_17
+  elif command -v docker >/dev/null 2>&1 && docker compose ps db >/dev/null 2>&1; then
+    restore_local_with_docker_pg_restore
+  else
+    echo "No compatible pg_restore found." >&2
+    echo "Install a PostgreSQL client matching Railway, or start the local db with docker compose up -d db." >&2
+    exit 1
+  fi
+
+  if [[ "$RUN_MIGRATIONS" == "1" ]]; then
+    run_local_migrations
+  fi
+}
+
+run_local_migrations() {
+  echo "Running local migrations."
+
+  if bundle check >/dev/null 2>&1; then
+    if DATABASE_URL="$LOCAL_DATABASE_URL" bin/rails db:migrate; then
+      return
+    fi
+    echo "Host Rails migration failed; retrying through docker compose web."
+  else
+    echo "Host Rails gems are not installed; retrying through docker compose web."
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Local migrations failed and Docker is not available." >&2
+    exit 1
+  fi
+
+  local docker_database_url
+  docker_database_url="${LOCAL_DATABASE_URL//@localhost:/@db:}"
+  docker_database_url="${docker_database_url//@127.0.0.1:/@db:}"
+
+  docker compose run --rm \
+    -e DATABASE_URL="$docker_database_url" \
+    web \
+    bundle exec rails db:migrate
+}
+
+restore_local_with_host_pg_restore() {
+  echo "Restoring dump into local database with host pg_restore."
+  pg_restore \
+    --clean \
+    --if-exists \
+    --no-owner \
+    --no-acl \
+    --dbname "$LOCAL_DATABASE_URL" \
+    "$DUMP_FILE"
+}
+
+can_restore_with_docker_postgres_17() {
+  command -v docker >/dev/null 2>&1 && [[ -n "$(docker compose ps -q db 2>/dev/null)" ]]
+}
+
+restore_local_with_docker_postgres_17() {
+  local db_container
+  db_container="$(docker compose ps -q db)"
+
+  echo "Restoring dump into local database with postgres:17 pg_restore/psql."
+  docker run --rm -i \
+    --network "container:${db_container}" \
+    -e LOCAL_DATABASE_URL="$LOCAL_DATABASE_URL" \
+    postgres:17 \
+    sh -lc 'pg_restore --clean --if-exists --no-owner --no-acl --file - | sed "/^SET transaction_timeout = 0;$/d" | psql "$LOCAL_DATABASE_URL" --quiet --set ON_ERROR_STOP=1 >/dev/null' \
+    < "$DUMP_FILE"
+}
+
+restore_local_with_docker_pg_restore() {
+  echo "Restoring dump into local database with docker compose db pg_restore."
+  docker compose exec -T db pg_restore \
+    --clean \
+    --if-exists \
+    --no-owner \
+    --no-acl \
+    --dbname "$LOCAL_DATABASE_URL" \
+    < "$DUMP_FILE"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --yes)
+      CONFIRM=1
+      shift
+      ;;
+    --dump-only)
+      MODE="dump"
+      shift
+      ;;
+    --restore-only)
+      MODE="restore"
+      DUMP_FILE="${2:-}"
+      if [[ -z "$DUMP_FILE" ]]; then
+        echo "--restore-only requires a dump file path." >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --skip-migrate)
+      RUN_MIGRATIONS=0
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+LOCAL_DATABASE_URL="${DATABASE_URL:-$DEFAULT_LOCAL_DATABASE_URL}"
+
+case "$MODE" in
+  dump)
+    dump_railway
+    echo "Done."
+    ;;
+  restore)
+    restore_local
+    echo "Done."
+    ;;
+  pull)
+    dump_railway
+    restore_local
+    echo "Done."
+    ;;
+esac

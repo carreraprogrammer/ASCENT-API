@@ -9,7 +9,7 @@ RSpec.describe "Monthly Plans Wizard API" do
   # We create one explicitly so tests don't rely on seeds.
   let!(:system_category) do
     create(:category, :system,
-           name: "Discrecional", code: "discretionary", category_type: "discretionary",
+           name: "Flexible", code: "discretionary", category_type: "discretionary",
            color: "#C9980A", icon: "pricetagOutline")
   end
   let!(:subcategory) do
