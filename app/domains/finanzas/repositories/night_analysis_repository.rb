@@ -39,7 +39,7 @@ module Finanzas
             days_to_next_income:  metrics[:days_to_next_income],
             category_alerts:      metrics[:category_alerts],
             transactions_context: metrics[:transactions_context],
-            burn_vs_plan:         metrics[:burn_vs_plan],
+            burn_vs_plan:         metrics[:burn_vs_plan] || [],
             agent_reasoning:      reasoning
           )
 
