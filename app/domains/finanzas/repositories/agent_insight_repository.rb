@@ -36,7 +36,8 @@ module Finanzas
           status:          record.status,
           agent_reasoning: record.agent_reasoning,
           generated_at:    record.generated_at,
-          created_at:      record.created_at
+          created_at:      record.created_at,
+          analysis_date:   record.insightable.try(:analysis_date)&.iso8601
         }
       end
     end
