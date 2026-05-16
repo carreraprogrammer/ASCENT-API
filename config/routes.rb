@@ -109,6 +109,10 @@ Rails.application.routes.draw do
       get  "me/features",                to: "progress#features"
       post "me/features/:key/unlock",    to: "progress#unlock"
 
+      # Admin — solo super_admin
+      get  "admin/accounts",     to: "admin#accounts"
+      post "admin/impersonate",  to: "admin#impersonate"
+
       # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"
       get  "telegram/updates", to: "telegram#updates"

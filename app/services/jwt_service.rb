@@ -5,7 +5,7 @@ class JwtService
   class InvalidToken < StandardError; end
   class ExpiredToken < StandardError; end
 
-  def self.encode_access_token(user_id:, email:, super_admin: false, permissions: nil)
+  def self.encode_access_token(user_id:, email:, super_admin: false, permissions: nil, impersonated_by: nil)
     payload = {
       user_id: user_id,
       email: email,
@@ -15,6 +15,7 @@ class JwtService
       exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", DEFAULT_ACCESS_EXPIRY).to_i,
       type: "access"
     }
+    payload[:impersonated_by] = impersonated_by if impersonated_by
     JWT.encode(payload, secret, ALGORITHM)
   end
 
