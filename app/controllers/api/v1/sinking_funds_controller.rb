@@ -45,6 +45,28 @@ module Api
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
       end
 
+      def withdraw
+        return unless require_scope!("budgets:update")
+
+        result = Finanzas::Interactors::WithdrawSinkingFund.new.call(
+          account_id:      current_account.id,
+          user_id:         current_owner_user_id,
+          sinking_fund_id: params[:id],
+          amount:          params[:amount].presence
+        )
+
+        render json: {
+          data: {
+            sinking_fund: result[:sinking_fund],
+            transaction:  Finanzas::Presenters::TransactionPresenter.present(result[:transaction])
+          }
+        }, status: :created
+      rescue Finanzas::Errors::SinkingFundNotFound => e
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      rescue Finanzas::Errors::InsufficientSinkingFundBalance => e
+        render_unprocessable(e.message)
+      end
+
       private
 
       def fund_params
