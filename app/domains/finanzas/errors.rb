@@ -10,6 +10,8 @@ module Finanzas
     class InvalidBudgetLine < StandardError; end
     class PlanNotFound < StandardError; end
     class PlanNotConfirmed < StandardError; end
+    class SinkingFundNotFound < StandardError; end
+    class InsufficientSinkingFundBalance < StandardError; end
     class DuplicateTransaction < StandardError
       attr_reader :existing_id
       def initialize(msg = nil, existing_id: nil)
