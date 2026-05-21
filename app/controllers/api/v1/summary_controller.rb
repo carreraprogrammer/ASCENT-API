@@ -313,10 +313,11 @@ module Api
         days_in_month = Date.new(year, month, -1).day
         days_elapsed  = [now_col.day, days_in_month].min
 
-        # Gastos reales por categoría (confirmados + pending)
+        # Gastos reales por categoría (confirmados + pending, sin aportes a bolsillos)
         spent_by_cat = ::Transaction
           .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
           .where(status: %w[confirmed pending])
+          .where(sinking_fund_id: nil)
           .where.not(category_id: nil)
           .group(:category_id)
           .sum(:amount)
@@ -325,6 +326,7 @@ module Api
         subcat_rows = ::Transaction
           .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
           .where(status: %w[confirmed pending])
+          .where(sinking_fund_id: nil)
           .where.not(subcategory_id: nil)
           .joins(:subcategory)
           .group("transactions.category_id", "transactions.subcategory_id", "subcategories.name")

@@ -50,12 +50,18 @@ module Finanzas
 
       def balance(account_id:, month:, year:)
         rows = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
-                            .select(:amount, :transaction_type, :status)
+                            .select(:amount, :transaction_type, :status, :debt_id, :sinking_fund_id)
 
         totals = Hash.new(0)
+        debt_payments_confirmed = 0
+        sinking_fund_contributions = 0
         rows.each do |r|
           key = "#{r.transaction_type}_#{r.status}"
           totals[key] += r.amount
+          if r.transaction_type == "expense" && r.status == "confirmed"
+            debt_payments_confirmed += r.amount if r.debt_id.present?
+            sinking_fund_contributions += r.amount if r.sinking_fund_id.present?
+          end
         end
 
         income_confirmed  = totals["income_confirmed"]
@@ -64,12 +70,14 @@ module Finanzas
         expense_pending   = totals["expense_pending"]
 
         {
-          income_confirmed:  income_confirmed,
-          income_pending:    income_pending,
-          expense_confirmed: expense_confirmed,
-          expense_pending:   expense_pending,
-          balance_confirmed: income_confirmed - expense_confirmed,
-          balance_total:     (income_confirmed + income_pending) - (expense_confirmed + expense_pending)
+          income_confirmed:           income_confirmed,
+          income_pending:             income_pending,
+          expense_confirmed:          expense_confirmed,
+          expense_pending:            expense_pending,
+          debt_payments_confirmed:    debt_payments_confirmed,
+          sinking_fund_contributions: sinking_fund_contributions,
+          balance_confirmed:          income_confirmed - expense_confirmed,
+          balance_total:              (income_confirmed + income_pending) - (expense_confirmed + expense_pending)
         }
       end
 
