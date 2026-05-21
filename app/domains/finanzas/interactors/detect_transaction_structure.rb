@@ -16,11 +16,12 @@ module Finanzas
     # Only "high" confidence matches should be auto-linked; others are surfaced
     # as suggestions for the user or agent to resolve.
     class DetectTransactionStructure
-      RECURRING_AMOUNT_TOLERANCE = 0.05   # ±5 % of obligation amount
-      SINKING_AMOUNT_TOLERANCE   = 0.20   # ±20 % of monthly contribution
-      PLANNED_AMOUNT_TOLERANCE   = 0.20   # ±20 % of planned expense
-      DUE_DAY_WINDOW             = 5      # ± calendar days from due_day
-      PLANNED_HORIZON_DAYS       = 90     # look-ahead window for target_date
+      RECURRING_AMOUNT_TOLERANCE_TIGHT = 0.05   # ±5 % — amount-only matching (no concept signal)
+      RECURRING_AMOUNT_TOLERANCE_LOOSE = 0.40   # ±40 % — concept-anchored (FX, discounts, estimates)
+      SINKING_AMOUNT_TOLERANCE         = 0.20   # ±20 % of monthly contribution
+      PLANNED_AMOUNT_TOLERANCE         = 0.20   # ±20 % of planned expense
+      DUE_DAY_WINDOW                   = 5      # ± calendar days from due_day
+      PLANNED_HORIZON_DAYS             = 90     # look-ahead window for target_date
 
       def call(account_id:, concept:, amount:, subcategory_id: nil, date_str: nil)
         amount = amount.to_i
@@ -49,18 +50,26 @@ module Finanzas
         matches = []
 
         ::RecurringObligation.where(account_id: account_id, active: true).find_each do |ob|
-          next unless within_pct?(ob.amount, amount, RECURRING_AMOUNT_TOLERANCE)
-
           concept_match = concept_overlap?(concept, ob.name)
+
+          # Concept anchors a loose amount window (FX, discounts, estimates).
+          # Without concept signal we require a tight amount match to avoid noise.
+          effective_tolerance = concept_match ? RECURRING_AMOUNT_TOLERANCE_LOOSE : RECURRING_AMOUNT_TOLERANCE_TIGHT
+          amount_match = within_pct?(ob.amount, amount, effective_tolerance)
+
+          next unless concept_match || amount_match
+
           subcat_known  = subcategory_id.present? && ob.subcategory_id.present?
           day_known     = day.present? && ob.due_day.present?
           subcat_match  = !subcat_known || ob.subcategory_id == subcategory_id
           day_match     = !day_known || (ob.due_day - day).abs <= DUE_DAY_WINDOW
-          score         = 50
-          score        += 30 if concept_match
+          score         = 0
+          score        += 40 if concept_match
+          score        += 20 if amount_match && within_pct?(ob.amount, amount, RECURRING_AMOUNT_TOLERANCE_TIGHT)
+          score        += 10 if amount_match
           score        += 10 if subcat_known && subcat_match
           score        += 10 if day_known && day_match
-          confidence    = recurring_confidence(concept_match, subcat_known, subcat_match, day_known, day_match)
+          confidence    = recurring_confidence(concept_match, amount_match, subcat_known, subcat_match, day_known, day_match)
           type = ob.source_type == "Debt" ? "debt" : "recurring"
           matches << {
             match_type: type,
@@ -167,10 +176,16 @@ module Finanzas
         shared.size >= 1 && shared.any? { |w| w.length >= 4 }
       end
 
-      def recurring_confidence(concept_match, subcat_known, subcat_match, day_known, day_match)
-        return "high" if concept_match && subcat_match && day_match
-        return "high" if subcat_known && day_known && subcat_match && day_match
-        return "medium" if concept_match || (subcat_known && subcat_match) || (day_known && day_match)
+      def recurring_confidence(concept_match, amount_match, subcat_known, subcat_match, day_known, day_match)
+        # Concept + amount within loose tolerance → auto-link (FX, discounts, estimates).
+        return "high" if concept_match && amount_match
+        # Concept + two confirmed structural signals → high even if amount differs.
+        return "high" if concept_match && (subcat_known && subcat_match) && (day_known && day_match)
+        # Pure numeric path (no concept): amount must be tight + two structural signals.
+        return "high" if subcat_known && day_known && subcat_match && day_match && amount_match
+        # Concept alone: promising but needs human/agent confirmation.
+        return "medium" if concept_match
+        return "medium" if amount_match && ((subcat_known && subcat_match) || (day_known && day_match))
 
         "low"
       end
