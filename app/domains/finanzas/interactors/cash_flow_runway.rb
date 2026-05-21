@@ -37,7 +37,8 @@ module Finanzas
         has_sufficient_history = burn[:has_sufficient_history]
         burn_window_days      = burn[:window_days]
 
-        next_income_day     = find_next_income_day(income_sources, today_day, today)
+        next_income_info    = find_next_income_info(income_sources, today_day, today)
+        next_income_day     = next_income_info&.dig(:day)
         days_to_next_income = next_income_day ? next_income_day - today_day : nil
 
         return no_income_result(confirmed_balance, daily_burn, has_sufficient_history, burn_window_days) if next_income_day.nil?
@@ -56,6 +57,8 @@ module Finanzas
           daily_necessary_burn:         daily_burn,
           days_to_next_income:          days_to_next_income,
           next_income_day:              next_income_day,
+          next_income_classification:   next_income_info&.dig(:classification),
+          next_income_name:             next_income_info&.dig(:name),
           committed_before_next_income: committed_before_next_income,
           committed_obligations:        committed_obligations,
           runway_days:                  runway_days,
@@ -92,21 +95,22 @@ module Finanzas
         { daily_burn: daily_burn, has_sufficient_history: true, window_days: window_days }
       end
 
-      def find_next_income_day(income_sources, today_day, today)
+      def find_next_income_info(income_sources, today_day, today)
         active = Array(income_sources).select { |s| s[:active] }
         return nil if active.empty?
 
         # For sources with schedules (e.g. biweekly), each schedule carries its
         # own expected_day_from. Use those rather than the parent's denormalized
         # minimum so mid-month payments aren't skipped once the first one passes.
-        all_days = active.flat_map do |s|
+        candidates = active.flat_map do |s|
           schedules = Array(s[:schedules])
-          schedules.any? ? schedules.map { |sc| sc[:expected_day_from].to_i } : [s[:expected_day_from].to_i]
+          days = schedules.any? ? schedules.map { |sc| sc[:expected_day_from].to_i } : [s[:expected_day_from].to_i]
+          days.map { |d| { day: d, name: s[:name], classification: s[:classification] } }
         end
 
-        future = all_days.select { |d| d > 0 && d >= today_day }.min
+        future = candidates.select { |c| c[:day] > 0 && c[:day] >= today_day }.min_by { |c| c[:day] }
 
-        future || Date.new(today.year, today.month, -1).day
+        future || { day: Date.new(today.year, today.month, -1).day, name: nil, classification: nil }
       end
 
       def obligations_in_window(recurring_obligations, realized_obligations, today_day, next_income_day)
