@@ -53,10 +53,22 @@ module Finanzas
       def build_transactions_context(today_txns, obligations)
         obligation_index = obligations.index_by { |o| o[:id] }
 
-        matched   = []
-        unmatched = []
+        matched      = []
+        unmatched    = []
+        needs_review = []
 
         today_txns.each do |tx|
+          if tx[:status] == "pending"
+            needs_review << {
+              transaction_id: tx[:id],
+              concept:        tx[:concept] || tx[:product],
+              amount:         tx[:amount],
+              date:           tx[:date].to_s,
+              reason:         "unconfirmed"
+            }
+            next
+          end
+
           if tx[:recurring_obligation_id].present?
             ob = obligation_index[tx[:recurring_obligation_id]]
             next unless ob  # obligación inactiva o de otra cuenta — ignorar
@@ -82,7 +94,7 @@ module Finanzas
           end
         end
 
-        { matched: matched, unmatched: unmatched }
+        { matched: matched, unmatched: unmatched, needs_review: needs_review }
       end
 
       # ── Alertas de gaveta ────────────────────────────────────────────────────
@@ -163,26 +175,26 @@ module Finanzas
       end
 
       def load_today_transactions(account_id, date)
-        date_str = "#{date.day}/#{date.month}"
-
         ::Transaction
-          .where(account_id: account_id, status: "confirmed")
+          .where(account_id: account_id, status: %w[confirmed pending])
           .where(month: date.month, year: date.year)
           .where("date LIKE ?", "#{date.day}/#{date.month}%")
           .joins("LEFT JOIN categories ON categories.id = transactions.category_id")
           .pluck(
-            :id, :amount, :transaction_type, :concept, :product,
-            :recurring_obligation_id, "categories.category_type"
+            :id, :amount, :transaction_type, :status, :concept, :product,
+            :recurring_obligation_id, "categories.category_type", :date
           )
-          .map do |id, amount, type, concept, product, ob_id, cat_type|
+          .map do |id, amount, type, status, concept, product, ob_id, cat_type, txn_date|
             {
               id:                       id,
               amount:                   amount.to_i,
               transaction_type:         type,
+              status:                   status,
               concept:                  concept,
               product:                  product,
               recurring_obligation_id:  ob_id,
-              category_type:            cat_type
+              category_type:            cat_type,
+              date:                     txn_date
             }
           end
       end
