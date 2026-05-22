@@ -106,6 +106,8 @@ Rails.application.routes.draw do
       get   "agent_insights/latest", to: "agent_insights#latest"
       patch "agent_insights/:id",    to: "agent_insights#update_status"
 
+      resources :chat_messages, only: [ :index, :create ]
+
       get "summary",        to: "summary#show"
       get "budget_context", to: "budget_context#show"
 
