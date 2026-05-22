@@ -5,6 +5,8 @@
 
 > El objetivo no es llevar una contabilidad perfecta. Es cambiar conductas. La diferencia es enorme: una contabilidad te dice qué pasó, el coaching te dice qué hacer diferente.
 
+> **Interacción**: ver [ascent-manifiesto.md](./ascent-manifiesto.md) — guía de diseño que rige cómo se siente el producto. Si hay tensión entre un flujo y el manifiesto, el manifiesto gana.
+
 ---
 
 ## Visión
