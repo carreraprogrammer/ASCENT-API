@@ -32,6 +32,45 @@ module Api
         render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
       end
 
+      def needs_review
+        return unless require_scope!("transactions:read")
+
+        account_id = current_account.id
+
+        unconfirmed = ::Transaction
+          .where(account_id: account_id, status: "pending")
+          .pluck(:id, :concept, :product, :amount, :date, :metadata)
+          .map do |id, concept, product, amount, date, meta|
+            notes = meta&.dig("conflict_notes").presence
+            {
+              transaction_id: id,
+              concept:        concept.presence || product,
+              amount:         amount.to_i,
+              date:           date.to_s,
+              reason:         "unconfirmed",
+              notes:          notes
+            }
+          end
+
+        agent_flagged = ::Transaction
+          .where(account_id: account_id, status: "confirmed")
+          .where("metadata->>'conflict_reason' IS NOT NULL")
+          .pluck(:id, :concept, :product, :amount, :date, :metadata)
+          .map do |id, concept, product, amount, date, meta|
+            {
+              transaction_id:          id,
+              concept:                 concept.presence || product,
+              amount:                  amount.to_i,
+              date:                    date.to_s,
+              reason:                  meta["conflict_reason"],
+              notes:                   meta["conflict_notes"],
+              suggested_subcategory_code: meta["suggested_subcategory_code"]
+            }
+          end
+
+        render json: { data: unconfirmed + agent_flagged }
+      end
+
       def credit_card_pending
         return unless require_scope!("transactions:read")
         transactions = Finanzas::Repositories::TransactionRepository.new.credit_card_pending(
