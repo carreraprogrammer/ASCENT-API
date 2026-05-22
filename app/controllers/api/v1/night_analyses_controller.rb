@@ -57,7 +57,6 @@ module Api
 
       # GET /api/v1/night_analyses/:date
       # Devuelve el análisis de una noche específica con su insight.
-      # Augmenta needs_review con transacciones pending actuales no resueltas.
       def show
         return unless require_scope!("summary:read")
 
@@ -65,7 +64,7 @@ module Api
         entity = night_analysis_repo.for_date(account_id: current_account.id, date: date)
 
         if entity
-          render json: { data: augment_pending(entity, current_account.id) }
+          render json: { data: entity }
         else
           render json: { data: nil }, status: :not_found
         end
@@ -87,31 +86,6 @@ module Api
       end
 
       private
-
-      def augment_pending(entity, account_id)
-        stored_ids = ((entity.dig(:transactions_context, :needs_review) || [])
-          .map { |r| r[:transaction_id] || r["transaction_id"] }).to_set
-
-        live_pending = ::Transaction
-          .where(account_id: account_id, status: "pending")
-          .where.not(id: stored_ids)
-          .pluck(:id, :concept, :product, :amount, :date)
-          .map do |id, concept, product, amount, date|
-            {
-              transaction_id: id,
-              concept:        concept.presence || product,
-              amount:         amount.to_i,
-              date:           date.to_s,
-              reason:         "unconfirmed"
-            }
-          end
-
-        return entity if live_pending.empty?
-
-        ctx = (entity[:transactions_context] || {}).dup
-        ctx[:needs_review] = (ctx[:needs_review] || []) + live_pending
-        entity.merge(transactions_context: ctx)
-      end
 
       def night_analysis_repo
         @night_analysis_repo ||= Finanzas::Repositories::NightAnalysisRepository.new
