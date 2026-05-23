@@ -38,7 +38,8 @@ class ErrorNotifier
     raw = env["action_dispatch.request.parameters"] ||
           Rack::Utils.parse_nested_query(env["QUERY_STRING"].to_s)
 
-    deep_filter(raw)
+    raw = raw.to_unsafe_h if raw.respond_to?(:to_unsafe_h)
+    deep_filter(raw.to_h)
   rescue
     {}
   end
