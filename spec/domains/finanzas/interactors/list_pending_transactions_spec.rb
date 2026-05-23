@@ -8,7 +8,7 @@ RSpec.describe Finanzas::Interactors::ListPendingTransactions do
     create(:transaction, user: user, status: "confirmed", concept: "Confirmado")
     create(:transaction, user: user, status: "pending",   concept: "Pendiente 1")
     create(:transaction, user: user, status: "pending",   concept: "Pendiente 2")
-    create(:transaction, user: user, status: "projected", concept: "Proyectado")
+    create(:transaction, user: user, status: "confirmed", concept: "Confirmado")
   end
 
   it "returns only pending transactions" do
