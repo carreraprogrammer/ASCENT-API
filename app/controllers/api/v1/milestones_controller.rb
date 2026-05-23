@@ -18,7 +18,7 @@ module Api
         code = params[:code].to_s
 
         unless UserMilestone::VALID_CODES.include?(code)
-          return render json: { errors: [{ status: "422", detail: "Código de milestone inválido: #{code}" }] },
+          return render json: { errors: [ { status: "422", detail: "Código de milestone inválido: #{code}" } ] },
                         status: :unprocessable_entity
         end
 
@@ -35,7 +35,7 @@ module Api
         )
         render json: { data: serialize(milestone) }, status: :created
       rescue ActiveRecord::RecordInvalid => e
-        render json: { errors: [{ status: "422", detail: e.message }] },
+        render json: { errors: [ { status: "422", detail: e.message } ] },
                status: :unprocessable_entity
       end
 

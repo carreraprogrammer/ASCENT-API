@@ -149,10 +149,10 @@ module Finanzas
         earned = dimensions.sum do |dim, state|
           weight = DIMENSION_WEIGHTS[dim] || 0
           multiplier = case state
-                       when "sufficient" then SUFFICIENT_SCORE
-                       when "partial"    then PARTIAL_SCORE
-                       else                   MISSING_SCORE
-                       end
+          when "sufficient" then SUFFICIENT_SCORE
+          when "partial"    then PARTIAL_SCORE
+          else                   MISSING_SCORE
+          end
           weight * multiplier
         end
 

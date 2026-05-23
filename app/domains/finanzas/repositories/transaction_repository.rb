@@ -191,13 +191,13 @@ module Finanzas
           source_event_id: record.source_event_id,
           year: record.year,
           month: record.month,
-	          payment_source: record.payment_source,
-	          credit_card_status: record.credit_card_status,
-	          debt_id: record.debt_id,
-	          recurring_obligation_id: record.recurring_obligation_id,
-	          income_source_id: record.income_source_id,
+            payment_source: record.payment_source,
+            credit_card_status: record.credit_card_status,
+            debt_id: record.debt_id,
+            recurring_obligation_id: record.recurring_obligation_id,
+            income_source_id: record.income_source_id,
             sinking_fund_id: record.sinking_fund_id,
-	          created_at: record.created_at,
+            created_at: record.created_at,
           updated_at: record.updated_at
         )
       end
@@ -244,7 +244,7 @@ module Finanzas
         number = per_page.to_i
         return DEFAULT_PER_PAGE unless number.positive?
 
-        [number, MAX_PER_PAGE].min
+        [ number, MAX_PER_PAGE ].min
       end
     end
   end

@@ -52,10 +52,10 @@ module Api
         if result[:success]
           render json: { data: result }, status: :ok
         else
-          render json: { errors: [{ detail: result[:reason] }] }, status: :unprocessable_entity
+          render json: { errors: [ { detail: result[:reason] } ] }, status: :unprocessable_entity
         end
       rescue ActiveRecord::RecordNotFound => e
-        render json: { errors: [{ detail: e.message }] }, status: :not_found
+        render json: { errors: [ { detail: e.message } ] }, status: :not_found
       end
 
       private

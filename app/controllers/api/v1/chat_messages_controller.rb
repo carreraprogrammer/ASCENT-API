@@ -9,7 +9,7 @@ module Api
         return unless require_scope!("summary:read")
 
         channel = params[:channel].presence || "app"
-        limit   = [[params[:limit].to_i, 1].max, 50].min
+        limit   = [ [ params[:limit].to_i, 1 ].max, 50 ].min
         limit   = 20 if limit.zero?
 
         messages = ChatMessage

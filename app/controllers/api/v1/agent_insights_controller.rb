@@ -34,7 +34,7 @@ module Api
         render json: { data: insight }
 
       rescue Finanzas::Errors::InvalidTransaction => e
-        render json: { errors: [{ status: "404", detail: e.message }] }, status: :not_found
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
       end
 
       private

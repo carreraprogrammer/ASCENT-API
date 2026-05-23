@@ -233,7 +233,7 @@ module Api
         spend_by_cat = Hash.new { |h, k| h[k] = { confirmed: 0, pending: 0 } }
 
         spend_rows.each do |row|
-          spend_by_sub[[row.category_id, row.subcategory_id]][row.status.to_sym] += row.total.to_i
+          spend_by_sub[[ row.category_id, row.subcategory_id ]][row.status.to_sym] += row.total.to_i
           spend_by_cat[row.category_id][row.status.to_sym] += row.total.to_i
         end
 
@@ -257,7 +257,7 @@ module Api
 
           subcategory_rows = cat_budgets.map do |b|
             sub   = b.subcategory
-            sub_spend = spend_by_sub[[cat_id, b.subcategory_id]]
+            sub_spend = spend_by_sub[[ cat_id, b.subcategory_id ]]
             sub_confirmed = sub_spend[:confirmed]
             sub_total     = sub_confirmed + sub_spend[:pending]
             sub_projected = (sub_confirmed * projection_scale).round
@@ -503,7 +503,7 @@ module Api
       end
 
       def debt_like_subcategory?(subcategory)
-        text = [subcategory&.code, subcategory&.name].compact.join(" ").downcase
+        text = [ subcategory&.code, subcategory&.name ].compact.join(" ").downcase
         text.match?(/credit|crédito|credito|deuda|pr[eé]stamo|prestamo|loan|tarjeta/)
       end
 

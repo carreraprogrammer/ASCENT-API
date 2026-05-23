@@ -311,7 +311,7 @@ module Api
         return nil if budgets.empty?
 
         days_in_month = Date.new(year, month, -1).day
-        days_elapsed  = [now_col.day, days_in_month].min
+        days_elapsed  = [ now_col.day, days_in_month ].min
 
         # Gastos reales por categoría (confirmados + pending, sin aportes a bolsillos)
         spent_by_cat = ::Transaction
@@ -546,7 +546,7 @@ module Api
           reward_pct:               plan[:reward_pct],
           debt_strategy:            plan[:debt_strategy],
           assumptions:              plan[:assumptions],
-          confirmed_at:             plan[:confirmed_at],
+          confirmed_at:             plan[:confirmed_at]
         }
       end
 

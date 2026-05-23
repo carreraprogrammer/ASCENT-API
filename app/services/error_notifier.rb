@@ -50,11 +50,11 @@ class ErrorNotifier
     hash.each_with_object({}) do |(k, v), acc|
       acc[k] = if FILTERED_PARAMS.any? { |f| k.to_s.downcase.include?(f) }
                  "[FILTERED]"
-               elsif v.is_a?(Hash)
+      elsif v.is_a?(Hash)
                  deep_filter(v)
-               else
+      else
                  v
-               end
+      end
     end
   end
 

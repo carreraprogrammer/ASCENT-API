@@ -34,7 +34,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      350_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -53,7 +53,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      245_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -71,8 +71,8 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      350_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
-        recurring_obligations:  [obligation(id: 1, name: "Crédito", amount: 200_000, due_day: 16)],
+        income_sources:         [ income_source(day_from: 20) ],
+        recurring_obligations:  [ obligation(id: 1, name: "Crédito", amount: 200_000, due_day: 16) ],
         today:                  today
       )
 
@@ -85,7 +85,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      0,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -106,7 +106,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      3_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  obs,
         today:                  today
       )
@@ -119,8 +119,8 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
-        recurring_obligations:  [obligation(id: 5, name: "Crédito", amount: 200_000, due_day: 15)],
+        income_sources:         [ income_source(day_from: 20) ],
+        recurring_obligations:  [ obligation(id: 5, name: "Crédito", amount: 200_000, due_day: 15) ],
         realized_obligations:   { 5 => 120_000 },
         today:                  today
       )
@@ -133,8 +133,8 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
-        recurring_obligations:  [obligation(id: 6, name: "Seguro", amount: 100_000, due_day: 14)],
+        income_sources:         [ income_source(day_from: 20) ],
+        recurring_obligations:  [ obligation(id: 6, name: "Seguro", amount: 100_000, due_day: 14) ],
         realized_obligations:   { 6 => 100_000 },
         today:                  today
       )
@@ -149,7 +149,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 5), income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 5), income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -166,7 +166,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [biweekly_source(day1: 5, day2: 20), income_source(day_from: 26)],
+        income_sources:         [ biweekly_source(day1: 5, day2: 20), income_source(day_from: 26) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -179,7 +179,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 1), income_source(day_from: 5)],
+        income_sources:         [ income_source(day_from: 1), income_source(day_from: 5) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -207,7 +207,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: 50_000, days: 7),
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -220,7 +220,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      500_000,
         necessary_transactions: [],
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -233,7 +233,7 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      1_000_000,
         necessary_transactions: txns(daily: 50_000, days: 30),
-        income_sources:         [income_source(day_from: 20)],
+        income_sources:         [ income_source(day_from: 20) ],
         recurring_obligations:  [],
         today:                  today
       )
@@ -252,8 +252,8 @@ RSpec.describe Finanzas::Interactors::CashFlowRunway do
       result = interactor.call(
         confirmed_balance:      600_000,
         necessary_transactions: txns(daily: daily_burn, days: 30),
-        income_sources:         [income_source(day_from: 20)],
-        recurring_obligations:  [obligation(id: 9, name: "Crédito", amount: 200_000, due_day: 16)],
+        income_sources:         [ income_source(day_from: 20) ],
+        recurring_obligations:  [ obligation(id: 9, name: "Crédito", amount: 200_000, due_day: 16) ],
         today:                  today
       )
 

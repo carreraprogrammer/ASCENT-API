@@ -78,7 +78,7 @@ module Api
       def index
         return unless require_scope!("summary:read")
 
-        limit   = [[params[:limit].to_i, 1].max, 90].min
+        limit   = [ [ params[:limit].to_i, 1 ].max, 90 ].min
         limit   = 30 if limit.zero?
         entries = night_analysis_repo.recent(account_id: current_account.id, limit: limit)
 

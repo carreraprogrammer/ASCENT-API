@@ -54,7 +54,7 @@ RSpec.describe Finanzas::Interactors::DetectCompletenessState do
           status: "draft", confirmed_at: nil,
           assumptions: {
             "inherited_from" => { "month" => 4, "year" => 2026 },
-            "rolling_changes" => ["base_budget_income sin cambios"]
+            "rolling_changes" => [ "base_budget_income sin cambios" ]
           })
       end
 
