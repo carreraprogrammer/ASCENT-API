@@ -20,6 +20,6 @@ module BoilerplateRailsApi
     config.autoload_paths << Rails.root.join("app/domains")
 
     require_relative "../app/middleware/error_capture_middleware"
-    config.middleware.insert_before ActionDispatch::ShowExceptions, ErrorCaptureMiddleware
+    config.middleware.insert_after ActionDispatch::ShowExceptions, ErrorCaptureMiddleware
   end
 end
