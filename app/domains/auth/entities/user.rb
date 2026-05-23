@@ -1,7 +1,7 @@
 module Auth
   module Entities
     class User
-      attr_reader :id, :email, :name, :encrypted_password,
+      attr_reader :id, :email, :name, :city, :encrypted_password,
                   :refresh_token_hash, :refresh_token_expires_at,
                   :confirmed_at, :created_at, :super_admin,
                   :google_uid, :avatar_url, :auth_provider
@@ -10,6 +10,7 @@ module Auth
         @id = attrs[:id]
         @email = attrs[:email]
         @name = attrs[:name]
+        @city = attrs[:city]
         @encrypted_password = attrs[:encrypted_password]
         @refresh_token_hash = attrs[:refresh_token_hash]
         @refresh_token_expires_at = attrs[:refresh_token_expires_at]

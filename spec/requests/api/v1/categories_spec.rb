@@ -45,13 +45,13 @@ RSpec.describe "Categories API" do
 
   describe "DELETE /api/v1/categories/:id" do
     it "returns 204 for a non-system category" do
-      cat = create(:category, user: user)
+      cat = create(:category, user: user, account: user.default_account)
       delete "/api/v1/categories/#{cat.id}", headers: headers
       expect(response).to have_http_status(:no_content)
     end
 
     it "returns 403 for a system category" do
-      system_cat = create(:category, :system)
+      system_cat = create(:category, :system, account: user.default_account)
       delete "/api/v1/categories/#{system_cat.id}", headers: headers
       expect(response).to have_http_status(:forbidden)
     end
