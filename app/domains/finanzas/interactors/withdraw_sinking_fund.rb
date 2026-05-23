@@ -25,12 +25,16 @@ module Finanzas
             "Retiro $#{withdrawal} supera el saldo del bolsillo $#{fund[:current_balance]}"
         end
 
-        today = Time.now.utc.strftime("%Y-%m-%d")
+        now = Time.now.utc
+        today = now.strftime("%Y-%m-%d")
 
         txn = nil
         ::ActiveRecord::Base.transaction do
-          @fund_repo.update(sinking_fund_id, account_id: account_id,
-            current_balance: fund[:current_balance] - withdrawal)
+          @fund_repo.update(
+            sinking_fund_id,
+            account_id: account_id,
+            current_balance: fund[:current_balance] - withdrawal
+          )
 
           # Income transaction without sinking_fund_id — the money re-enters cash flow
           txn = @txn_repo.create(
@@ -41,9 +45,9 @@ module Finanzas
             amount:           withdrawal,
             transaction_type: "income",
             status:           "confirmed",
-            source:           "brain",
-            month:            Time.now.utc.month,
-            year:             Time.now.utc.year
+            source:           "manual",
+            month:            now.month,
+            year:             now.year
           )
         end
 
