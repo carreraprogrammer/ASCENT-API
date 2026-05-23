@@ -36,6 +36,11 @@ module Finanzas
         end
 
         debt = candidates.first
+        unless obligation.subcategory&.code == "creditos"
+          result.skipped << build_reference(obligation).merge(reason: "requires_credit_subcategory")
+          return
+        end
+
         obligation.update!(source_type: "Debt", source_id: debt.id)
         result.linked << build_reference(obligation).merge(debt_id: debt.id, debt_name: debt.name)
       end
