@@ -66,15 +66,15 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
           closed_plan(month: 4, year: 2026, base_budget_income: 6_400_000, income_actual: 6_400_000,
             execution_snapshot: { "categories" => [
               { "code" => "discretionary", "budgeted" => 400_000, "actual" => 480_000, "variance_pct" => 20 }
-            ]}),
+            ] }),
           closed_plan(month: 3, year: 2026, base_budget_income: 6_400_000, income_actual: 6_400_000,
             execution_snapshot: { "categories" => [
               { "code" => "discretionary", "budgeted" => 400_000, "actual" => 500_000, "variance_pct" => 25 }
-            ]}),
+            ] }),
           closed_plan(month: 2, year: 2026, base_budget_income: 6_400_000, income_actual: 6_400_000,
             execution_snapshot: { "categories" => [
               { "code" => "discretionary", "budgeted" => 400_000, "actual" => 460_000, "variance_pct" => 15 }
-            ]})
+            ] })
         ]
 
         allow_any_instance_of(Finanzas::Repositories::MonthlyFinancialPlanRepository)
@@ -109,15 +109,15 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
           closed_plan(month: 4, year: 2026, base_budget_income: 6_400_000, income_actual: 6_400_000,
             execution_snapshot: { "categories" => [
               { "code" => "dining_out", "budgeted" => 200_000, "actual" => 240_000, "variance_pct" => 20 }
-            ]}),
+            ] }),
           closed_plan(month: 3, year: 2026, base_budget_income: 6_400_000, income_actual: 6_400_000,
             execution_snapshot: { "categories" => [
               { "code" => "dining_out", "budgeted" => 200_000, "actual" => 190_000, "variance_pct" => -5 }
-            ]}),
+            ] }),
           closed_plan(month: 2, year: 2026, base_budget_income: 6_400_000, income_actual: 6_400_000,
             execution_snapshot: { "categories" => [
               { "code" => "dining_out", "budgeted" => 200_000, "actual" => 180_000, "variance_pct" => -10 }
-            ]})
+            ] })
         ]
 
         allow_any_instance_of(Finanzas::Repositories::MonthlyFinancialPlanRepository)
@@ -186,15 +186,15 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
           closed_plan(month: 4, year: 2026, base_budget_income: 6_400_000, income_actual: 5_800_000,
             execution_snapshot: { "categories" => [
               { "code" => "discretionary", "budgeted" => 400_000, "actual" => 490_000, "variance_pct" => 22 }
-            ]}),
+            ] }),
           closed_plan(month: 3, year: 2026, base_budget_income: 6_400_000, income_actual: 5_700_000,
             execution_snapshot: { "categories" => [
               { "code" => "discretionary", "budgeted" => 400_000, "actual" => 480_000, "variance_pct" => 20 }
-            ]}),
+            ] }),
           closed_plan(month: 2, year: 2026, base_budget_income: 6_400_000, income_actual: 6_500_000,
             execution_snapshot: { "categories" => [
               { "code" => "discretionary", "budgeted" => 400_000, "actual" => 420_000, "variance_pct" => 5 }
-            ]})
+            ] })
         ]
 
         allow_any_instance_of(Finanzas::Repositories::MonthlyFinancialPlanRepository)

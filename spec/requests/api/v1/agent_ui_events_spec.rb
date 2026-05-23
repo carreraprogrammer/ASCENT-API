@@ -23,7 +23,7 @@ RSpec.describe "Agent UI Events API" do
 
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)["data"]
-      expect(data.map { |event| event["id"] }).to eq([recent_event.id])
+      expect(data.map { |event| event["id"] }).to eq([ recent_event.id ])
       expect(old_event.reload.consumed_at).to be_present
     end
   end

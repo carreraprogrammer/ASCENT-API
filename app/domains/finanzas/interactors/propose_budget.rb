@@ -13,7 +13,7 @@ module Finanzas
         "personal_care"        => { min: 30_000,   max: 150_000,   hint: "Barbería, gimnasio, estética" },
         "entertainment"        => { min: 50_000,   max: 200_000,   hint: "Streaming, salidas, eventos" },
         "education"            => { min: 30_000,   max: 300_000,   hint: "Cursos, libros, suscripciones" },
-        "savings_emergency"    => { min: 100_000,  max: 500_000,   hint: "Fondo de emergencia (3-6 meses de gastos)" },
+        "savings_emergency"    => { min: 100_000,  max: 500_000,   hint: "Fondo de emergencia (3-6 meses de gastos)" }
       }.freeze
 
       def initialize(

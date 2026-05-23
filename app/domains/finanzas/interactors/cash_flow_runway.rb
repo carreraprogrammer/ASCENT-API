@@ -80,7 +80,7 @@ module Finanzas
         window_days =
           if recent.any?
             earliest = recent.map { |t| t[:date] }.min
-            [(today - earliest).to_i + 1, BURN_WINDOW_DAYS].min
+            [ (today - earliest).to_i + 1, BURN_WINDOW_DAYS ].min
           else
             0
           end
@@ -90,7 +90,7 @@ module Finanzas
         end
 
         total      = recent.sum { |t| t[:amount].to_i }
-        daily_burn = [(total.to_f / BURN_WINDOW_DAYS).round, 1].max
+        daily_burn = [ (total.to_f / BURN_WINDOW_DAYS).round, 1 ].max
 
         { daily_burn: daily_burn, has_sufficient_history: true, window_days: window_days }
       end
@@ -104,7 +104,7 @@ module Finanzas
         # minimum so mid-month payments aren't skipped once the first one passes.
         candidates = active.flat_map do |s|
           schedules = Array(s[:schedules])
-          days = schedules.any? ? schedules.map { |sc| sc[:expected_day_from].to_i } : [s[:expected_day_from].to_i]
+          days = schedules.any? ? schedules.map { |sc| sc[:expected_day_from].to_i } : [ s[:expected_day_from].to_i ]
           days.map { |d| { day: d, name: s[:name], classification: s[:classification] } }
         end
 
@@ -119,7 +119,7 @@ module Finanzas
           .filter_map do |o|
             expected  = o[:amount].to_i
             paid      = (realized_obligations[o[:id]] || realized_obligations[o[:id].to_s]).to_i
-            remaining = [expected - paid, 0].max
+            remaining = [ expected - paid, 0 ].max
             next if remaining.zero?
 
             { id: o[:id], name: o[:name], due_day: o[:due_day], expected: expected, paid: paid, remaining: remaining }

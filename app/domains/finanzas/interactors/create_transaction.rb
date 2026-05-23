@@ -18,11 +18,11 @@ module Finanzas
       AUTOMATED_SOURCES = %w[telegram gmail].freeze
 
       def call(user_id:, account_id:, date:, concept:, amount:, transaction_type: "expense",
-	               product: nil, category_id: nil, subcategory_id: nil,
-	               source: "manual", status: "confirmed", metadata: {},
-	               payment_source: nil, credit_card_status: nil,
-	               debt_id: nil, recurring_obligation_id: nil,
-	               income_source_id: nil, sinking_fund_id: nil)
+                 product: nil, category_id: nil, subcategory_id: nil,
+                 source: "manual", status: "confirmed", metadata: {},
+                 payment_source: nil, credit_card_status: nil,
+                 debt_id: nil, recurring_obligation_id: nil,
+                 income_source_id: nil, sinking_fund_id: nil)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -44,6 +44,7 @@ module Finanzas
         end
 
         year, month = parse_date(date)
+        date = normalize_date(date, year, month)
         structural_match = detect_structure(account_id, concept, amount.to_i, subcategory_id, date) if transaction_type == "expense"
         resolved_recurring_obligation_id = resolve_recurring_obligation_id(
           account_id: account_id,
@@ -92,16 +93,16 @@ module Finanzas
           source: source,
           status: status,
           source_event_id: source_event_id,
-	          metadata: metadata,
-	          year: year,
-	          month: month,
-	          payment_source: resolved_payment_source,
-	          credit_card_status: resolved_cc_status,
-	          debt_id: debt_id,
-	          recurring_obligation_id: resolved_recurring_obligation_id,
-	          income_source_id: resolved_income_source_id,
+            metadata: metadata,
+            year: year,
+            month: month,
+            payment_source: resolved_payment_source,
+            credit_card_status: resolved_cc_status,
+            debt_id: debt_id,
+            recurring_obligation_id: resolved_recurring_obligation_id,
+            income_source_id: resolved_income_source_id,
             sinking_fund_id: resolved_sinking_fund_id
-	        )
+          )
 
         if transaction_type == "expense" && status == "confirmed"
           txn.structural_match = structural_match
@@ -204,6 +205,21 @@ module Finanzas
       rescue => e
         Rails.logger.warn("[CreateTransaction] structure detection failed: #{e.message}")
         nil
+      end
+
+      # Returns the date in a frontend-parseable format. If the raw string is not a known
+      # format (ISO, DD/MM/YYYY, DD/MM), falls back to ISO using the already-resolved year/month.
+      def normalize_date(date_str, year, month)
+        str = date_str.to_s
+        return str if str.match?(DATE_ISO) || str.match?(DATE_DDMMYYYY) || str.match?(DATE_DDMM)
+
+        colombia_now = Time.now.utc - 5 * 3600
+        day = colombia_now.day
+        normalized = "#{year}-#{month.to_s.rjust(2, '0')}-#{day.to_s.rjust(2, '0')}"
+        Rails.logger.warn(
+          "[CreateTransaction#normalize_date] invalid date format raw=#{str.inspect}, normalized to #{normalized}"
+        )
+        normalized
       end
 
       # Accepts DD/MM, DD/MM/YYYY, or YYYY-MM-DD — derives year/month for denormalized columns

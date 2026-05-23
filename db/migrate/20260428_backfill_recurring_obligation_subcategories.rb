@@ -3,31 +3,31 @@ class BackfillRecurringObligationSubcategories < ActiveRecord::Migration[8.0]
   # Patterns are matched case-insensitively against the obligation name.
   RULES = [
     # ── Comprometido ────────────────────────────────────────────────────────
-    { patterns: [/arriendo/i, /alquiler/i, /rent/i],                          code: "arriendo" },
-    { patterns: [/crédito/i, /credito/i, /préstamo/i, /prestamo/i,
-                 /cuota.*banco/i, /banco.*cuota/i],                            code: "creditos" },
-    { patterns: [/seguro/i, /insurance/i, /póliza/i, /poliza/i],              code: "seguros" },
-    { patterns: [/servicios.*públicos/i, /servicios.*publicos/i,
+    { patterns: [ /arriendo/i, /alquiler/i, /rent/i ],                          code: "arriendo" },
+    { patterns: [ /crédito/i, /credito/i, /préstamo/i, /prestamo/i,
+                 /cuota.*banco/i, /banco.*cuota/i ],                            code: "creditos" },
+    { patterns: [ /seguro/i, /insurance/i, /póliza/i, /poliza/i ],              code: "seguros" },
+    { patterns: [ /servicios.*públicos/i, /servicios.*publicos/i,
                  /\bgas\b/i, /\bagua\b/i, /\bluz\b/i, /energia/i,
-                 /epm/i, /codensa/i, /acueducto/i],                            code: "servicios_publicos" },
-    { patterns: [/colegio/i, /colegiatura/i, /universidad/i, /mensualidad.*estudio/i], code: "colegiaturas" },
+                 /epm/i, /codensa/i, /acueducto/i ],                            code: "servicios_publicos" },
+    { patterns: [ /colegio/i, /colegiatura/i, /universidad/i, /mensualidad.*estudio/i ], code: "colegiaturas" },
 
     # ── Necesario ────────────────────────────────────────────────────────────
-    { patterns: [/celular/i, /teléfono/i, /telefono/i,
+    { patterns: [ /celular/i, /teléfono/i, /telefono/i,
                  /claro/i, /tigo/i, /movistar/i, /wom/i, /virgin/i,
-                 /plan.*movil/i, /plan.*móvil/i],                              code: "celular" },
+                 /plan.*movil/i, /plan.*móvil/i ],                              code: "celular" },
 
     # ── Discrecional ─────────────────────────────────────────────────────────
-    { patterns: [/netflix/i, /spotify/i, /disney\+/i, /hbo/i,
+    { patterns: [ /netflix/i, /spotify/i, /disney\+/i, /hbo/i,
                  /amazon prime/i, /apple tv/i, /paramount/i,
-                 /crunchyroll/i, /deezer/i, /tidal/i],                         code: "suscripciones" },
+                 /crunchyroll/i, /deezer/i, /tidal/i ],                         code: "suscripciones" },
 
     # ── Inversión ────────────────────────────────────────────────────────────
-    { patterns: [/chatgpt/i, /openai/i, /claude/i, /anthropic/i,
+    { patterns: [ /chatgpt/i, /openai/i, /claude/i, /anthropic/i,
                  /copilot/i, /github/i, /railway/i, /cursor/i,
                  /vercel/i, /netlify/i, /aws/i, /digitalocean/i,
                  /heroku/i, /notion/i, /figma/i, /linear/i,
-                 /postman/i, /1password/i],                                     code: "herramientas" },
+                 /postman/i, /1password/i ],                                     code: "herramientas" }
   ].freeze
 
   def up

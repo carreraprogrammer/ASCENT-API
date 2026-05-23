@@ -34,7 +34,7 @@ class BackfillSystemSubcategoryIcons < ActiveRecord::Migration[8.0]
 
   def up
     ICON_MAP.each do |code, icon|
-      Subcategory.where(code: code, is_system: true, icon: [nil, ""]).update_all(icon: icon)
+      Subcategory.where(code: code, is_system: true, icon: [ nil, "" ]).update_all(icon: icon)
     end
   end
 
