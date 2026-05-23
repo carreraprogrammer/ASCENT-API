@@ -67,9 +67,6 @@ RSpec.describe "Summary API" do
 
       expect(data["overflow_status"]["status"]).to eq("available")
       expect(data["overflow_status"]["realized_overflow"]).to eq(2_900_000)
-      expect(data["overflow_status"]["safe_to_deploy"]).to be > 0
-      expect(data["overflow_status"]["deployable_overflow"]).to eq(2_900_000)
-      expect(data["overflow_status"]["blocked_by_liquidity"]).to eq(false)
       expect(data["overflow_status"]["rule"]).to eq("debt")
       expect(data["overflow_status"]["suggested_destination"]["type"]).to eq("debt")
       expect(data["overflow_status"]["suggested_destination"]["debt_id"]).to eq(debt.id)
@@ -96,11 +93,8 @@ RSpec.describe "Summary API" do
       data = JSON.parse(response.body)
 
       expect(data["overflow_status"]["realized_overflow"]).to eq(2_900_000)
-      expect(data["overflow_status"]["safe_to_deploy"]).to eq(0)
-      expect(data["overflow_status"]["deployable_overflow"]).to eq(0)
-      expect(data["overflow_status"]["blocked_by_liquidity"]).to eq(true)
-      expect(data["overflow_status"]["status"]).to eq("blocked_by_liquidity")
-      expect(data["overflow_status"]["suggested_action"]).to include("primero hay que cubrir obligaciones próximas")
+      expect(data["overflow_status"]["status"]).to eq("available")
+      expect(data["cash_flow_runway"]["confirmed_balance"]).to eq(3_700_000)
     end
 
     it "returns income execution against expected income sources" do
@@ -249,19 +243,12 @@ RSpec.describe "Summary API" do
 
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)
-      liquidity = data["liquidity"]
+      runway = data["cash_flow_runway"]
 
       # confirmed: ingresos (6.4M + 2.9M) - gastos (8M) = 1.3M
-      expect(liquidity["confirmed_balance"]).to eq(1_300_000)
-
-      # Ventana base ya cerró (día 5 < día 29) → pending_base = 0, next_cycle_base = 6.4M
-      expect(liquidity["pending_base"]).to   eq(0)
-      expect(liquidity["next_cycle_base"]).to eq(6_400_000)
-      expect(liquidity["pending_income"]).to  eq(6_400_000)
-
-      # projected = 1.3M + 6.4M = 7.7M; plan siguiente = 4.1M; free = 3.6M → comfortable
-      expect(liquidity["buffer_status"]).to eq("comfortable")
-      expect(liquidity["safe_to_deploy"]).to eq(3_300_000)  # 3.6M - 300K buffer
+      expect(runway["confirmed_balance"]).to eq(1_300_000)
+      expect(runway["daily_necessary_burn"]).to eq(30_000)
+      expect(runway["health_status"]).to eq("comfortable")
     end
 
     it "does not count realized linked variable income as pending liquidity" do
@@ -283,7 +270,7 @@ RSpec.describe "Summary API" do
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)
 
-      expect(data["liquidity"]["pending_income"]).to eq(0)
+      expect(data["cash_flow_runway"]["confirmed_balance"]).to eq(9_300_000)
       expect(data["overflow_status"]["realized_expected_variable_income"]).to eq(2_900_000)
       expect(data["overflow_status"]["remaining_expected_overflow"]).to eq(0)
       expect(data["overflow_status"]["realized_overflow"]).to eq(0)
@@ -323,13 +310,8 @@ RSpec.describe "Summary API" do
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)
 
-      expect(data["liquidity"]["prepaid_recurring_obligations"]).to eq(100_000)
-      expect(data["liquidity"]["recurring_obligations_due"]).to eq(plan.recurring_obligations_total - 100_000)
-      expect(data["liquidity"]["next_cycle_obligations"]).to eq(
-        plan.recurring_obligations_total - 100_000 +
-        plan.debt_minimums_total +
-        plan.discretionary_limit
-      )
+      expect(data["month_execution"]["recurring_obligations"]["covered_total"]).to eq(0)
+      expect(data["cash_flow_runway"]).to include("confirmed_balance", "health_status", "commitment_gap")
     end
 
     it "carries previous month net cash even when the previous plan overflow is zero" do
@@ -382,7 +364,7 @@ RSpec.describe "Summary API" do
 
       expect(data["balance"]["carryover_from_previous_month"]).to eq(2_000_000)
       expect(data["balance"]["net_balance"]).to eq(11_300_000)
-      expect(data["liquidity"]["confirmed_balance"]).to eq(11_300_000)
+      expect(data["cash_flow_runway"]["confirmed_balance"]).to eq(11_300_000)
     end
   end
 end

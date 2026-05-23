@@ -44,7 +44,7 @@ RSpec.describe RecurringObligation, type: :model do
       expect(obligation.errors[:base]).to include("source_type and source_id must be provided together")
     end
 
-    it "clears the source link when both fields are set to nil" do
+    it "rejects clearing the source link while the obligation remains credit-related" do
       debt = create(:debt)
       category = create(:category, :committed)
       subcategory = create(:subcategory, category: category, code: "creditos", name: "Créditos")
@@ -60,10 +60,10 @@ RSpec.describe RecurringObligation, type: :model do
         source_id: debt.id
       )
 
-      obligation.update!(source_type: nil, source_id: nil)
+      obligation.assign_attributes(source_type: nil, source_id: nil)
 
-      expect(obligation.reload.source_type).to be_nil
-      expect(obligation.source_id).to be_nil
+      expect(obligation).not_to be_valid
+      expect(obligation.errors[:base]).to include("La subcategoría 'Créditos' requiere vincular una deuda (source_type: Debt, source_id: id)")
     end
 
     it "rejects debt links when the subcategory is not credit-related" do
