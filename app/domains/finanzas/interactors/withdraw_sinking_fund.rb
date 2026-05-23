@@ -45,7 +45,7 @@ module Finanzas
             amount:           withdrawal,
             transaction_type: "income",
             status:           "confirmed",
-            source:           "manual",
+            source:           "brain",
             month:            now.month,
             year:             now.year
           )
