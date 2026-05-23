@@ -11,7 +11,7 @@ class Transaction < ApplicationRecord
   belongs_to :sinking_fund, optional: true
 
   TYPES = %w[expense income].freeze
-  SOURCES = %w[telegram gmail manual brain].freeze
+  SOURCES = %w[telegram gmail manual].freeze
   STATUSES = %w[confirmed pending].freeze
   PAYMENT_SOURCES = %w[credit_card debit cash].freeze
   CREDIT_CARD_STATUSES = %w[pending settled].freeze
@@ -24,7 +24,7 @@ class Transaction < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :year, presence: true
   validates :month, presence: true
-  validates :source_event_id, uniqueness: { scope: [:account_id, :source], allow_nil: true }, if: -> { source_event_id.present? }
+  validates :source_event_id, uniqueness: { scope: [ :account_id, :source ], allow_nil: true }, if: -> { source_event_id.present? }
   validates :payment_source, inclusion: { in: PAYMENT_SOURCES }, allow_nil: true
   validates :credit_card_status, inclusion: { in: CREDIT_CARD_STATUSES }, allow_nil: true
   validate :credit_card_status_consistency
