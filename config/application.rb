@@ -18,5 +18,8 @@ module BoilerplateRailsApi
       g.fixture_replacement :factory_bot, dir: "spec/factories"
     end
     config.autoload_paths << Rails.root.join("app/domains")
+
+    require_relative "../app/middleware/error_capture_middleware"
+    config.middleware.insert_before ActionDispatch::ShowExceptions, ErrorCaptureMiddleware
   end
 end
