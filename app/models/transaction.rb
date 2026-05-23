@@ -11,7 +11,7 @@ class Transaction < ApplicationRecord
   belongs_to :sinking_fund, optional: true
 
   TYPES = %w[expense income].freeze
-  SOURCES = %w[telegram gmail manual brain].freeze
+  SOURCES = %w[telegram gmail manual].freeze
   STATUSES = %w[confirmed pending].freeze
   PAYMENT_SOURCES = %w[credit_card debit cash].freeze
   CREDIT_CARD_STATUSES = %w[pending settled].freeze
