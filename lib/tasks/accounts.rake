@@ -151,6 +151,25 @@ namespace :accounts do
     puts "Total: #{accounts.count} cuenta(s)"
   end
 
+  desc "Vincula un Telegram chat_id a una cuenta. Uso: rails 'accounts:set_telegram[email,chat_id]'"
+  task :set_telegram, [ :email, :telegram_chat_id ] => :environment do |_, args|
+    email           = args[:email].to_s.strip.downcase
+    telegram_chat_id = args[:telegram_chat_id].to_s.strip
+
+    if email.empty? || telegram_chat_id.empty?
+      abort "Uso: rails 'accounts:set_telegram[email@ejemplo.com,123456789]'"
+    end
+
+    user = User.find_by(email: email)
+    abort "ERROR: No existe ningún usuario con el email '#{email}'." unless user
+
+    account = Account.find_by(owner_user: user)
+    abort "ERROR: No existe ninguna cuenta para el usuario '#{email}'." unless account
+
+    account.update!(telegram_chat_id: telegram_chat_id)
+    puts "✓ telegram_chat_id=#{telegram_chat_id} vinculado a la cuenta de #{email}"
+  end
+
   desc "Resetea el password de un usuario. Uso: rails 'accounts:reset_password[email,nuevo_password]'"
   task :reset_password, [ :email, :new_password ] => :environment do |_, args|
     email        = args[:email].to_s.strip.downcase
