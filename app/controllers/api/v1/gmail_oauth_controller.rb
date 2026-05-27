@@ -72,18 +72,46 @@ module Api
 
       # GET /api/v1/me/email_connection/token
       # Usado por el agente nocturno (service token + X-Account-Id).
-      # Devuelve access_token fresco renovando si expiró.
+      # Devuelve access_token fresco + bank_senders configurados.
       def token
         return unless require_scope!("agent:write")
 
-        access_token = Auth::Interactors::GmailOauth.fresh_token(account_id: current_account.id)
-        render json: { data: { access_token: access_token, provider: "gmail" } }
+        conn = Auth::Interactors::GmailOauth.fresh_connection(account_id: current_account.id)
+        render json: {
+          data: {
+            access_token: conn.access_token,
+            provider:     "gmail",
+            bank_senders: conn.bank_senders_list
+          }
+        }
 
       rescue ActiveRecord::RecordNotFound
         render json: { data: { connected: false } }, status: :not_found
       rescue => e
         Rails.logger.error("[GmailOauth] token refresh error: #{e.message}")
         render_unprocessable("No se pudo renovar el token de Gmail")
+      end
+
+      # PATCH /api/v1/me/email_connection/senders
+      # Actualiza la lista de remitentes bancarios del usuario.
+      # Llamado por el agente cuando descubre nuevos remitentes, o por la app.
+      def update_senders
+        senders = params[:bank_senders]
+        unless senders.is_a?(Array)
+          return render_unprocessable("bank_senders debe ser un array de strings")
+        end
+
+        conn = Auth::Interactors::GmailOauth.update_senders(
+          account_id: current_account.id,
+          senders:    senders
+        )
+        render json: { data: { bank_senders: conn.bank_senders_list } }
+
+      rescue ActiveRecord::RecordNotFound
+        render json: { errors: [{ status: "404", detail: "Gmail no conectado" }] }, status: :not_found
+      rescue => e
+        Rails.logger.error("[GmailOauth] update_senders error: #{e.message}")
+        render_unprocessable("No se pudo actualizar los remitentes")
       end
 
       private

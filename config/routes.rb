@@ -112,11 +112,12 @@ Rails.application.routes.draw do
       get "budget_context", to: "budget_context#show"
 
       # Gmail OAuth — Fase 0.6
-      post   "auth/gmail",                    to: "gmail_oauth#start"
-      get    "auth/gmail/callback",           to: "gmail_oauth#callback"
-      get    "me/email_connection",           to: "gmail_oauth#status"
-      delete "me/email_connection",           to: "gmail_oauth#disconnect"
-      get    "me/email_connection/token",     to: "gmail_oauth#token"
+      post   "auth/gmail",                         to: "gmail_oauth#start"
+      get    "auth/gmail/callback",                to: "gmail_oauth#callback"
+      get    "me/email_connection",                to: "gmail_oauth#status"
+      delete "me/email_connection",                to: "gmail_oauth#disconnect"
+      get    "me/email_connection/token",          to: "gmail_oauth#token"
+      patch  "me/email_connection/senders",        to: "gmail_oauth#update_senders"
 
       # Gamificación — Track A
       get  "me/progress",                to: "progress#show"
