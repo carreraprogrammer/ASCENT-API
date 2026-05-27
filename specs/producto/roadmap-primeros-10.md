@@ -1,6 +1,6 @@
 # Roadmap — Primeros 10 usuarios
 
-> Fecha: 2026-05-15
+> Última actualización: 2026-05-27
 > Modelo de distribución: instalación manual ("con cable") — Daniel provisiona cada cuenta directamente
 > Objetivo: un producto que funcione con dignidad para 10 personas reales antes de construir self-service
 
@@ -17,54 +17,68 @@ Las Fases 1-4 y 3.5 están cerradas. El producto tiene el núcleo completo: tran
 > Prerequisito absoluto antes de dar acceso a cualquier persona externa.
 > No hay usuario externo sin esto.
 
-### 0.1 Provisioning manual
-
-Daniel necesita una herramienta para crear cuentas sin UI de administrador. Suficiente con un Rails task:
+### 0.1 Provisioning manual ✅
 
 ```bash
 rails "accounts:create[nombre,email,password]"
-# → crea User + Account + delegation para el agente
+# → crea User + Account + AccountProgress + FeatureFlags + Delegation para el agente
 ```
 
-- [ ] Task `accounts:create` que genera usuario + account + delegation con scopes base
-- [ ] Task `accounts:list` para ver cuentas activas y sus IDs
-- [ ] Task `accounts:reset_password[email]` para soporte básico
+- ✅ Task `accounts:create` que genera usuario + account + delegation con scopes base
+- ✅ Task `accounts:list` para ver cuentas activas y sus IDs
+- ✅ Task `accounts:reset_password[email]` para soporte básico
 
-### 0.2 Agente nocturno per-account
+### 0.2 Agente nocturno per-account ✅
 
-Actualmente el nightly agent corre para una cuenta. Para 10 usuarios debe iterar sobre todas las cuentas activas, aislado.
+El scheduler itera sobre todas las cuentas activas. Cada cuenta tiene su propia instancia de `RailsHttpAdapter(account_id=...)`. Los errores de una cuenta no afectan a las demás.
 
-- [ ] Verificar que el scheduler itera sobre `accounts` activos, no sobre una lista hardcodeada
-- [ ] Verificar que el contexto del agente no se filtra entre ejecuciones (variables de sesión, estado global)
-- [ ] Log por `account_id` para poder debuggear cuenta por cuenta
+- ✅ `get_active_accounts()` desde `GET /api/v1/agent/accounts/active` (service token sin X-Account-Id)
+- ✅ Contexto del agente aislado por cuenta — sin estado global entre ejecuciones
+- ✅ Log por `account_id` para debuggear cuenta por cuenta
 
-### 0.3 Telegram = solo Daniel
+### 0.3 Canal de notificaciones: la UI ✅
 
-El canal de Telegram debe silenciarse completamente para usuarios que no sean Daniel. No "desactivado para otros" — el agente no debe intentar enviar mensajes Telegram a accounts que no tengan un `telegram_chat_id` configurado.
+**Decisión de producto (2026-05-27):** Telegram es un canal interno exclusivo para Daniel. No es parte del producto para usuarios externos.
 
-- [ ] Campo `telegram_chat_id` nullable en accounts (ya existe?) — si es null, el agente omite canal Telegram
-- [ ] Verificar que el agente nocturno no crashea si no hay Telegram configurado
-- [ ] Documentar que Telegram es una feature interna, no parte del producto público
+La UI maneja todo lo que el agente nocturno produce:
+- `AgentInsight` más reciente → card en el dashboard
+- `NightAnalysis` → pantalla de detalle `/analisis/:date`
+- Chat → `FloatingAgent` + pantalla dedicada (Fase 0.7)
 
-### 0.4 Aislamiento de datos verificado
+**Telegram no se ofrece a usuarios externos.** No hay `telegram_chat_id` por cuenta de usuario. Telegram se usa únicamente para alertas de sistema que Daniel necesita ver de inmediato (errores del agente, fallos de scheduler).
 
-Antes de dar acceso externo, hacer un smoke test manual:
+- ✅ Agente nocturno funciona sin Telegram configurado — la UI es el canal
+- ✅ Decidido: no agregar `telegram_chat_id` por usuario — migración descartada
 
-- [ ] Crear dos cuentas de prueba y verificar que los endpoints `/transactions`, `/monthly_plans`, `/summary`, `/me/progress` no mezclan datos entre accounts
-- [ ] Verificar que el agente con `X-Account-Id: A` no puede leer datos de `Account B`
-- [ ] Verificar que los JWT de usuario A no pueden acceder a recursos de usuario B
+### 0.4 Aislamiento de datos verificado ✅
 
-### 0.5 Rate limiting básico
+Smoke test en producción (Railway): 9/9 tests pasados.
 
-Sin esto, un usuario con bug puede derribar el servidor para todos.
+- ✅ `/transactions`, `/monthly_plans`, `/summary`, `/me/progress` no mezclan datos entre accounts
+- ✅ JWT de usuario A no puede acceder a recursos de usuario B
+- ✅ X-Account-Id de B con JWT de A → rechazado (404/401/403)
+- ✅ Service account con X-Account-Id:A no ve datos de B
 
-- [ ] Rate limit en endpoints del agente: máximo N requests/minuto por `account_id`
-- [ ] Rate limit en `/api/v1/agents/chat`: máximo M requests/minuto por usuario
-- [ ] Respuesta 429 con mensaje legible
+Script: `script/smoke_isolation` — se puede correr con `railway ssh bash script/smoke_isolation`
+
+### 0.5 Rate limiting básico ✅
+
+`rack-attack` activo en producción. Límites:
+
+| Throttle | Límite | Clave |
+|---|---|---|
+| `auth/ip` (login/register) | 5 req/min | IP |
+| `agents/chat` | 10 req/min | account_id |
+| `agents/write` (preflight, night_analyses, agent_events) | 30 req/min | account_id |
+| `api/ip` (capa base) | 120 req/min | IP |
+
+Respuesta 429 JSON:API con `Retry-After` header.
 
 ### 0.6 Conexión de email via Gmail OAuth
 
-Una de las dos funcionalidades core del producto junto con el registro rápido. Permite que el agente nocturno lea automáticamente los correos bancarios del usuario y deduzca transacciones sin que el usuario tenga que registrarlas manualmente.
+**Siguiente a implementar.**
+
+Permite que el agente nocturno lea automáticamente los correos bancarios del usuario y deduzca transacciones sin registro manual.
 
 **Flujo de usuario:**
 1. Usuario va a Preferencias → toca "Conectar email"
@@ -206,17 +220,10 @@ No legal compleja — suficiente con una pantalla dentro de la app que diga clar
 
 - [ ] Pantalla "Privacidad" en la app o página estática accesible desde el perfil
 
-### 2.4 Borrado de cuenta
+### 2.4 Borrado de cuenta ✅
 
-Requisito mínimo de confianza. No necesita ser self-service — Daniel lo puede ejecutar manualmente:
-
-- [ ] Task `rails accounts:delete[email]` que borra todos los datos del usuario
-- [ ] Documenta qué se borra y en qué orden (account, transactions, plans, debts, etc.)
-
-### 2.5 Estabilización basada en Fase 1
-
-- [ ] Resolver todos los bugs reportados por los primeros 3 usuarios antes de abrir a 7 más
-- [ ] Revisar costos Railway con los 3 primeros y proyectar para 10
+- ✅ Task `rails accounts:delete[email]` que borra todos los datos del usuario
+- ✅ Protección: no borra cuentas de admin hardcodeadas (`carreraprogrammer@gmail.com`)
 
 ---
 
@@ -258,14 +265,14 @@ No es una fase — son condiciones de operación:
 
 | Control | Estado | Prioridad |
 |---------|--------|-----------|
-| HTTPS obligatorio (Railway) | ✅ ya activo | — |
-| JWT con expiración corta | ✅ ya implementado | — |
-| Refresh token rotation + reuse detection | ✅ ya implementado | — |
-| Rate limiting endpoints | ❌ pendiente | Fase 0 |
-| Aislamiento de datos por account verificado | ❌ pendiente | Fase 0 |
-| OAuth tokens de email cifrados en DB | ❌ pendiente | Fase 0 |
+| HTTPS obligatorio (Railway) | ✅ activo | — |
+| JWT con expiración corta | ✅ implementado | — |
+| Refresh token rotation + reuse detection | ✅ implementado | — |
+| Rate limiting endpoints | ✅ activo (rack-attack) | Fase 0 |
+| Aislamiento de datos por account verificado | ✅ 9/9 tests en producción | Fase 0 |
+| OAuth tokens de email cifrados en DB | ❌ pendiente | Fase 0.6 |
 | Audit log básico (quién hizo qué) | ❌ pendiente | Fase 2 |
-| Borrado de cuenta (incluye tokens OAuth) | ❌ pendiente | Fase 2 |
+| Borrado de cuenta | ✅ `accounts:delete` rake task | Fase 2.4 |
 | Política de privacidad visible | ❌ pendiente | Fase 2 |
 | Cifrado de columnas sensibles | ❌ pendiente | Fase 3+ |
 
@@ -277,7 +284,8 @@ Decisiones explícitas de no-hacer por ahora:
 
 - ❌ Self-service onboarding — Daniel provisiona todo manualmente
 - ❌ Panel de administración — Rails tasks son suficientes
-- ❌ Notificaciones push / email — el canal es la app
+- ❌ Notificaciones push — el canal es la app (UI muestra insights, plan y progreso)
+- ❌ Telegram per-usuario — Telegram es exclusivamente para alertas internas del sistema (Daniel)
 - ❌ Motor conductual COM-B completo — el perfil en 6 ejes se puede trabajar después de tener usuarios reales
 - ❌ Optimización de costos Railway — sin datos reales de 10 usuarios no hay nada que optimizar
 - ❌ Analytics avanzados (Fase 6) — después de tener usuarios activos
@@ -286,14 +294,14 @@ Decisiones explícitas de no-hacer por ahora:
 
 ## Checklist de salida — ¿listo para el usuario 1?
 
-- [ ] `accounts:create` funciona en Railway CLI
-- [ ] Agente nocturno itera por cuentas activas sin hardcodeo
-- [ ] Telegram silenciado para cuentas sin `telegram_chat_id`
-- [ ] Smoke test de aislamiento de datos pasado
-- [ ] Rate limiting activo
-- [ ] "Conectar email" funciona end-to-end (OAuth → token guardado → agente lo usa)
-- [ ] Agente nocturno usa keywords genéricos, no senders hardcodeados
-- [ ] Agente omite análisis de email si la cuenta no tiene email conectado
-- [ ] Chat dedicado funcional (Fase 5 UI)
-- [ ] Barra XP y racha visible en Dashboard
-- [ ] `user_level` en contexto del agente
+- ✅ `accounts:create` funciona en Railway CLI
+- ✅ Agente nocturno itera por cuentas activas sin hardcodeo
+- ✅ Agente nocturno funciona sin Telegram — la UI es el canal de comunicación con el usuario
+- ✅ Smoke test de aislamiento de datos pasado (9/9)
+- ✅ Rate limiting activo (rack-attack)
+- [ ] "Conectar email" funciona end-to-end (OAuth → token guardado → agente lo usa) — Fase 0.6
+- [ ] Agente nocturno usa keywords genéricos, no senders hardcodeados — Fase 0.6
+- [ ] Agente omite análisis de email si la cuenta no tiene email conectado — Fase 0.6
+- [ ] Chat dedicado funcional (Fase 5 UI) — Fase 0.7
+- [ ] Barra XP y racha visible en Dashboard — Fase 0.7
+- [ ] `user_level` en contexto del agente — Fase 0.7

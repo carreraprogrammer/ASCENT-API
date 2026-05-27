@@ -1,7 +1,7 @@
 # Finanzas — Tracker de Fases
 
 > Estado: documento vivo — actualizar con cada entrega
-> Última actualización: 2026-05-06
+> Última actualización: 2026-05-27
 
 Este documento es el **tracker de estado** del módulo. Para diseño y criterios técnicos de cada bloque, ver los specs individuales listados en cada fase.
 
@@ -208,6 +208,7 @@ Adherencia al plan mensual, breakdown por categoría, comparativas de estabilida
 | Decisión | Spec | Fecha |
 |----------|------|-------|
 | Wizards Telegram → UI (deprecar PendingAction flows) | [wizard-migration.md](./wizard-migration.md) | 2026-04-29 |
+| Telegram es canal interno exclusivo (alertas del sistema para Daniel). La UI es el único canal de comunicación con usuarios externos. No hay `telegram_chat_id` per-usuario. | — | 2026-05-27 |
 
 ---
 
