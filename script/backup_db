@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Wrapper de backup semanal — llama a sync_railway_db --dump-only y limpia dumps viejos.
+# Invocado por crontab. Los dumps quedan en tmp/db_snapshots/.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DUMP_DIR="$PROJECT_ROOT/tmp/db_snapshots"
+LOG_FILE="$PROJECT_ROOT/tmp/backup.log"
+KEEP_DAYS="${KEEP_DAYS:-60}"
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+mkdir -p "$DUMP_DIR" "$(dirname "$LOG_FILE")"
+
+log "=== Backup iniciado ==="
+
+if "$SCRIPT_DIR/sync_railway_db" --dump-only --yes >> "$LOG_FILE" 2>&1; then
+  log "Dump completado OK"
+else
+  log "ERROR: sync_railway_db falló con código $?"
+  exit 1
+fi
+
+# Limpiar dumps más viejos que KEEP_DAYS días
+OLD_COUNT=$(find "$DUMP_DIR" -name "railway-*.dump" -mtime +"$KEEP_DAYS" | wc -l | tr -d ' ')
+if [[ "$OLD_COUNT" -gt 0 ]]; then
+  find "$DUMP_DIR" -name "railway-*.dump" -mtime +"$KEEP_DAYS" -delete
+  log "Limpiados $OLD_COUNT dump(s) con más de $KEEP_DAYS días"
+fi
+
+TOTAL=$(find "$DUMP_DIR" -name "railway-*.dump" | wc -l | tr -d ' ')
+log "Total dumps retenidos: $TOTAL"
+log "=== Backup finalizado ==="
