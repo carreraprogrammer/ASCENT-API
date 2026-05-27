@@ -21,5 +21,6 @@ module BoilerplateRailsApi
 
     require_relative "../app/middleware/error_capture_middleware"
     config.middleware.insert_after ActionDispatch::ShowExceptions, ErrorCaptureMiddleware
+    config.middleware.use Rack::Attack
   end
 end
