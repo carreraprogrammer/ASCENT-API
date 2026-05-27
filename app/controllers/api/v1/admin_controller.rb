@@ -1,6 +1,7 @@
 module Api
   module V1
     class AdminController < ApplicationController
+      skip_after_action :verify_authorized
       before_action :require_super_admin!
 
       def accounts
