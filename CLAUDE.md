@@ -101,11 +101,13 @@ Authenticates via SHA-256 of the token stored in `service_accounts.token_hash`.
 
 ## Current Phase
 
-**Fase 3 (en progreso):** Living Budget Integration. Core plan mensual is complete. Pending: Fase A CTAs, Fase E agent/backend coherence, plan rolling UI, `ProposeBudget` with historical patterns, dedicated chat UI.
+**Fases 1–4 + 3.5:** Completadas. Transacciones, plan mensual, deudas, metas, gamificación (backend), medios de pago, agente nocturno, web chat.
 
-**Fase 3.5 (spec ready, not implemented):** Payment sources + credit card cycle (eliminates double-counting: individual purchases vs. monthly bank payment).
+**Fase 5 (en progreso):** La Cara Viva. Backend de gamificación + avatar flotante completos. Pendiente: chat dedicado funcional, barra XP en Dashboard, motor conductual COM-B, `user_level` en contexto del agente.
 
-See `specs/finanzas/fases.md` for full phase tracker. See `specs/finanzas/living-budget.md` for the active spec.
+**Multi-usuario (Fase 0 del roadmap):** Completo. `ProvisionAccount` idempotente crea Account + AccountProgress + Delegation automáticamente en cada registro (email o Google OAuth). Gmail OAuth completo: tokens cifrados, modo híbrido de búsqueda (senders configurados o keywords genéricos), auto-discovery de remitentes.
+
+**Próximo:** Fase 0.7 — chat dedicado + barra XP + racha en Dashboard. Ver `specs/producto/roadmap-primeros-10.md` para el tracker de multi-usuario. Ver `specs/finanzas/fases.md` para el tracker de features.
 
 ## Naming Conventions
 

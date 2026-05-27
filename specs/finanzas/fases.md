@@ -132,7 +132,7 @@ Resuelve la duplicación de gastos con tarjeta: compras individuales + pago mens
 
 ## Fase 5 — La Cara Viva
 
-**Estado:** `en progreso — backend gamificación + avatar flotante completados (2026-05-06)`
+**Estado:** `en progreso — backend gamificación + avatar flotante completados (2026-05-06) · pendiente: chat dedicado, barra XP, motor conductual`
 
 La Fase 5 no es una sola feature. Es la convergencia de tres capas que juntas le dan un rostro, carácter y personalidad a la aplicación:
 
