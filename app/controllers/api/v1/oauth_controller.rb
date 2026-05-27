@@ -7,6 +7,7 @@ module Api
         return redirect_to_frontend_with_error("google_auth_failed") unless auth_hash
 
         user = Auth::Interactors::LoginWithGoogle.new.call(auth_hash: auth_hash)
+        Auth::Interactors::ProvisionAccount.new.call(user: user)
 
         permissions = Authorization::Interactors::FetchUserPermissions
           .new.call(user_id: user.id)
@@ -53,6 +54,7 @@ module Api
           server_auth_code: server_auth_code,
           id_token: id_token
         )
+        Auth::Interactors::ProvisionAccount.new.call(user: user)
         permissions = Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id)
         jwt = JwtService.encode_access_token(
           user_id: user.id,
