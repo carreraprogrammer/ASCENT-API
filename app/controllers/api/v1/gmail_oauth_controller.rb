@@ -21,13 +21,24 @@ module Api
 
       # GET /api/v1/me/email_connection
       def status
-        connected = Auth::Interactors::GmailOauth.connected?(account_id: current_account.id)
-        render json: {
-          data: {
-            connected: connected,
-            provider:  connected ? "gmail" : nil
+        conn = EmailConnection.find_by(account_id: current_account.id)
+        if conn
+          render json: {
+            data: {
+              connected:   true,
+              provider:    "gmail",
+              bank_senders: conn.bank_senders_list
+            }
           }
-        }
+        else
+          render json: {
+            data: {
+              connected:   false,
+              provider:    nil,
+              bank_senders: []
+            }
+          }
+        end
       end
 
       # POST /api/v1/auth/gmail
