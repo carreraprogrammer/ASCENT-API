@@ -186,4 +186,44 @@ namespace :accounts do
     user.update!(encrypted_password: BCrypt::Password.create(new_password))
     puts "✓ Password actualizado para #{user.email}"
   end
+
+  desc "Borra todos los datos de una cuenta (uso: limpieza, smoke tests). Uso: rails 'accounts:delete[email]'"
+  task :delete, [ :email ] => :environment do |_, args|
+    email = args[:email].to_s.strip.downcase
+    abort "Uso: rails 'accounts:delete[email@ejemplo.com]'" if email.empty?
+
+    PROTECTED_EMAILS = %w[carreraprogrammer@gmail.com superadmin@boilerplate.dev].freeze
+    if PROTECTED_EMAILS.include?(email)
+      abort "ERROR: No se puede borrar la cuenta protegida '#{email}'."
+    end
+
+    user = User.find_by(email: email)
+    abort "ERROR: No existe ningún usuario con el email '#{email}'." unless user
+
+    account = Account.find_by(owner_user: user)
+
+    ActiveRecord::Base.transaction do
+      if account
+        # Borrar datos de la cuenta en orden correcto de dependencias
+        %w[
+          Transaction Delegation FeatureFlag AccountProgress
+          MonthlyFinancialPlan Budget RecurringObligation Debt
+          IncomeSources SinkingFund PlannedExpense SavingsGoal
+          FinancialContext AgentUiEvent PendingAction UserMilestone
+          NightAnalysis AgentInsight XpEvent ChatMessage
+        ].each do |model_name|
+          model = model_name.safe_constantize
+          next unless model && model.column_names.include?("account_id")
+          count = model.where(account_id: account.id).delete_all
+          puts "  Borrado: #{count} #{model_name}" if count > 0
+        end
+        account.destroy!
+        puts "✓ Account borrada: #{account.slug}"
+      end
+
+      UserRole.where(user: user).delete_all
+      user.destroy!
+      puts "✓ Usuario borrado: #{email}"
+    end
+  end
 end
