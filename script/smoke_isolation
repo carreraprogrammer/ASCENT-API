@@ -25,9 +25,9 @@ red()    { echo -e "\033[31m✗ $*\033[0m"; }
 yellow() { echo -e "\033[33m⚠ $*\033[0m"; }
 header() { echo -e "\n\033[1m── $* ──\033[0m"; }
 
-pass() { green "$1"; ((PASS++)); }
-fail() { red "$1"; ((FAIL++)); }
-skip() { yellow "$1"; ((SKIP++)); }
+pass() { green "$1"; PASS=$((PASS + 1)); }
+fail() { red "$1";  FAIL=$((FAIL + 1)); }
+skip() { yellow "$1"; SKIP=$((SKIP + 1)); }
 
 assert_status() {
   local label="$1"
