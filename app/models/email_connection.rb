@@ -14,4 +14,13 @@ class EmailConnection < ApplicationRecord
   def expired?
     expires_at.present? && expires_at <= Time.current + 5.minutes
   end
+
+  # Devuelve la lista de remitentes bancarios como array Ruby.
+  # nil / vacío = sin configurar (el agente usará búsqueda por keywords).
+  def bank_senders_list
+    return [] if bank_senders.blank?
+    JSON.parse(bank_senders)
+  rescue JSON::ParserError
+    []
+  end
 end

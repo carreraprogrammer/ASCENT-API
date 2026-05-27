@@ -45,9 +45,10 @@ module Auth
           raise ArgumentError, "state inválido o expirado"
         end
 
-        # Devuelve un access_token válido. Si expiró, lo renueva automáticamente.
+        # Devuelve la conexión con access_token fresco.
+        # Si el token expiró lo renueva antes de devolver.
         # Lanza ActiveRecord::RecordNotFound si la cuenta no tiene email conectado.
-        def fresh_token(account_id:)
+        def fresh_connection(account_id:)
           conn = EmailConnection.find_by!(account_id: account_id)
 
           if conn.expired?
@@ -61,7 +62,21 @@ module Auth
             )
           end
 
-          conn.access_token
+          conn
+        end
+
+        # Compat alias — devuelve solo el access_token.
+        def fresh_token(account_id:)
+          fresh_connection(account_id: account_id).access_token
+        end
+
+        # Actualiza la lista de remitentes bancarios configurados por el usuario.
+        # senders: Array de strings (emails). Vacío = modo keyword automático.
+        def update_senders(account_id:, senders:)
+          conn = EmailConnection.find_by!(account_id: account_id)
+          clean = Array(senders).map(&:strip).select(&:present?).first(30).uniq
+          conn.update!(bank_senders: clean.to_json)
+          conn
         end
 
         def disconnect(account_id:)
