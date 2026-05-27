@@ -98,8 +98,8 @@ http_a=$(echo "$response_a" | tail -1)
 body_a=$(echo "$response_a" | head -n -1)
 
 assert_status "Login cuenta A" "200" "$http_a"
-TOKEN_A=$(echo "$body_a" | jq -r '.data.access_token // empty')
-ACCOUNT_ID_A=$(echo "$body_a" | jq -r '.data.account.id // empty')
+TOKEN_A=$(echo "$body_a" | jq -r '.meta.access_token // empty')
+ACCOUNT_ID_A=$(echo "$body_a" | jq -r '.data.attributes.default_account_id // empty')
 
 response_b=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/api/v1/auth/login" \
   -H "Content-Type: application/json" \
@@ -108,8 +108,8 @@ http_b=$(echo "$response_b" | tail -1)
 body_b=$(echo "$response_b" | head -n -1)
 
 assert_status "Login cuenta B" "200" "$http_b"
-TOKEN_B=$(echo "$body_b" | jq -r '.data.access_token // empty')
-ACCOUNT_ID_B=$(echo "$body_b" | jq -r '.data.account.id // empty')
+TOKEN_B=$(echo "$body_b" | jq -r '.meta.access_token // empty')
+ACCOUNT_ID_B=$(echo "$body_b" | jq -r '.data.attributes.default_account_id // empty')
 
 if [[ -z "$TOKEN_A" || -z "$TOKEN_B" ]]; then
   red "No se pudieron obtener los tokens — revisar login"
