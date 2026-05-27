@@ -98,8 +98,8 @@ http_a=$(echo "$response_a" | tail -1)
 body_a=$(echo "$response_a" | head -n -1)
 
 assert_status "Login cuenta A" "200" "$http_a"
-TOKEN_A=$(echo "$body_a" | jq -r '.meta.access_token // empty')
-ACCOUNT_ID_A=$(echo "$body_a" | jq -r '.data.attributes.default_account_id // empty')
+TOKEN_A=$(echo "$body_a" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("meta","access_token").to_s rescue puts ""')
+ACCOUNT_ID_A=$(echo "$body_a" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("data","attributes","default_account_id").to_s rescue puts ""')
 
 response_b=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/api/v1/auth/login" \
   -H "Content-Type: application/json" \
@@ -108,8 +108,8 @@ http_b=$(echo "$response_b" | tail -1)
 body_b=$(echo "$response_b" | head -n -1)
 
 assert_status "Login cuenta B" "200" "$http_b"
-TOKEN_B=$(echo "$body_b" | jq -r '.meta.access_token // empty')
-ACCOUNT_ID_B=$(echo "$body_b" | jq -r '.data.attributes.default_account_id // empty')
+TOKEN_B=$(echo "$body_b" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("meta","access_token").to_s rescue puts ""')
+ACCOUNT_ID_B=$(echo "$body_b" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("data","attributes","default_account_id").to_s rescue puts ""')
 
 if [[ -z "$TOKEN_A" || -z "$TOKEN_B" ]]; then
   red "No se pudieron obtener los tokens — revisar login"
@@ -138,7 +138,7 @@ txn_http=$(echo "$txn_response" | tail -1)
 txn_body=$(echo "$txn_response" | head -n -1)
 
 assert_status "Crear transacción en B" "201" "$txn_http"
-TXN_ID_B=$(echo "$txn_body" | jq -r '.data.id // empty')
+TXN_ID_B=$(echo "$txn_body" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("data","id").to_s rescue puts ""')
 echo "  Transacción B: id=${TXN_ID_B}"
 
 # ── Test 1: A lee transacciones — no debe ver datos de B ──────────────────────
@@ -231,8 +231,8 @@ progress_a=$(curl -s -X GET "${API_URL}/api/v1/me/progress" \
 progress_b=$(curl -s -X GET "${API_URL}/api/v1/me/progress" \
   -H "Authorization: Bearer ${TOKEN_B}")
 
-account_in_a=$(echo "$progress_a" | jq -r '.data.account_id // empty' 2>/dev/null || echo "")
-account_in_b=$(echo "$progress_b" | jq -r '.data.account_id // empty' 2>/dev/null || echo "")
+account_in_a=$(echo "$progress_a" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("data","account_id").to_s rescue puts ""')
+account_in_b=$(echo "$progress_b" | ruby -r json -e 'puts JSON.parse(STDIN.read).dig("data","account_id").to_s rescue puts ""')
 
 if [[ -n "$account_in_a" && -n "$account_in_b" ]]; then
   if [[ "$account_in_a" != "$account_in_b" ]]; then
