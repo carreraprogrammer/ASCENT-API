@@ -4,6 +4,7 @@ module Finanzas
       def call(account_id:, month:, year:, intent:)
         completeness = detector.call(account_id: account_id, month: month, year: year)
         dimensions = completeness[:dimensions]
+        progress = AccountProgress.find_by(account_id: account_id)
 
         blocking_dimensions = []
         nudges = []
@@ -47,7 +48,14 @@ module Finanzas
           blocking_dimensions: blocking_dimensions.uniq,
           nudge_dimensions: nudges.uniq,
           wizard: wizard,
-          message: message
+          message: message,
+          user_progress: {
+            level:           progress&.level           || 0,
+            readiness_score: progress&.readiness_score || 0,
+            xp:              progress&.xp              || 0,
+            streak_days:     progress&.streak_days     || 0,
+            bypass_readiness: progress&.bypass_readiness || false
+          }
         )
       end
 
