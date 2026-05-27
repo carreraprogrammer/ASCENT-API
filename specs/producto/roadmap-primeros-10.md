@@ -61,6 +61,17 @@ Smoke test en producción (Railway): 9/9 tests pasados.
 
 Script: `script/smoke_isolation` — se puede correr con `railway ssh bash script/smoke_isolation`
 
+### 0.4b Registro automático end-to-end ✅
+
+`ProvisionAccount` interactor idempotente: cualquier registro (email o Google OAuth) crea automáticamente Account + AccountProgress + Delegation. No requiere intervención manual post-registro.
+
+Test e2e en producción:
+- ✅ `POST /auth/register` → 201 con `default_account_id`
+- ✅ `GET /summary` (cuenta nueva) → balance: 0
+- ✅ `GET /transactions` (cuenta nueva) → count: 0
+- ✅ `GET /me/progress` (cuenta nueva) → level: 0
+- ✅ `GET /completeness` (cuenta nueva) → dimensiones correctas sin datos
+
 ### 0.5 Rate limiting básico ✅
 
 `rack-attack` activo en producción. Límites:
@@ -74,60 +85,58 @@ Script: `script/smoke_isolation` — se puede correr con `railway ssh bash scrip
 
 Respuesta 429 JSON:API con `Retry-After` header.
 
-### 0.6 Conexión de email via Gmail OAuth
+### 0.6 Conexión de email via Gmail OAuth ✅
 
-**Siguiente a implementar.**
+**Estado:** `completado` (2026-05-27)
 
 Permite que el agente nocturno lea automáticamente los correos bancarios del usuario y deduzca transacciones sin registro manual.
 
-**Flujo de usuario:**
-1. Usuario va a Preferencias → toca "Conectar email"
-2. La app abre Safari/Chrome con la pantalla de consentimiento de Google (`gmail.readonly`)
-3. Usuario aprueba
-4. Google redirige de vuelta a la app con un código de autorización
-5. La app envía el código a Rails API
-6. Rails intercambia el código por `access_token` + `refresh_token`, los guarda cifrados
-7. La pantalla muestra "Gmail conectado ✓" con opción de desconectar
+**Flujo implementado:**
+1. Usuario va a Perfil → toca "Conectar Gmail"
+2. La app llama `POST /api/v1/auth/gmail` → recibe URL de autorización
+3. La app abre el browser del sistema con la pantalla de consentimiento de Google (`gmail.readonly`)
+4. Usuario aprueba → Google redirige a `https://api.daniel15k.com/api/v1/auth/gmail/callback`
+5. Rails intercambia el código por `access_token` + `refresh_token`, los guarda cifrados con `ActiveRecord::Encryption`
+6. Google redirige via deep link `daniel15k://auth/gmail?status=connected` → la app muestra estado conectado
+7. La pantalla muestra estado conectado con lista de remitentes y opción de desconectar
 
 **Flujo del agente nocturno:**
-- Por cada cuenta activa, llama a Rails para obtener un access token fresco (Rails usa el refresh token para renovarlo automáticamente si expiró)
-- Si la cuenta no tiene email conectado, omite el análisis de correos sin error
-- Busca correos financieros con keywords genéricos, no senders hardcodeados — el agente razona sobre cuáles son transaccionales
+- Por cada cuenta activa llama `GET /me/email_connection/token` para obtener access token fresco
+- Si la cuenta no tiene email conectado, omite el análisis silenciosamente
+- Modo híbrido de búsqueda:
+  - **Con senders configurados:** query `(from:sender1 OR from:sender2) after:YYYY/MM/DD`
+  - **Sin senders:** keywords financieros genéricos + heurística de dominio/asunto para filtrar candidatos
+- Auto-discovery: detecta remitentes nuevos y los guarda via `PATCH /me/email_connection/senders`
 
-```python
-# Búsqueda genérica — sin depender de Davivienda/Nequi específicamente
-query = 'SINCE "hoy" (SUBJECT "transacción" OR SUBJECT "cargo" OR SUBJECT "débito" OR SUBJECT "compra" OR SUBJECT "pago" OR SUBJECT "transferencia")'
-# El agente clasifica qué emails son financieros y cuáles ignorar
-```
+*Google Cloud:*
+- ✅ Proyecto configurado en Google Cloud Console
+- ✅ Gmail API habilitada
+- ✅ OAuth 2.0 credentials (Web application) creadas
+- ✅ Redirect URI configurada: `https://api.daniel15k.com/api/v1/auth/gmail/callback`
+- ✅ `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en Railway env vars
 
-**Tareas por componente:**
-
-*Google Cloud (configuración única):*
-- [ ] Crear proyecto en Google Cloud Console
-- [ ] Habilitar Gmail API
-- [ ] Crear OAuth 2.0 credentials (Web application)
-- [ ] Configurar redirect URI: `https://api.daniel15k.com/api/v1/auth/gmail/callback` y URI para desarrollo
-- [ ] Guardar `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en Railway env vars
+> **Restricción activa:** El OAuth consent screen está en modo **Testing** (máximo 100 usuarios). Cualquier usuario nuevo que quiera conectar Gmail debe ser agregado manualmente en [Google Cloud Console → APIs & Services → OAuth consent screen → Test users](https://console.cloud.google.com/apis/credentials/consent). Para escala pública, se requiere verificación de Google del scope `gmail.readonly` (proceso de ~4-6 semanas).
 
 *Rails API:*
-- [ ] Migración: tabla `email_connections` (`account_id`, `provider: gmail`, `access_token` cifrado, `refresh_token` cifrado, `expires_at`, `connected_at`)
-- [ ] `GET /api/v1/me/email_connection` — devuelve estado (`connected | disconnected`) sin exponer tokens
-- [ ] `POST /api/v1/auth/gmail` — inicia flujo OAuth, devuelve URL de autorización de Google
-- [ ] `GET /api/v1/auth/gmail/callback` — recibe código, intercambia por tokens, guarda en DB, redirige a la app
-- [ ] `DELETE /api/v1/me/email_connection` — desconecta (borra tokens)
-- [ ] `GET /api/v1/me/email_connection/token` — endpoint interno (solo service account) que devuelve access token fresco, renovando con refresh token si expiró
+- ✅ Tabla `email_connections` con tokens cifrados (`ActiveRecord::Encryption`)
+- ✅ `GET /api/v1/me/email_connection` — estado + `bank_senders` configurados
+- ✅ `POST /api/v1/auth/gmail` — inicia OAuth, devuelve URL
+- ✅ `GET /api/v1/auth/gmail/callback` — intercambia código, guarda tokens, deep-link de vuelta a la app
+- ✅ `DELETE /api/v1/me/email_connection` — desconecta
+- ✅ `GET /api/v1/me/email_connection/token` — endpoint interno (service account), devuelve token fresco + bank_senders
+- ✅ `PATCH /api/v1/me/email_connection/senders` — actualiza lista de remitentes (usuario o agente)
 
 *Python agent (nightly):*
-- [ ] Reemplazar `imaplib` + credenciales globales por Gmail API con token por cuenta
-- [ ] Antes de analizar emails: llamar a `GET /me/email_connection/token`; si `disconnected`, saltar análisis silenciosamente
-- [ ] Reemplazar lista hardcodeada de remitentes por búsqueda con keywords financieros genéricos
-- [ ] El agente ya razona sobre el contenido — no necesita saber el banco de antemano
+- ✅ Gmail REST API reemplaza `imaplib` + credenciales globales
+- ✅ Si cuenta sin email conectado → análisis omitido silenciosamente
+- ✅ Sin senders hardcodeados — modo keyword + auto-discovery
+- ✅ Tool `update_email_senders` para que el agente guarde remitentes nuevos que descubre
 
-*App móvil (iOS/Android):*
-- [ ] Pantalla "Conectar email" en Preferencias con estado visual (conectado/desconectado)
-- [ ] Integrar `expo-auth-session` para manejar el flujo OAuth con `ASWebAuthenticationSession` en iOS
-- [ ] Deep link configurado para recibir el callback de Google (`daniel15k://auth/gmail`)
-- [ ] Mostrar "Gmail conectado ✓ — el agente revisará tus correos cada noche" post-conexión
+*App móvil:*
+- ✅ Bloque Gmail en ProfilePage: conectado/desconectado, chips de remitentes, input para agregar
+- ✅ Deep link `daniel15k://auth/gmail?status=...` manejado en App.tsx
+- ✅ `emailConnectionStore` (Zustand): fetchStatus, startOAuth, disconnect, updateSenders
+- ✅ `fetchStatus` pre-popula `bankSenders` desde `GET /me/email_connection`
 
 ### 0.7 Fase 5 UI pendiente — lo mínimo para que el producto se vea terminado
 
@@ -270,7 +279,7 @@ No es una fase — son condiciones de operación:
 | Refresh token rotation + reuse detection | ✅ implementado | — |
 | Rate limiting endpoints | ✅ activo (rack-attack) | Fase 0 |
 | Aislamiento de datos por account verificado | ✅ 9/9 tests en producción | Fase 0 |
-| OAuth tokens de email cifrados en DB | ❌ pendiente | Fase 0.6 |
+| OAuth tokens de email cifrados en DB (`ActiveRecord::Encryption`) | ✅ activo | Fase 0.6 |
 | Audit log básico (quién hizo qué) | ❌ pendiente | Fase 2 |
 | Borrado de cuenta | ✅ `accounts:delete` rake task | Fase 2.4 |
 | Política de privacidad visible | ❌ pendiente | Fase 2 |
@@ -295,13 +304,16 @@ Decisiones explícitas de no-hacer por ahora:
 ## Checklist de salida — ¿listo para el usuario 1?
 
 - ✅ `accounts:create` funciona en Railway CLI
+- ✅ Registro por email y Google OAuth provisiona cuenta automáticamente (Account + AccountProgress + Delegation)
 - ✅ Agente nocturno itera por cuentas activas sin hardcodeo
 - ✅ Agente nocturno funciona sin Telegram — la UI es el canal de comunicación con el usuario
 - ✅ Smoke test de aislamiento de datos pasado (9/9)
 - ✅ Rate limiting activo (rack-attack)
-- [ ] "Conectar email" funciona end-to-end (OAuth → token guardado → agente lo usa) — Fase 0.6
-- [ ] Agente nocturno usa keywords genéricos, no senders hardcodeados — Fase 0.6
-- [ ] Agente omite análisis de email si la cuenta no tiene email conectado — Fase 0.6
+- ✅ "Conectar email" funciona end-to-end (OAuth → token cifrado → agente lo usa) — Fase 0.6
+- ✅ Agente nocturno usa keywords genéricos + auto-discovery, sin senders hardcodeados — Fase 0.6
+- ✅ Agente omite análisis de email si la cuenta no tiene email conectado — Fase 0.6
 - [ ] Chat dedicado funcional (Fase 5 UI) — Fase 0.7
 - [ ] Barra XP y racha visible en Dashboard — Fase 0.7
 - [ ] `user_level` en contexto del agente — Fase 0.7
+
+> **Nota operativa Gmail:** Cada usuario nuevo que quiera conectar Gmail debe ser agregado como test user en Google Cloud Console antes de intentar el OAuth. La conexión Gmail es opcional — el producto funciona sin ella.
