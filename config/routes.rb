@@ -111,6 +111,13 @@ Rails.application.routes.draw do
       get "summary",        to: "summary#show"
       get "budget_context", to: "budget_context#show"
 
+      # Gmail OAuth — Fase 0.6
+      post   "auth/gmail",                    to: "gmail_oauth#start"
+      get    "auth/gmail/callback",           to: "gmail_oauth#callback"
+      get    "me/email_connection",           to: "gmail_oauth#status"
+      delete "me/email_connection",           to: "gmail_oauth#disconnect"
+      get    "me/email_connection/token",     to: "gmail_oauth#token"
+
       # Gamificación — Track A
       get  "me/progress",                to: "progress#show"
       get  "me/features",                to: "progress#features"
