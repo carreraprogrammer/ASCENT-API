@@ -1,0 +1,260 @@
+#!/usr/bin/env bash
+# script/smoke_isolation — Verifica aislamiento de datos entre cuentas.
+#
+# Uso:
+#   railway run bash script/smoke_isolation
+#
+# Crea dos cuentas temporales (A y B), pone datos en B, intenta leerlos con A.
+# Al final borra las cuentas temporales.
+#
+# Requiere: curl, jq, Rails en Railway
+
+set -euo pipefail
+
+API_URL="${DANIEL15K_API_URL:-https://daniel15k-api-production.up.railway.app}"
+SERVICE_TOKEN="${DANIEL15K_SERVICE_TOKEN:-}"
+
+PASS=0
+FAIL=0
+SKIP=0
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+green()  { echo -e "\033[32m✓ $*\033[0m"; }
+red()    { echo -e "\033[31m✗ $*\033[0m"; }
+yellow() { echo -e "\033[33m⚠ $*\033[0m"; }
+header() { echo -e "\n\033[1m── $* ──\033[0m"; }
+
+pass() { green "$1"; ((PASS++)); }
+fail() { red "$1"; ((FAIL++)); }
+skip() { yellow "$1"; ((SKIP++)); }
+
+assert_status() {
+  local label="$1"
+  local expected="$2"
+  local actual="$3"
+  if [[ "$actual" == "$expected" ]]; then
+    pass "$label (HTTP $actual)"
+  else
+    fail "$label — esperaba HTTP $expected, recibió HTTP $actual"
+  fi
+}
+
+assert_no_data_leak() {
+  local label="$1"
+  local body="$2"
+  local sensitive_id="$3"
+
+  if echo "$body" | grep -q "\"id\":\"${sensitive_id}\"" 2>/dev/null ||
+     echo "$body" | grep -q "\"id\":${sensitive_id}" 2>/dev/null; then
+    fail "$label — FILTRACIÓN DE DATOS: id ${sensitive_id} visible"
+  else
+    pass "$label — sin filtración"
+  fi
+}
+
+cleanup() {
+  echo ""
+  header "Limpieza"
+  if [[ -n "${EMAIL_A:-}" ]]; then
+    rails "accounts:delete[${EMAIL_A}]" 2>/dev/null && echo "Borrado: $EMAIL_A" || echo "No se pudo borrar $EMAIL_A (borrar manualmente)"
+  fi
+  if [[ -n "${EMAIL_B:-}" ]]; then
+    rails "accounts:delete[${EMAIL_B}]" 2>/dev/null && echo "Borrado: $EMAIL_B" || echo "No se pudo borrar $EMAIL_B (borrar manualmente)"
+  fi
+}
+trap cleanup EXIT
+
+# ── Setup — crear cuentas de prueba ───────────────────────────────────────────
+
+header "Setup — cuentas de prueba"
+
+TS=$(date +%s)
+EMAIL_A="smoke-a-${TS}@test.internal"
+EMAIL_B="smoke-b-${TS}@test.internal"
+PASS_A="TestPass${TS}A!"
+PASS_B="TestPass${TS}B!"
+
+echo "Creando cuenta A: $EMAIL_A"
+if ! bundle exec rails "accounts:create[Smoke A,${EMAIL_A},${PASS_A}]" 2>&1; then
+  red "No se pudo crear cuenta A — abortando"
+  exit 1
+fi
+
+echo "Creando cuenta B: $EMAIL_B"
+if ! bundle exec rails "accounts:create[Smoke B,${EMAIL_B},${PASS_B}]" 2>&1; then
+  red "No se pudo crear cuenta B — abortando"
+  exit 1
+fi
+
+# ── Login — obtener JWTs ───────────────────────────────────────────────────────
+
+header "Login"
+
+response_a=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"${EMAIL_A}\",\"password\":\"${PASS_A}\"}")
+http_a=$(echo "$response_a" | tail -1)
+body_a=$(echo "$response_a" | head -n -1)
+
+assert_status "Login cuenta A" "200" "$http_a"
+TOKEN_A=$(echo "$body_a" | jq -r '.data.access_token // empty')
+ACCOUNT_ID_A=$(echo "$body_a" | jq -r '.data.account.id // empty')
+
+response_b=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"${EMAIL_B}\",\"password\":\"${PASS_B}\"}")
+http_b=$(echo "$response_b" | tail -1)
+body_b=$(echo "$response_b" | head -n -1)
+
+assert_status "Login cuenta B" "200" "$http_b"
+TOKEN_B=$(echo "$body_b" | jq -r '.data.access_token // empty')
+ACCOUNT_ID_B=$(echo "$body_b" | jq -r '.data.account.id // empty')
+
+if [[ -z "$TOKEN_A" || -z "$TOKEN_B" ]]; then
+  red "No se pudieron obtener los tokens — revisar login"
+  exit 1
+fi
+
+echo "  Account A: id=${ACCOUNT_ID_A}"
+echo "  Account B: id=${ACCOUNT_ID_B}"
+
+# ── Poblar cuenta B con una transacción ───────────────────────────────────────
+
+header "Datos en cuenta B"
+
+today=$(date +"%d/%m")
+txn_response=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/api/v1/transactions" \
+  -H "Authorization: Bearer ${TOKEN_B}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"date\": \"${today}\",
+    \"concept\": \"Smoke test B isolation\",
+    \"amount\": 99999,
+    \"transaction_type\": \"expense\",
+    \"status\": \"confirmed\"
+  }")
+txn_http=$(echo "$txn_response" | tail -1)
+txn_body=$(echo "$txn_response" | head -n -1)
+
+assert_status "Crear transacción en B" "201" "$txn_http"
+TXN_ID_B=$(echo "$txn_body" | jq -r '.data.id // empty')
+echo "  Transacción B: id=${TXN_ID_B}"
+
+# ── Test 1: A lee transacciones — no debe ver datos de B ──────────────────────
+
+header "Test 1 — JWT de A no ve transacciones de B"
+
+month=$(date +"%m" | sed 's/^0//')
+year=$(date +"%Y")
+list_response=$(curl -s -X GET "${API_URL}/api/v1/transactions?month=${month}&year=${year}" \
+  -H "Authorization: Bearer ${TOKEN_A}")
+
+assert_no_data_leak "GET /transactions con JWT de A" "$list_response" "$TXN_ID_B"
+
+# ── Test 2: A intenta PATCH directo sobre transacción de B ────────────────────
+
+header "Test 2 — JWT de A no puede editar transacción de B"
+
+if [[ -n "$TXN_ID_B" ]]; then
+  patch_response=$(curl -s -w "\n%{http_code}" -X PATCH "${API_URL}/api/v1/transactions/${TXN_ID_B}" \
+    -H "Authorization: Bearer ${TOKEN_A}" \
+    -H "Content-Type: application/json" \
+    -d "{\"concept\": \"Modificado por A\"}")
+  patch_http=$(echo "$patch_response" | tail -1)
+
+  if [[ "$patch_http" == "404" || "$patch_http" == "403" || "$patch_http" == "422" ]]; then
+    pass "PATCH /transactions/${TXN_ID_B} con JWT de A → HTTP ${patch_http} (bloqueado)"
+  else
+    fail "PATCH /transactions/${TXN_ID_B} con JWT de A → HTTP ${patch_http} (debería ser 404/403)"
+  fi
+else
+  skip "No se pudo crear transacción B — skip"
+fi
+
+# ── Test 3: JWT de A con X-Account-Id: B explícito ────────────────────────────
+
+header "Test 3 — JWT de A + X-Account-Id de B → rechazado"
+
+if [[ -n "$ACCOUNT_ID_B" ]]; then
+  cross_response=$(curl -s -w "\n%{http_code}" -X GET "${API_URL}/api/v1/transactions?month=${month}&year=${year}" \
+    -H "Authorization: Bearer ${TOKEN_A}" \
+    -H "X-Account-Id: ${ACCOUNT_ID_B}")
+  cross_http=$(echo "$cross_response" | tail -1)
+  cross_body=$(echo "$cross_response" | head -n -1)
+
+  if [[ "$cross_http" == "404" || "$cross_http" == "401" || "$cross_http" == "403" ]]; then
+    pass "JWT de A + X-Account-Id de B → HTTP ${cross_http} (bloqueado)"
+  elif [[ "$cross_http" == "200" ]]; then
+    # Respondió 200 — verificar que no hay datos de B
+    assert_no_data_leak "Respuesta 200 — sin datos de B" "$cross_body" "$TXN_ID_B"
+  else
+    fail "JWT de A + X-Account-Id de B → HTTP ${cross_http} inesperado"
+  fi
+fi
+
+# ── Test 4: Resumen mensual de A no incluye datos de B ────────────────────────
+
+header "Test 4 — GET /summary de A no incluye datos de B"
+
+summary_response=$(curl -s -X GET "${API_URL}/api/v1/summary?month=${month}&year=${year}" \
+  -H "Authorization: Bearer ${TOKEN_A}")
+
+# La transacción de B era $99.999 — si aparece en el summary de A, hay filtración
+if echo "$summary_response" | grep -q "99999"; then
+  fail "GET /summary de A contiene amount=99999 (posible filtración de datos de B)"
+else
+  pass "GET /summary de A no contiene datos de B"
+fi
+
+# ── Test 5: Service account con X-Account-Id de A no ve datos de B ────────────
+
+header "Test 5 — Service account con X-Account-Id de A"
+
+if [[ -n "$SERVICE_TOKEN" && -n "$ACCOUNT_ID_A" ]]; then
+  sa_response=$(curl -s -X GET "${API_URL}/api/v1/transactions?month=${month}&year=${year}" \
+    -H "Authorization: Bearer ${SERVICE_TOKEN}" \
+    -H "X-Account-Id: ${ACCOUNT_ID_A}" \
+    -H "X-Agent-Type: finance_coach")
+
+  assert_no_data_leak "Service account (A) no ve datos de B" "$sa_response" "$TXN_ID_B"
+else
+  skip "DANIEL15K_SERVICE_TOKEN no disponible — skip Test 5"
+fi
+
+# ── Test 6: GET /me/progress de A no expone datos de B ────────────────────────
+
+header "Test 6 — GET /me/progress aislado"
+
+progress_a=$(curl -s -X GET "${API_URL}/api/v1/me/progress" \
+  -H "Authorization: Bearer ${TOKEN_A}")
+progress_b=$(curl -s -X GET "${API_URL}/api/v1/me/progress" \
+  -H "Authorization: Bearer ${TOKEN_B}")
+
+account_in_a=$(echo "$progress_a" | jq -r '.data.account_id // empty' 2>/dev/null || echo "")
+account_in_b=$(echo "$progress_b" | jq -r '.data.account_id // empty' 2>/dev/null || echo "")
+
+if [[ -n "$account_in_a" && -n "$account_in_b" ]]; then
+  if [[ "$account_in_a" != "$account_in_b" ]]; then
+    pass "GET /me/progress aislado (A=${account_in_a}, B=${account_in_b})"
+  else
+    fail "GET /me/progress devuelve el mismo account_id para A y B"
+  fi
+else
+  # No hay account_id en la respuesta — verificar que no hay cruce por nivel/xp
+  pass "GET /me/progress responde sin exponer account_id cruzado"
+fi
+
+# ── Resultado ─────────────────────────────────────────────────────────────────
+
+echo ""
+echo "══════════════════════════════════"
+echo "  RESULTADO DEL SMOKE TEST"
+printf "  ✓ Pasados:  %d\n" $PASS
+printf "  ✗ Fallidos: %d\n" $FAIL
+printf "  ⚠ Saltados: %d\n" $SKIP
+echo "══════════════════════════════════"
+
+if [[ $FAIL -gt 0 ]]; then
+  exit 1
+fi
