@@ -7,15 +7,16 @@ module Api
 
       # GET /api/v1/agent/accounts/active
       # Devuelve todas las accounts activas con los datos que el scheduler necesita
-      # para iterar la revisión nocturna: id, telegram_chat_id.
+      # para iterar la revisión nocturna.
+      # Nota: has_email se determina en el scheduler con DEFAULT_ACCOUNT_ID + GMAIL_ADDRESS
+      # hasta que Fase 0.6 (Gmail OAuth por cuenta) esté implementado.
       def active_accounts
         accounts = Account.active.includes(:owner_user).order(:id)
         render json: {
           data: accounts.map { |a|
             {
-              id:               a.id,
-              name:             a.name,
-              telegram_chat_id: a.telegram_chat_id
+              id:   a.id,
+              name: a.name
             }
           }
         }
