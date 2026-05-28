@@ -15,6 +15,14 @@ module Finanzas
                                   :debt_id, :recurring_obligation_id, :income_source_id,
                                   :sinking_fund_id)
 
+        if permitted[:date].present?
+          parsed = Date.parse(permitted[:date].to_s) rescue nil
+          if parsed
+            permitted[:year]  = parsed.year
+            permitted[:month] = parsed.month
+          end
+        end
+
         Rails.logger.info(
           "[UpdateTransaction] id=#{id.inspect} account_id=#{account_id.inspect} " \
           "incoming=#{permitted.inspect}"
