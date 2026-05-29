@@ -89,6 +89,14 @@ module Api
         render json: { data: result }
       end
 
+      def show
+        return unless require_scope!("transactions:read")
+        transaction = Finanzas::Repositories::TransactionRepository.new.find(params[:id], account_id: current_account.id)
+        return render json: { errors: [ { status: "404", detail: "Transaction not found" } ] }, status: :not_found unless transaction
+
+        render json: Finanzas::Presenters::TransactionPresenter.single(transaction)
+      end
+
       def create
         return unless require_scope!("transactions:create")
         Rails.logger.info(

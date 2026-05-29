@@ -37,7 +37,7 @@ Rails.application.routes.draw do
       # Finanzas — Core
       resources :categories, only: [ :index, :create, :destroy ]
       resources :subcategories, only: [ :create ]
-      resources :transactions, only: [ :index, :create, :update, :destroy ] do
+      resources :transactions, only: [ :index, :show, :create, :update, :destroy ] do
         collection do
           get :pending
           get :needs_review
