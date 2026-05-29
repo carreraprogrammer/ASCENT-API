@@ -3,16 +3,20 @@ class WebChatJob < ApplicationJob
   BRAIN_TOKEN = ENV.fetch("DANIEL15K_SERVICE_TOKEN", "")
   HISTORY_TURNS = 8
 
-  def perform(account_id:, session_id:, message: nil, event_response: nil)
-    # Read prior context BEFORE saving current message so it doesn't appear twice
-    prior_messages = ChatMessage
-      .where(account_id: account_id, channel: "app")
-      .order(created_at: :asc)
-      .last(HISTORY_TURNS * 2)
-      .map { |m| { role: m.role, content: m.content } }
+  def perform(account_id:, session_id:, message: nil, event_response: nil, skip_history: false)
+    prior_messages = if skip_history
+      []
+    else
+      # Read prior context BEFORE saving current message so it doesn't appear twice
+      ChatMessage
+        .where(account_id: account_id, channel: "app")
+        .order(created_at: :asc)
+        .last(HISTORY_TURNS * 2)
+        .map { |m| { role: m.role, content: m.content } }
+    end
 
-    # Persist the user message so the agent can save its response against the same account
-    if message.present?
+    # Persist the user message only for persistent chat, not shortcut captures
+    if message.present? && !skip_history
       ChatMessage.create!(
         account_id: account_id,
         channel:    "app",
@@ -26,7 +30,8 @@ class WebChatJob < ApplicationJob
       session_id:     session_id,
       message:        message,
       event_response: event_response,
-      prior_messages: prior_messages.presence
+      prior_messages: prior_messages.presence,
+      skip_history:   skip_history,
     }.compact.to_json
 
     uri  = URI("#{BRAIN_URL}/agents/app_chat")
