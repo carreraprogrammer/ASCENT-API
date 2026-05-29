@@ -30,9 +30,8 @@ module Finanzas
       # @return [Hash]    entidad del NightAnalysis creado
       def create_with_insight(account_id:, date:, metrics:, reasoning:, insight:)
         ::NightAnalysis.transaction do
-          night = ::NightAnalysis.create!(
-            account_id:           account_id,
-            analysis_date:        date,
+          night = ::NightAnalysis.find_or_initialize_by(account_id: account_id, analysis_date: date)
+          night.update!(
             health_status:        metrics[:health_status],
             commitment_gap:       metrics[:commitment_gap],
             daily_burn:           metrics[:daily_burn],
@@ -43,14 +42,14 @@ module Finanzas
             agent_reasoning:      reasoning
           )
 
-          ::AgentInsight.create!(
-            account_id:    account_id,
-            insightable:   night,
-            insight_kind:  insight[:kind],
-            title:         insight[:title],
-            body:          insight[:body],
-            status:        "new",
-            generated_at:  Time.current
+          agent_insight = ::AgentInsight.find_or_initialize_by(insightable: night)
+          agent_insight.update!(
+            account_id:   account_id,
+            insight_kind: insight[:kind],
+            title:        insight[:title],
+            body:         insight[:body],
+            status:       "new",
+            generated_at: Time.current
           )
 
           map_to_entity(night.reload)
