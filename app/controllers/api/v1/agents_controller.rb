@@ -11,10 +11,11 @@ module Api
       def chat
         session_id = params[:session_id].presence || SecureRandom.uuid
         WebChatJob.perform_later(
-          account_id: current_account.id,
-          session_id: session_id,
-          message: params[:message].presence,
-          event_response: params[:event_response]&.to_unsafe_h
+          account_id:   current_account.id,
+          session_id:   session_id,
+          message:      params[:message].presence,
+          event_response: params[:event_response]&.to_unsafe_h,
+          skip_history: params[:source] == "shortcut"
         )
         render json: { data: { session_id: session_id, status: "processing" } }, status: :accepted
       end
