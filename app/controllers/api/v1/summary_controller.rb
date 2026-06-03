@@ -774,19 +774,20 @@ module Api
         @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
       end
 
-      # Saldo neto de caja del mes anterior al período consultado.
-      # Solo mira un mes atrás para evitar doble conteo con transacciones de ajuste de saldo inicial.
+      # Saldo acumulado real hasta el fin del mes anterior.
+      # Suma todas las transacciones confirmadas de todos los meses previos al período consultado.
       # No usa execution_snapshot.overflow_amount porque ese valor representa dinero deployable
       # según reglas del plan, no caja real arrastrada al siguiente mes.
       def previous_month_carryover(account_id, month, year)
         prev = Date.new(year, month, 1).prev_month
 
-        prior = ::Transaction
-          .where(account_id: account_id, status: "confirmed", month: prev.month, year: prev.year)
+        result = ::Transaction
+          .where(account_id: account_id, status: "confirmed")
+          .where("year < :y OR (year = :y AND month <= :m)", y: prev.year, m: prev.month)
+          .group(:transaction_type)
+          .sum(:amount)
 
-        income  = prior.where(transaction_type: "income").sum(:amount)
-        expense = prior.where(transaction_type: "expense").sum(:amount)
-        income - expense
+        result.fetch("income", 0) - result.fetch("expense", 0)
       end
     end
   end
