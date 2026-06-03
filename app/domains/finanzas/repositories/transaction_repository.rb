@@ -104,6 +104,7 @@ module Finanzas
         ::Transaction.transaction do
           record = ::Transaction.create!(attrs)
           apply_sinking_fund_delta!(nil, record)
+          apply_account_balance_delta!(nil, record)
         end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
@@ -116,10 +117,12 @@ module Finanzas
         record = scope.first
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
-        before = sinking_fund_balance_snapshot(record)
+        before_sf  = sinking_fund_balance_snapshot(record)
+        before_acc = account_balance_snapshot(record)
         ::Transaction.transaction do
           record.update!(attrs)
-          apply_sinking_fund_delta!(before, record)
+          apply_sinking_fund_delta!(before_sf, record)
+          apply_account_balance_delta!(before_acc, record)
         end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
@@ -132,10 +135,12 @@ module Finanzas
         record = scope.first
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
-        before = sinking_fund_balance_snapshot(record)
+        before_sf  = sinking_fund_balance_snapshot(record)
+        before_acc = account_balance_snapshot(record)
         ::Transaction.transaction do
           record.destroy!
-          apply_sinking_fund_delta!(before, nil)
+          apply_sinking_fund_delta!(before_sf, nil)
+          apply_account_balance_delta!(before_acc, nil)
         end
       end
 
@@ -233,6 +238,39 @@ module Finanzas
 
         fund = ::SinkingFund.lock.find(sinking_fund_id)
         fund.update!(current_balance: fund.current_balance.to_i + amount_delta)
+      end
+
+      def account_balance_snapshot(record)
+        {
+          account_id: record.account_id,
+          amount: record.amount.to_i,
+          transaction_type: record.transaction_type,
+          status: record.status
+        }
+      end
+
+      def apply_account_balance_delta!(before, after)
+        before_effect = confirmed_balance_effect(before)
+        after_effect  = confirmed_balance_effect(after ? account_balance_snapshot(after) : nil)
+        delta = after_effect - before_effect
+        return if delta.zero?
+
+        account_id = after&.account_id || before&.dig(:account_id)
+        return unless account_id
+
+        account = ::Account.lock.find(account_id)
+        account.update_column(:confirmed_balance, account.confirmed_balance + delta)
+      end
+
+      def confirmed_balance_effect(snapshot)
+        return 0 if snapshot.blank?
+        return 0 unless snapshot[:status] == "confirmed"
+
+        case snapshot[:transaction_type]
+        when "income"  then  snapshot[:amount].to_i
+        when "expense" then -snapshot[:amount].to_i
+        else 0
+        end
       end
 
       def normalize_page(page)
