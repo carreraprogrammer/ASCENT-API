@@ -775,15 +775,25 @@ module Api
       end
 
       # Saldo acumulado real hasta el fin del mes anterior.
-      # Suma todas las transacciones confirmadas de todos los meses previos al período consultado.
+      # Solo incluye meses con actividad real (que tengan gastos confirmados) para excluir
+      # meses de setup con saldo inicial artificial (income sin expenses).
       # No usa execution_snapshot.overflow_amount porque ese valor representa dinero deployable
       # según reglas del plan, no caja real arrastrada al siguiente mes.
       def previous_month_carryover(account_id, month, year)
         prev = Date.new(year, month, 1).prev_month
 
+        active_months = ::Transaction
+          .where(account_id: account_id, status: "confirmed", transaction_type: "expense")
+          .where("year < :y OR (year = :y AND month <= :m)", y: prev.year, m: prev.month)
+          .distinct
+          .pluck(:year, :month)
+
+        return 0 if active_months.empty?
+
+        conditions = active_months.map { "(year = ? AND month = ?)" }.join(" OR ")
         result = ::Transaction
           .where(account_id: account_id, status: "confirmed")
-          .where("year < :y OR (year = :y AND month <= :m)", y: prev.year, m: prev.month)
+          .where(conditions, *active_months.flatten)
           .group(:transaction_type)
           .sum(:amount)
 
