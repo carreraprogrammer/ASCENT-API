@@ -21,14 +21,17 @@ module Api
         plan                 = plan_repo.find_for_month(account_id: account_id, month: month, year: year)
         income_sources       = income_source_repo.active_for_account(account_id)
         realized_income_by_source = income_realized_by_source(account_id, month, year)
-        carryover_from_previous_month = previous_month_carryover(account_id, month, year)
+
+        # confirmed_balance del account = saldo acumulado real de todos los meses.
+        # El carryover es ese total menos el P&L del mes actual.
+        account_confirmed_balance     = current_account.confirmed_balance.to_i
+        carryover_from_previous_month = account_confirmed_balance - balance[:balance_confirmed].to_i
         balance = balance.merge(
           carryover_from_previous_month: carryover_from_previous_month,
-          net_balance: balance[:balance_confirmed] + carryover_from_previous_month
+          net_balance: account_confirmed_balance
         )
 
-        confirmed_balance    = balance[:income_confirmed].to_i - balance[:expense_confirmed].to_i +
-                               carryover_from_previous_month.to_i
+        confirmed_balance = account_confirmed_balance
         period               = Date.new(year, month, 1)
         realized_obligations = realized_recurring_obligations_for_period(account_id, period)
         recurring_obs        = ::RecurringObligation.where(account_id: account_id, active: true)
@@ -774,31 +777,6 @@ module Api
         @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
       end
 
-      # Saldo acumulado real hasta el fin del mes anterior.
-      # Solo incluye meses con actividad real (que tengan gastos confirmados) para excluir
-      # meses de setup con saldo inicial artificial (income sin expenses).
-      # No usa execution_snapshot.overflow_amount porque ese valor representa dinero deployable
-      # según reglas del plan, no caja real arrastrada al siguiente mes.
-      def previous_month_carryover(account_id, month, year)
-        prev = Date.new(year, month, 1).prev_month
-
-        active_months = ::Transaction
-          .where(account_id: account_id, status: "confirmed", transaction_type: "expense")
-          .where("year < :y OR (year = :y AND month <= :m)", y: prev.year, m: prev.month)
-          .distinct
-          .pluck(:year, :month)
-
-        return 0 if active_months.empty?
-
-        conditions = active_months.map { "(year = ? AND month = ?)" }.join(" OR ")
-        result = ::Transaction
-          .where(account_id: account_id, status: "confirmed")
-          .where(conditions, *active_months.flatten)
-          .group(:transaction_type)
-          .sum(:amount)
-
-        result.fetch("income", 0) - result.fetch("expense", 0)
-      end
     end
   end
 end
