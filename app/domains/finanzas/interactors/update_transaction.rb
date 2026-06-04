@@ -49,6 +49,17 @@ module Finanzas
 
         normalize_credit_card_status!(permitted, transaction)
 
+        # Auto-confirm pending transactions when the user explicitly sets both category and subcategory
+        if permitted[:category_id].present? && permitted[:subcategory_id].present? && transaction.status == "pending"
+          permitted[:status] = "confirmed"
+        end
+
+        # Clear agent conflict flags from metadata when the user explicitly categorizes the transaction
+        if permitted[:category_id].present? || permitted[:subcategory_id].present?
+          base_meta = (transaction.metadata || {}).except("conflict_reason", "conflict_notes", "suggested_subcategory_code")
+          permitted[:metadata] = base_meta.merge(permitted[:metadata] || {})
+        end
+
         was_pending = transaction.status == "pending"
         updated = @repo.update(id, permitted, account_id: account_id)
 

@@ -55,6 +55,7 @@ module Api
         agent_flagged = ::Transaction
           .where(account_id: account_id, status: "confirmed")
           .where("metadata->>'conflict_reason' IS NOT NULL")
+          .where(clarification_resolved_at: nil)
           .pluck(:id, :concept, :product, :amount, :date, :metadata)
           .map do |id, concept, product, amount, date, meta|
             {
