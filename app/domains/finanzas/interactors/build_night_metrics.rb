@@ -27,8 +27,14 @@ module Finanzas
         budgets         = load_budgets(account_id, month, year)
         rolling_by_cat  = rolling_avg_by_category(account_id, date)
 
+        total_balance = compute_balance(account_id, date)
+        ef_reserved   = emergency_fund_reserved(account_id)
+        # Balance operativo: excluye dinero reservado como fondo de emergencia.
+        # El agente no debe recomendar gastar capital intocable.
+        operational_balance = total_balance - ef_reserved
+
         runway = CashFlowRunway.new.call(
-          confirmed_balance:      compute_balance(account_id, date),
+          confirmed_balance:      operational_balance,
           necessary_transactions: necessary_txns_for_burn(account_id, date),
           income_sources:         income_sources,
           recurring_obligations:  obligations,
@@ -36,13 +42,16 @@ module Finanzas
         )
 
         {
-          health_status:        runway[:health_status],
-          commitment_gap:       runway[:commitment_gap],
-          daily_burn:           runway[:daily_necessary_burn],
-          days_to_next_income:  runway[:days_to_next_income],
-          category_alerts:      build_category_alerts(month_txns, budgets, rolling_by_cat),
-          transactions_context: build_transactions_context(today_txns, obligations),
-          burn_vs_plan:         build_burn_vs_plan(month_txns, budgets, rolling_by_cat)
+          health_status:            runway[:health_status],
+          commitment_gap:           runway[:commitment_gap],
+          daily_burn:               runway[:daily_necessary_burn],
+          days_to_next_income:      runway[:days_to_next_income],
+          balance_total:            total_balance,
+          balance_operational:      operational_balance,
+          emergency_fund_reserved:  ef_reserved,
+          category_alerts:          build_category_alerts(month_txns, budgets, rolling_by_cat),
+          transactions_context:     build_transactions_context(today_txns, obligations),
+          burn_vs_plan:             build_burn_vs_plan(month_txns, budgets, rolling_by_cat)
         }
       end
 
@@ -239,6 +248,14 @@ module Finanzas
         month_balance = month_confirmed_balance(account_id, date.month, date.year)
         carryover     = month_confirmed_balance(account_id, date.prev_month.month, date.prev_month.year)
         month_balance + carryover
+      end
+
+      def emergency_fund_reserved(account_id)
+        ::SavingsGoal
+          .where(account_id: account_id)
+          .where("LOWER(name) LIKE ? OR LOWER(name) LIKE ?", "%emergencia%", "%emergency%")
+          .sum(:current_amount)
+          .to_i
       end
 
       def month_confirmed_balance(account_id, month, year)

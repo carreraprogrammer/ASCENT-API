@@ -110,6 +110,7 @@ Rails.application.routes.draw do
 
       get "summary",        to: "summary#show"
       get "budget_context", to: "budget_context#show"
+      get "health_metrics", to: "health_metrics#show"
 
       # Gmail OAuth — Fase 0.6
       post   "auth/gmail",                         to: "gmail_oauth#start"
