@@ -37,6 +37,8 @@ module Finanzas
               income_source_id: transaction.income_source_id,
               sinking_fund_id: transaction.sinking_fund_id,
               structural_match: transaction.structural_match,
+              covers_period_month: transaction.covers_period_month,
+              covers_period_year:  transaction.covers_period_year,
             created_at: transaction.created_at,
             updated_at: transaction.updated_at
           },
