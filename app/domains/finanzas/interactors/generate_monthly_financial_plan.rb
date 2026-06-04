@@ -48,12 +48,15 @@ module Finanzas
             calculated_protected_buffer_amount,
           0
         ].max
+
+        ctx = @ctx_repo.find_by_account(account_id) || {}
+
+        disc_rate = discretionary_rate_for_phase(ctx[:phase])
         calculated_discretionary_limit = [
-          round_to_thousands((calculated_planning_income * 0.10).round),
+          round_to_thousands((calculated_planning_income * disc_rate).round),
           calculated_available_after_fixed
         ].min
 
-        ctx = @ctx_repo.find_by_account(account_id) || {}
         calculated_overflow_rule = infer_overflow_rule(ctx[:phase])
         calculated_reward_pct = ctx[:reward_pct] || 5
         calculated_debt_strategy = ctx[:strategy]
@@ -107,6 +110,8 @@ module Finanzas
             { name: source[:name], reliability_score: source[:reliability_score] || 50 }
           },
           weighted_variable_income: weighted_variable_income,
+          discretionary_rate_pct: (disc_rate * 100).round(1),
+          financial_phase: ctx[:phase],
           generated_from: "income_sources",
           generated_at: Time.current.iso8601
         }
@@ -144,6 +149,20 @@ module Finanzas
         return !VARIABLE_CLASSIFICATIONS.include?(classification) if classification.present?
 
         !source[:is_variable]
+      end
+
+      # Tasa de gasto discrecional según fase financiera.
+      # Basado en metodologías CFP + Sethi CSP (ver specs/research/metodologias-coaching-financiero.md).
+      # debt_payoff: restrictivo — cada peso libre va a deuda.
+      # emergency_fund/investing/wealth_building: progresivamente más holgura.
+      def discretionary_rate_for_phase(phase)
+        case phase
+        when "debt_payoff"    then 0.15
+        when "emergency_fund" then 0.20
+        when "investing"      then 0.25
+        when "wealth_building" then 0.30
+        else 0.15  # conservador si no hay fase configurada
+        end
       end
 
       def infer_overflow_rule(phase)
