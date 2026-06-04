@@ -69,10 +69,11 @@ module Finanzas
         ef_goal    = goals.find { |g| g.name.to_s =~ /emergencia|emergency/i }
         ef_balance = ef_goal&.current_amount.to_i
 
-        # Bare-bones = obligaciones que NO son pagos de deuda
-        bare_bones = obligations
-          .reject { |o| o.source_type == "Debt" }
-          .sum { |o| o.amount.to_i }
+        # Bare-bones = TODAS las obligaciones activas, incluyendo mínimos de deuda.
+        # En una emergencia real (pérdida de ingreso) los mínimos de deuda
+        # también hay que pagarlos — en Colombia, no pagarlos reporta a DataCrédito
+        # y genera intereses de mora que empeoran la situación.
+        bare_bones = obligations.sum { |o| o.amount.to_i }
 
         target_1m = bare_bones
         target_3m = bare_bones * 3
