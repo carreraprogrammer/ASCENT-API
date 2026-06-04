@@ -202,6 +202,8 @@ module Finanzas
             recurring_obligation_id: record.recurring_obligation_id,
             income_source_id: record.income_source_id,
             sinking_fund_id: record.sinking_fund_id,
+            covers_period_month: record.covers_period_month,
+            covers_period_year:  record.covers_period_year,
             created_at: record.created_at,
           updated_at: record.updated_at
         )
