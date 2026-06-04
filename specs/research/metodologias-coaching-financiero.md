@@ -21,17 +21,21 @@ Antes de seguir montando features, necesitamos saber que los cálculos y el razo
 
 ### Cuadro comparativo rápido
 
-| Autor / Sistema | País | Audiencia estimada | Filosofía central | Confiabilidad |
-|-----------------|------|--------------------|-------------------|---------------|
-| Dave Ramsey | EE.UU. | ~20M personas, 10M libros | Eliminar deuda, vivir sin crédito | ⭐⭐⭐⭐ (alta en deuda, baja en inversión) |
-| Jesse Mecham (YNAB) | EE.UU. | ~3M usuarios activos | Zero-based budgeting, conciencia del dinero | ⭐⭐⭐⭐⭐ (universal) |
-| Ramit Sethi | EE.UU. | ~1M suscriptores, NYT bestseller | Automatización + gasto consciente | ⭐⭐⭐⭐ (mejor en clase media-alta) |
-| CFP Board (estándar) | EE.UU./global | ~100K planificadores certificados | Planificación integral por objetivos | ⭐⭐⭐⭐⭐ (más riguroso, menos accesible) |
-| Morgan Housel | EE.UU./global | ~4M libros vendidos | Psicología del dinero, comportamiento | ⭐⭐⭐⭐⭐ (universalmente aplicable) |
-| Vicki Robin | EE.UU. | ~1M libros (clásico desde 1992) | Soberanía financiera, suficiencia | ⭐⭐⭐⭐ (mejor en planificación a largo plazo) |
-| Sofía Macías | México | ~500K lectores | Educación financiera accesible para LatAm | ⭐⭐⭐⭐ (muy aplicable a LatAm) |
-| Carlos Devis | Colombia | ~200K seguidores | Dinero, propósito y libertad financiera | ⭐⭐⭐ (LatAm, más filosófico) |
-| Robert Kiyosaki | EE.UU. | ~32M libros vendidos | Activos vs. pasivos, mentalidad de inversor | ⭐⭐ (conceptos útiles, consejo específico débil) |
+| Autor / Sistema | País | Audiencia estimada | Filosofía central | Score |
+|-----------------|------|--------------------|-------------------|-------|
+| Dave Ramsey | EE.UU. | 18M oyentes semanales, 10M+ libros | Eliminar deuda, vivir sin crédito | 6.5/10 |
+| Jesse Mecham (YNAB) | EE.UU. | ~3M usuarios activos | Zero-based budgeting, conciencia del dinero | 8/10 |
+| Ramit Sethi | EE.UU. | 42K+ estudiantes pagos, NYT bestseller | Automatización + gasto consciente | 7.5/10 |
+| CFP Board (estándar) | EE.UU./global | ~200K planificadores certificados | Planificación integral por objetivos | 9/10 |
+| Morgan Housel | EE.UU./global | 4M+ libros en 50+ idiomas | Psicología del dinero, comportamiento | 9/10 |
+| Vicki Robin | EE.UU. | 1.5M libros en 24 idiomas | Soberanía financiera, suficiencia | 7/10 |
+| Carl Richards (CFP) | EE.UU./global | NYT semanal 10 años | Behavior Gap, brecha conocimiento-acción | 8/10 |
+| Sofía Macías | México | ~500K lectores | Educación financiera accesible para LatAm | 7.5/10 |
+| Jannese Torres | EE.UU. (puertorriqueña) | Podcast #1 finanzas para latinas | Independencia financiera para LatAm en EE.UU. | 7.5/10 |
+| Beatriz Acevedo (SUMA) | EE.UU. (mexicana) | Respaldada por JPMorgan | Inclusión financiera LatAm, cultura > idioma | 8/10 |
+| Carlos Devis | Colombia | 1M+ YouTube, 500K+ en programas | Real estate LatAm, mindset de abundancia | 6.5/10 |
+| Suze Orman | EE.UU. | 10 NYT bestsellers, CNBC 2002–2015 | Seguridad financiera, independencia femenina | 5/10 |
+| Robert Kiyosaki | EE.UU. | 32M libros vendidos | Activos vs. pasivos, mentalidad de inversor | 3.5/10 |
 
 ---
 
@@ -91,6 +95,18 @@ Antes de seguir montando features, necesitamos saber que los cálculos y el razo
 - La familia como sistema financiero extendido (préstamos a familiares, gastos compartidos) es una variable real.
 **Confiabilidad para nuestro contexto:** Alta. Es la fuente más calibrada culturalmente para nuestro usuario.
 
+#### Jannese Torres (Yo Quiero Dinero)
+**Credenciales:** Latina puertorriqueña-americana. Creadora de *Yo Quiero Dinero* — el podcast #1 de finanzas personales para latinas en EE.UU. Colaboradora de CNBC. Empezó como empleada corporativa que perdió su trabajo y diversificó ingresos como respuesta.
+**Por qué importa para nuestro contexto:** Es la voz más calibrada para las barreras específicas del usuario LatAm: brecha de riqueza sistémica, primera generación construyendo patrimonio, culpa por "abandonar" a la familia económicamente, dinámicas del "familismo" (obligaciones financieras con familia extendida que compiten con metas personales). Su tono es explícitamente libre de vergüenza.
+**Insight crítico para el agente:** El familismo — la obligación cultural de apoyar económicamente a familia extendida — es una variable financiera real que muchas apps ignoran. Para muchos usuarios LatAm, enviar remesas o prestar a familiares no es un "gasto discrecional" sino una obligación cultural tan real como el arriendo. El agente debe reconocer esto sin juzgarlo.
+**Confiabilidad para nuestro contexto:** Alta. Referencia directa para diseñar el tono y los flujos de onboarding.
+
+#### Beatriz Acevedo (SUMA Wealth)
+**Credenciales:** Ejecutiva de medios latina ganadora de Emmy. Co-fundadora y CEO de SUMA Wealth — empresa de inclusión financiera para la comunidad latina en EE.UU., respaldada por JPMorgan Chase.
+**Insight más importante para nuestro producto:** *"The secret sauce is culture, not language."* La educación financiera falla a los latinos no por el idioma sino por el contexto cultural. Traducir una app de finanzas al español sin adaptar los supuestos culturales produce una app que nadie usa. SUMA usa gamificación (Dinero Gym), entretenimiento como primer gancho, y recompensas learn-to-earn basadas en blockchain.
+**Lección para Daniel15K:** Si el usuario de tu app viene de un contexto LatAm, los supuestos de los frameworks anglosajones (sistema bancario accesible, desconfianza zero en el crédito, familia como unidad económica independiente) no aplican directamente. El coaching debe hablar el idioma cultural, no solo el idioma del dinero.
+**Confiabilidad para nuestro contexto:** Alta en diseño de producto para LatAm. No ofrece metodología financiera propia, sino principios de producto.
+
 ---
 
 ## 2. Fórmulas Matemáticas Fundamentales
@@ -111,17 +127,23 @@ Rangos (Sethi / CFP):
 
 *Gastos fijos = `recurring_obligations` de tipo committed + minimum debt payments*
 
-#### Ratio de deuda al ingreso (DTI)
+#### Ratio de deuda al ingreso (DTI) — Regla 28/36
 ```
-dti_total = (suma_pagos_mensuales_deuda / ingreso_bruto_mensual) × 100
+Versión 1 — Front-End DTI (solo vivienda):
+  front_end_dti = pagos_mensuales_vivienda / ingreso_bruto_mensual × 100
+  Umbral: ≤ 28% (estándar hipotecario Fannie Mae / CFP)
 
-Umbrales hipotecarios (Fannie Mae / CFP):
-  ≤ 28% → housing-only DTI — línea para calificar hipoteca
-  ≤ 36% → back-end DTI saludable
-  37–43% → límite máximo para préstamos convencionales
-  > 43%  → zona de riesgo de default
+Versión 2 — Back-End DTI (toda la deuda):
+  back_end_dti = todos_pagos_mensuales_deuda / ingreso_bruto_mensual × 100
+  Umbral saludable: ≤ 36%
+  Límite máximo préstamos convencionales: ≤ 43%
+  Zona de riesgo de default: > 43%
 
-Para contexto LatAm (sin hipoteca):
+La Regla 28/36: vivienda ≤ 28% Y deuda total ≤ 36% del ingreso BRUTO.
+IMPORTANTE: el denominador es ingreso BRUTO — distinto al ratio_consumo
+que usa ingreso NETO porque mide estrés real de caja.
+
+Para contexto LatAm (sin hipoteca, denominador bruto):
   ≤ 20% → zona segura
   21–35% → zona de advertencia
   > 35%  → zona de estrés — prioridad de reducción
@@ -141,16 +163,25 @@ Umbrales (CFP):
 
 #### Cobertura del fondo de emergencia
 ```
-meses_cobertura = activos_liquidos / gasto_mensual_base
+meses_cobertura = activos_liquidos / gasto_esencial_mensual
 
-Gasto mensual base = recurring_obligations (activos) + necesidades básicas estimadas
+IMPORTANTE — dos denominadores posibles:
+  (a) Gasto total mensual (fácil de calcular, sobreestima el fondo necesario)
+  (b) Gasto esencial bare-bones (correcto según CFP): solo arriendo/hipoteca,
+      servicios, alimentos básicos, seguros, mínimos de deuda, transporte al trabajo.
+      En emergencia, el gasto discrecional se detiene — no necesitas financiarlo
+      desde el fondo.
 
-Umbrales:
+Diferencia real: si gastos totales = $4M/mes pero bare-bones = $2.8M/mes,
+  fondo objetivo (6 meses) = $16.8M, no $24M.
+
+Umbrales (CFP estándar, usando bare-bones):
   0 meses    → sin protección — máxima urgencia
   1–2 meses  → mínimo — un evento puede desestabilizar
-  3 meses    → suficiente para la mayoría de situaciones
+  3 meses    → suficiente para empleo estable con ingreso dual
   4–6 meses  → óptimo — recomendación CFP/Ramsey
-  > 6 meses  → sobreprotegido — dinero podría trabajar mejor
+  6–9 meses  → recomendado para ingreso variable o freelance
+  > 9 meses  → para dueños de negocio o alto riesgo laboral
 ```
 
 ---
@@ -229,6 +260,17 @@ Benchmarks:
   > 20%  → excelente — aceleración significativa
   > 25%  → FIRE track — independencia financiera acelerada
 ```
+
+**Nota crítica:** El 15% de Fidelity asume: inicio a los 25 años, retiro a los 67, mismo nivel de vida. Cada década de retraso duplica aproximadamente la tasa requerida.
+
+**Milestones de retiro por edad (Fidelity, ampliamente aceptados):**
+| Edad | Meta de ahorro previsional |
+|------|---------------------------|
+| 30   | 1× ingreso anual actual |
+| 40   | 3× ingreso anual actual |
+| 50   | 6× ingreso anual actual |
+| 60   | 8× ingreso anual actual |
+| 67   | 10× ingreso anual actual |
 
 #### Contribución mensual necesaria para una meta
 ```
@@ -380,6 +422,19 @@ Morgan Housel, Ramsey, Robin, Sethi — todos coinciden: el plan que se ejecuta 
 
 ---
 
+### NC-9: Capturar el match del empleador antes de cualquier otra decisión de inversión
+Si el empleador hace matching de aportes previsionales, no capturarlo equivale a rechazar un retorno del 50–100% garantizado. Ninguna tasa de deuda ni rendimiento de inversión compite con eso.
+
+| Framework | Postura |
+|-----------|---------|
+| Ramsey | Baby Step 4 incluye el match como parte del 15% de inversión |
+| Sethi | Primer peldaño de su escalera de inversión — antes que cualquier otra cosa |
+| CFP | El match es retorno garantizado — capturarlo es obligatorio antes de pagar deuda moderada |
+
+**Nota para contexto colombiano:** El equivalente es el esquema de ahorro voluntario pensional (AFC + FPV). Aplica el mismo principio aunque los instrumentos sean diferentes.
+
+---
+
 ## 4. Mindset del Agente — Traducción a Comportamiento
 
 Esta sección traduce el mindset de los mejores coaches a reglas concretas de comportamiento para Brain.
@@ -447,9 +502,77 @@ Basados en el análisis de los frameworks, el agente opera en tres modos según 
 
 ---
 
-### 4.4 Cómo manejar la brecha conocimiento-acción
+### 4.4 El problema de fondo: por qué el conocimiento no cambia comportamiento
 
-El mayor reto en coaching financiero no es que la gente no sepa qué hacer — es que no lo hace. Morgan Housel y Carl Richards (Behavior Gap) coinciden: la brecha entre saber y hacer es conductual, no informativa.
+**El hallazgo más importante de toda la investigación:**
+
+Un meta-análisis de 201 estudios (*Fernandes, Lynch, Netemeyer, Psychological Science, 2014*) encontró que la **educación financiera explica solo el 0.1% de la variación en comportamiento financiero**. El 99.9% restante lo explican psicología, hábito, influencia del entorno, timing, y circunstancias.
+
+Implicación directa: Daniel15K no puede ser principalmente un motor de educación. Debe ser un motor de diseño de comportamiento.
+
+**El Behavior Gap cuantificado (DALBAR Research):**
+El fondo de acciones promedio de EE.UU. retornó ~10% anual en 1993–2013. El inversionista promedio en ese mismo fondo ganó solo **3.7% anual** — la diferencia (6.3 puntos) se explica puramente por errores conductuales: vender en caídas, comprar en máximos, abandonar la estrategia.
+
+---
+
+### 4.5 La entrevista motivacional (MI) — metodología de comportamiento aplicada
+
+La entrevista motivacional (Miller & Rollnick, 1991) es el método basado en evidencia más adoptado en coaching financiero profesional. AFCPE y Money Quotient la enseñan a todos sus CFPs certificados.
+
+**Premisa central:** La motivación para cambiar viene del cliente, no del coach. El coach crea las condiciones para que el cliente encuentre sus propias razones para cambiar.
+
+**Los 4 procesos MI:**
+1. **Engaging** — construir confianza y seguridad. El cliente solo es honesto cuando se siente seguro.
+2. **Focusing** — reducir a la conducta o meta que el cliente más quiere cambiar.
+3. **Evoking** — extraer las razones del cliente para el cambio (no las del coach).
+4. **Planning** — desarrollar el plan colaborativamente.
+
+**OARS — Las 4 habilidades conversacionales:**
+- **O**pen-ended questions: *"¿Qué significaría para ti salir de deudas?"* (no: "¿Quieres salir de deudas?")
+- **A**ffirmations: Reconocer genuinamente fortalezas y esfuerzos: *"Ya tomaste el paso difícil de registrar esto."*
+- **R**eflective listening: Reflejar lo que el usuario dijo para demostrar que fue escuchado.
+- **S**ummaries: Integrar lo dicho para mostrar progreso y hacer visible la ambivalencia.
+
+**Change talk vs. Sustain talk:**
+- **Change talk** = lo que queremos reforzar: *"Quiero ser libre de deuda"*, *"Sé que necesito hacer algo"*
+- **Sustain talk** = lo que queremos reflejar sin amplificar: *"Pero es muy difícil"*, *"Lo he intentado antes"*
+
+Regla del agente: reforzar change talk, no ignorar sustain talk. *"Entiendo que es difícil — ¿qué haría este mes más manejable?"*
+
+**Ambivalencia es normal.** Toda persona que quiere cambiar simultáneamente quiere quedarse igual. El agente no pelea con la ambivalencia — la explora: *"¿Qué te frena más de empezar a atacar esta deuda?"*
+
+---
+
+### 4.6 El ciclo de vergüenza financiera — el riesgo más subestimado
+
+**Hallazgo crítico para el diseño del agente:**
+
+Un estudio con 9,000+ participantes documentó el ciclo de vergüenza financiera:
+```
+Dificultad financiera → Vergüenza → Evitación → Peores decisiones → Mayor dificultad → Más vergüenza
+```
+
+**Vergüenza ≠ Culpa:**
+- **Culpa** = "hice algo malo" → motiva reparación
+- **Vergüenza** = "soy malo/a" → motiva esconderse y paralizar
+
+Las consecuencias de vergüenza financiera:
+1. El usuario deja de abrir estados de cuenta y tarjetas
+2. Evita buscar ayuda hasta que la situación es mucho peor
+3. Toma decisiones más riesgosas intentando "escapar" rápido
+4. Abandona la app
+
+**La trampa de Ramsey:** Su tono de reproche en radio intensifica la vergüenza. La metodología Baby Steps funciona *a pesar* de su tono, no gracias a él. Para una app de uso diario, ese tono es letal para la retención.
+
+**Reglas anti-vergüenza para Brain:**
+- Normalizar antes que analizar: *"Esto pasa muy seguido con gastos de fin de semana."*
+- Nunca decir "deberías haber": el pasado no es accionable.
+- Si el usuario se aleja del plan, re-enganchar sin juicio: *"¿Quieres ver dónde estamos y ajustamos desde aquí?"*
+- Celebrar el hecho de registrar, no solo el resultado del registro.
+
+---
+
+### 4.7 Cómo manejar la brecha conocimiento-acción
 
 **Estrategias del agente para cerrar la brecha:**
 
@@ -462,6 +585,10 @@ El mayor reto en coaching financiero no es que la gente no sepa qué hacer — e
 4. **Aumentar fricción en la dirección incorrecta**: Señalar el costo real antes de confirmar, sin bloquear. *"Esto llevaría el gasto discrecional al 94% del presupuesto. ¿Confirmamos?"*
 
 5. **Ventanas de riesgo** (risk windows): Hay momentos donde el usuario es más vulnerable al gasto impulsivo (día de pago, fin de semana, estrés laboral). El agente puede aprender estos patrones del historial y ser más atento en esos momentos.
+
+6. **Just-in-time**: Información relevante en el momento de la decisión, no en tutoriales de onboarding. El conocimiento enseñado en el momento equivocado se olvida.
+
+7. **Identidad antes que comportamiento**: *"Eres el tipo de persona que construye un colchón antes de gastar"* — la identidad declarada precede y sostiene el comportamiento.
 
 ---
 
@@ -495,7 +622,25 @@ El mayor reto en coaching financiero no es que la gente no sepa qué hacer — e
 
 ---
 
-## 6. Lecturas de Referencia
+## 6. Síntesis de Comportamiento — Tabla de Factores
+
+Lo que realmente hace que alguien cambie su comportamiento financiero (síntesis de toda la investigación):
+
+| Factor | Mecanismo | Implicación para Brain |
+|--------|-----------|------------------------|
+| **Identidad shift** | "Soy alguien que ahorra" precede el ahorro | Reforzar identidad financiera en cada interacción |
+| **Victorias tempranas** | Dopamina del progreso sostiene el esfuerzo | Prescribir snowball para usuarios sin historial de consistencia |
+| **Reducción de vergüenza** | Vergüenza → evitación → peores resultados | Normalizar siempre, nunca juzgar; afirmar antes de analizar |
+| **Just-in-time** | Información en el momento de decisión, no en tutoriales | Mostrar el costo real cuando se registra el gasto, no en resúmenes |
+| **Automatización** | Elimina la variable de fuerza de voluntad | El paso siguiente siempre debe incluir una opción de automatizar |
+| **Accountability** | Compromisos declarados se cumplen más | Check-ins explícitos, preguntar sobre compromisos anteriores |
+| **Claridad del próximo paso** | La fatiga de decisión mata el follow-through | Una acción clara por turno, nunca un plan completo de una vez |
+| **Reconocer ambivalencia** | Ignorar la resistencia la amplifica | Decir "esto es difícil" antes de prescribir cambio |
+| **Motivación intrínseca** | El cambio desde adentro dura más | Preguntar "¿para qué quieres esto?" antes de el "cómo" |
+
+---
+
+## 7. Lecturas de Referencia
 
 | Obra | Autor | Por qué leerla |
 |------|-------|----------------|
@@ -506,4 +651,7 @@ El mayor reto en coaching financiero no es que la gente no sepa qué hacer — e
 | A Simple Path to Wealth | JL Collins | Inversión indexada long-term |
 | Pequeño Cerdo Capitalista | Sofía Macías | Contexto LatAm directo |
 | The Behavior Gap | Carl Richards | Brecha conocimiento-acción ilustrada |
+| Yo Quiero Dinero (podcast) | Jannese Torres | Perspectiva LatAm, familismo, primera generación |
+| SUMA Wealth (plataforma) | Beatriz Acevedo | Diseño de producto para usuarios LatAm |
 | CFP Board — Financial Planning Process | CFP Board | Estándar profesional de diagnóstico |
+| Motivational Interviewing | Miller & Rollnick | Base científica del tono del agente |
