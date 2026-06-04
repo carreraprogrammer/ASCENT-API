@@ -10,9 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20260513) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "account_progress", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "xp", default: 0, null: false
+    t.integer "level", default: 0, null: false
+    t.integer "streak_days", default: 0, null: false
+    t.date "last_activity_date"
+    t.decimal "readiness_score", precision: 5, scale: 2, default: "0.0", null: false
+    t.string "avatar_seed", default: "", null: false
+    t.boolean "bypass_readiness", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_account_progress_on_account_id", unique: true
+  end
 
   create_table "accounts", force: :cascade do |t|
     t.bigint "owner_user_id", null: false
@@ -23,25 +37,27 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "financial_level", default: 1, null: false
+    t.string "telegram_chat_id"
+    t.bigint "confirmed_balance", default: 0, null: false
     t.index ["owner_user_id"], name: "index_accounts_on_owner_user_id"
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
   end
 
   create_table "agent_insights", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.integer "period_month", null: false
-    t.integer "period_year", null: false
     t.datetime "generated_at", null: false
-    t.jsonb "key_metrics_snapshot", default: {}, null: false
-    t.jsonb "recommendations", default: {}, null: false
-    t.text "reasoning"
-    t.jsonb "signals", default: [], null: false
-    t.integer "safe_to_deploy_amount"
-    t.string "trigger_reason"
+    t.text "agent_reasoning"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "period_year", "period_month"], name: "index_agent_insights_on_account_period"
+    t.string "insightable_type"
+    t.bigint "insightable_id"
+    t.string "insight_kind", default: "tip", null: false
+    t.string "title", default: "", null: false
+    t.text "body", default: "", null: false
+    t.string "status", default: "new", null: false
+    t.index ["account_id", "status"], name: "index_agent_insights_on_account_and_status"
     t.index ["account_id"], name: "index_agent_insights_on_account_id"
+    t.index ["insightable_type", "insightable_id"], name: "index_agent_insights_on_insightable"
   end
 
   create_table "agent_types", force: :cascade do |t|
@@ -117,6 +133,17 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
     t.index ["user_id"], name: "index_categories_on_user_id"
   end
 
+  create_table "chat_messages", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "channel", default: "app", null: false
+    t.string "role", null: false
+    t.text "content", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "channel", "created_at"], name: "index_chat_messages_on_account_id_and_channel_and_created_at"
+    t.index ["account_id"], name: "index_chat_messages_on_account_id"
+  end
+
   create_table "debts", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "name", null: false
@@ -154,6 +181,50 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
     t.index ["service_account_id"], name: "index_delegations_on_service_account_id"
     t.index ["user_id", "account_id", "service_account_id", "agent_type_id"], name: "index_delegations_on_owner_and_actor_and_type", unique: true
     t.index ["user_id"], name: "index_delegations_on_user_id"
+  end
+
+  create_table "email_connections", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "provider", default: "gmail", null: false
+    t.text "access_token_ciphertext", null: false
+    t.text "refresh_token_ciphertext", null: false
+    t.datetime "expires_at"
+    t.datetime "connected_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "bank_senders"
+    t.index ["account_id"], name: "index_email_connections_on_account_id", unique: true
+  end
+
+  create_table "error_reports", force: :cascade do |t|
+    t.string "error_hash", null: false
+    t.string "exception_class", null: false
+    t.text "message", null: false
+    t.text "stacktrace", null: false
+    t.string "endpoint"
+    t.string "http_method"
+    t.jsonb "params", default: {}
+    t.integer "occurrence_count", default: 1, null: false
+    t.string "status", default: "pending", null: false
+    t.string "pr_url"
+    t.jsonb "pending_fix"
+    t.datetime "first_seen_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["error_hash"], name: "index_error_reports_on_error_hash", unique: true
+    t.index ["status"], name: "index_error_reports_on_status"
+  end
+
+  create_table "feature_flags", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "feature_key", null: false
+    t.string "status", default: "locked", null: false
+    t.datetime "unlocked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "feature_key"], name: "index_feature_flags_on_account_id_and_feature_key", unique: true
+    t.index ["account_id"], name: "index_feature_flags_on_account_id"
   end
 
   create_table "financial_contexts", force: :cascade do |t|
@@ -250,6 +321,23 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
     t.index ["account_id", "year", "month"], name: "index_monthly_financial_plans_on_account_and_period", unique: true
     t.index ["account_id"], name: "index_monthly_financial_plans_on_account_id"
     t.index ["user_id"], name: "index_monthly_financial_plans_on_user_id"
+  end
+
+  create_table "night_analyses", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.date "analysis_date", null: false
+    t.string "health_status", null: false
+    t.integer "commitment_gap", null: false
+    t.integer "daily_burn", null: false
+    t.integer "days_to_next_income"
+    t.jsonb "category_alerts", default: [], null: false
+    t.jsonb "transactions_context", default: {}, null: false
+    t.jsonb "burn_vs_plan", default: [], null: false
+    t.text "agent_reasoning"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "analysis_date"], name: "index_night_analyses_on_account_and_date", unique: true
+    t.index ["account_id"], name: "index_night_analyses_on_account_id"
   end
 
   create_table "pending_actions", force: :cascade do |t|
@@ -513,6 +601,18 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
     t.index ["refresh_token_hash"], name: "index_users_on_refresh_token_hash"
   end
 
+  create_table "xp_events", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "action_type", null: false
+    t.integer "xp_amount", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_xp_events_on_account_id_and_created_at"
+    t.index ["account_id"], name: "index_xp_events_on_account_id"
+  end
+
+  add_foreign_key "account_progress", "accounts"
   add_foreign_key "accounts", "users", column: "owner_user_id"
   add_foreign_key "agent_insights", "accounts"
   add_foreign_key "agent_ui_events", "accounts"
@@ -523,12 +623,15 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
   add_foreign_key "budgets", "users"
   add_foreign_key "categories", "accounts"
   add_foreign_key "categories", "users"
+  add_foreign_key "chat_messages", "accounts"
   add_foreign_key "debts", "accounts"
   add_foreign_key "debts", "users"
   add_foreign_key "delegations", "accounts"
   add_foreign_key "delegations", "agent_types"
   add_foreign_key "delegations", "service_accounts"
   add_foreign_key "delegations", "users"
+  add_foreign_key "email_connections", "accounts"
+  add_foreign_key "feature_flags", "accounts"
   add_foreign_key "financial_contexts", "accounts"
   add_foreign_key "financial_contexts", "users"
   add_foreign_key "income_source_schedules", "income_sources"
@@ -536,6 +639,7 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
   add_foreign_key "income_sources", "users"
   add_foreign_key "monthly_financial_plans", "accounts"
   add_foreign_key "monthly_financial_plans", "users"
+  add_foreign_key "night_analyses", "accounts"
   add_foreign_key "pending_actions", "accounts"
   add_foreign_key "pending_actions", "users"
   add_foreign_key "planned_expenses", "accounts"
@@ -565,4 +669,5 @@ ActiveRecord::Schema[8.0].define(version: 20260513) do
   add_foreign_key "user_milestones", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
+  add_foreign_key "xp_events", "accounts"
 end
