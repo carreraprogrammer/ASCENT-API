@@ -8,6 +8,7 @@ module Finanzas
                     :year, :month, :payment_source, :credit_card_status,
                     :debt_id, :recurring_obligation_id, :income_source_id,
                     :sinking_fund_id,
+                    :covers_period_month, :covers_period_year,
                     :created_at, :updated_at
       attr_accessor :structural_match
 
@@ -36,6 +37,8 @@ module Finanzas
           @recurring_obligation_id     = attrs[:recurring_obligation_id]
           @income_source_id            = attrs[:income_source_id]
           @sinking_fund_id              = attrs[:sinking_fund_id]
+          @covers_period_month         = attrs[:covers_period_month]
+          @covers_period_year          = attrs[:covers_period_year]
           @created_at                  = attrs[:created_at]
         @updated_at                  = attrs[:updated_at]
       end
