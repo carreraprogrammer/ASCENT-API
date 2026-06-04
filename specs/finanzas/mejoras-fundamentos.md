@@ -17,7 +17,7 @@
 | 5 | Tasa de ahorro mensual como % del ingreso | API | Bajo | ✅ 2026-06-03 |
 | 6 | DTI (debt-to-income ratio) calculado | API | Medio | ✅ 2026-06-03 |
 | 7 | Age of Money (días promedio ingreso→gasto) | API | Medio | ✅ 2026-06-03 |
-| 8 | Refactor `summary_controller` → interactores con tests | API | Alto | ⏳ Pendiente |
+| 8 | Refactor `summary_controller` → `BurnRateCalculator` extraído | API | Alto | ✅ 2026-06-03 (parcial: 782→591 líneas) |
 | 9 | Prompt nocturno: fase de reconciliación de pagos anticipados | Agente | Nulo | ✅ 2026-06-03 |
 | 10 | Migración `covers_period_month/year` en transactions | API+DB | Medio | ⏳ Pendiente |
 
