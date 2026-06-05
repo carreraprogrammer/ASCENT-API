@@ -20,14 +20,15 @@ module Finanzas
 
       def map_to_entity(record)
         {
-          id:                  record.id,
-          user_id:             record.user_id,
-          phase:               record.phase,
-          strategy:            record.strategy,
-          reward_pct:          record.reward_pct,
-          notes:               record.notes,
-          debts_confirmed_at:  record.debts_confirmed_at,
-          updated_at:          record.updated_at
+          id:                         record.id,
+          user_id:                    record.user_id,
+          phase:                      record.phase,
+          strategy:                   record.strategy,
+          reward_pct:                 record.reward_pct,
+          monthly_goal_contribution:  record.monthly_goal_contribution,
+          notes:                      record.notes,
+          debts_confirmed_at:         record.debts_confirmed_at,
+          updated_at:                 record.updated_at
         }
       end
     end

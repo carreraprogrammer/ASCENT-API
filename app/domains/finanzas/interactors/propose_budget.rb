@@ -27,19 +27,20 @@ module Finanzas
       def call(account_id:, month:, year:, include_variable: false)
         ctx = @ctx_builder.call(account_id: account_id, month: month, year: year)
 
-        income            = ctx[:income]
-        planning_income   = income[:fixed_total] + (include_variable ? income[:variable_projection] : 0)
-        obligations_total = ctx[:obligations][:total]
-        debt_total        = ctx[:debt_minimums][:total]
-        sinking_total     = ctx[:sinking_funds].sum { |sf| sf[:monthly_contribution].to_i }
-        committed_total   = obligations_total + debt_total + sinking_total
-        free_margin       = planning_income - committed_total
-        has_history       = ctx[:spending_history].any?
+        income              = ctx[:income]
+        planning_income     = income[:fixed_total] + (include_variable ? income[:variable_projection] : 0)
+        obligations_total   = ctx[:obligations][:total]
+        debt_total          = ctx[:debt_minimums][:total]
+        sinking_total       = ctx[:sinking_funds].sum { |sf| sf[:monthly_contribution].to_i }
+        goal_contribution   = ctx[:goal_contribution][:amount]
+        # Goal contribution is treated identically to any recurring obligation —
+        # it reduces free_margin before discretionary spending is allocated.
+        committed_total     = obligations_total + debt_total + sinking_total + goal_contribution
+        free_margin         = planning_income - committed_total
+        has_history         = ctx[:spending_history].any?
 
-        # Phase-aware: reserve surplus for the user's goal before distributing to discretionary.
-        # This ensures the plan reflects the financial objective, not just historical spending.
-        phase           = ctx.dig(:financial_context, :phase)
-        reward_pct      = ctx.dig(:financial_context, :reward_pct).to_f
+        phase        = ctx.dig(:financial_context, :phase)
+        reward_pct   = ctx.dig(:financial_context, :reward_pct).to_f
         surplus_target  = compute_surplus_target(phase, reward_pct, planning_income, free_margin)
         effective_margin = [ free_margin - surplus_target, 0 ].max
 
@@ -58,11 +59,13 @@ module Finanzas
             variable_sources:    income[:variable_sources]
           },
           committed: {
-            obligations_total:   obligations_total,
-            debt_minimums_total: debt_total,
-            sinking_funds_total: sinking_total,
-            total:               committed_total,
-            by_category:         ctx[:obligations][:by_category]
+            obligations_total:      obligations_total,
+            debt_minimums_total:    debt_total,
+            sinking_funds_total:    sinking_total,
+            goal_contribution:      goal_contribution,
+            goal_contribution_label: ctx[:goal_contribution][:label],
+            total:                  committed_total,
+            by_category:            ctx[:obligations][:by_category]
           },
           planned_expenses:     ctx[:planned_expenses],
           sinking_funds:        ctx[:sinking_funds],
