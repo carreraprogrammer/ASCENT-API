@@ -59,7 +59,7 @@ Rails.application.routes.draw do
         end
       end
       resources :budgets,              only: [ :index, :create, :update ]
-      resources :monthly_plans,        only: [ :index, :update ] do
+      resources :monthly_plans,        only: [ :index, :update, :destroy ] do
         collection do
           get :current
           get :propose
