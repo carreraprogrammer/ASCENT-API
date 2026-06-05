@@ -63,6 +63,11 @@ module Finanzas
         phase_discount_rate  = compute_phase_discount_rate(phase, reward_pct)
         surplus_target       = compute_wizard_surplus_target(phase, reward_pct, suggested_total)
 
+        # Income available for discretionary/necessary categories after goal commitment.
+        # Goal contribution is treated identically to a recurring obligation — it
+        # reduces the income base before the history/benchmark scaling runs.
+        discretionary_income = [ suggested_total - goal_contribution, 0 ].max
+
         income_section           = build_income_section(income_sources, suggested_total)
         category_rows            = build_category_rows(
           all_categories,
@@ -70,7 +75,7 @@ module Finanzas
           recurring_by_subcategory,
           planned_by_subcategory,
           avg_by_subcategory,
-          suggested_total,
+          discretionary_income,
           confirmed_by_subcategory,
           prev_month_budget_by_subcategory,
           phase_discount_rate
