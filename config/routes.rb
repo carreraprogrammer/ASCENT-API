@@ -136,6 +136,9 @@ Rails.application.routes.draw do
       # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"
       get  "telegram/updates", to: "telegram#updates"
+
+      # Gmail Pub/Sub push (sin JWT — autenticado por token en query param)
+      post "webhooks/gmail", to: "gmail_webhook#create"
     end
   end
 end
