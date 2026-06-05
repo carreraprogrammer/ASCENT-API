@@ -25,10 +25,12 @@ module Finanzas
 
       def initialize(
         income_repo:   Finanzas::Repositories::IncomeSourceRepository.new,
-        category_repo: Finanzas::Repositories::CategoryRepository.new
+        category_repo: Finanzas::Repositories::CategoryRepository.new,
+        ctx_repo:      Finanzas::Repositories::FinancialContextRepository.new
       )
         @income_repo   = income_repo
         @category_repo = category_repo
+        @ctx_repo      = ctx_repo
       end
 
       def call(account_id:, user_id:, month: Date.current.month, year: Date.current.year)
@@ -52,6 +54,14 @@ module Finanzas
         # Previous month's confirmed budget — carry-forward suggestion
         prev_month_budget_by_subcategory = fetch_prev_month_budget_by_subcategory(account_id, month, year)
 
+        # Phase-awareness: discount factor applied to history/benchmark suggestions
+        # in discretionary/social categories so the plan reflects the user's financial goal.
+        fin_ctx            = @ctx_repo.find_by_account(account_id) || {}
+        phase              = fin_ctx[:phase]
+        reward_pct         = fin_ctx[:reward_pct].to_f
+        phase_discount_rate = compute_phase_discount_rate(phase, reward_pct)
+        surplus_target     = compute_wizard_surplus_target(phase, reward_pct, suggested_total)
+
         income_section           = build_income_section(income_sources, suggested_total)
         category_rows            = build_category_rows(
           all_categories,
@@ -61,11 +71,19 @@ module Finanzas
           avg_by_subcategory,
           suggested_total,
           confirmed_by_subcategory,
-          prev_month_budget_by_subcategory
+          prev_month_budget_by_subcategory,
+          phase_discount_rate
         )
         suggested_sinking_funds  = build_suggested_sinking_funds(account_id)
 
-        { income: income_section, categories: category_rows, suggested_sinking_funds: suggested_sinking_funds }
+        {
+          income:                  income_section,
+          categories:              category_rows,
+          suggested_sinking_funds: suggested_sinking_funds,
+          surplus_target:          surplus_target,
+          surplus_target_label:    surplus_target_label(phase),
+          phase:                   phase
+        }
       end
 
       private
@@ -99,7 +117,8 @@ module Finanzas
         avg_by_subcategory,
         income,
         confirmed_by_subcategory = {},
-        prev_month_budget_by_subcategory = {}
+        prev_month_budget_by_subcategory = {},
+        phase_discount_rate = 0
       )
         rows = []
 
@@ -121,7 +140,8 @@ module Finanzas
             income,
             pct,
             confirmed_by_subcategory,
-            prev_month_budget_by_subcategory
+            prev_month_budget_by_subcategory,
+            phase_discount_rate
           )
 
           suggested_total = sub_rows.sum { |s| s[:suggested_amount] }
@@ -148,10 +168,16 @@ module Finanzas
         income,
         benchmark_pct,
         confirmed_by_subcategory = {},
-        prev_month_budget_by_subcategory = {}
+        prev_month_budget_by_subcategory = {},
+        phase_discount_rate = 0
       )
         subcategories = category.subcategories
         return [] if subcategories.empty?
+
+        # Apply phase discount to algorithmic suggestions (history/benchmark) for
+        # flexible categories — so the plan reserves margin for the user's goal.
+        goal_flex_cat = phase_discount_rate > 0 &&
+                        %w[discretionary social].include?(category.category_type.to_s)
 
         category_recurring_total = recurring_by_category[category.id].to_i
         rows = []
@@ -174,7 +200,8 @@ module Finanzas
               source: "recurring",
               locked: true,
               source_of_truth: "recurring_obligations",
-              edit_hint: "Se edita desde gastos recurrentes."
+              edit_hint: "Se edita desde gastos recurrentes.",
+              phase_adjusted: false
             )
           elsif confirmed_amount
             rows << build_subcategory_row(
@@ -184,7 +211,8 @@ module Finanzas
               source: "confirmed_budget",
               locked: false,
               source_of_truth: "budgets",
-              edit_hint: "Monto del plan confirmado para este mes."
+              edit_hint: "Monto del plan confirmado para este mes.",
+              phase_adjusted: false
             )
           elsif planned_amount > 0
             rows << build_subcategory_row(
@@ -194,7 +222,8 @@ module Finanzas
               source: "planned_expense",
               locked: false,
               source_of_truth: "planned_expenses",
-              edit_hint: "Se calcula desde gastos planeados obligatorios."
+              edit_hint: "Se calcula desde gastos planeados obligatorios.",
+              phase_adjusted: false
             )
           elsif prev_month_budget_by_subcategory.key?(sub.id)
             rows << build_subcategory_row(
@@ -204,17 +233,21 @@ module Finanzas
               source: "prev_plan",
               locked: false,
               source_of_truth: "budgets",
-              edit_hint: "Monto del plan del mes anterior. Ajusta si cambió algo."
+              edit_hint: "Monto del plan del mes anterior. Ajusta si cambió algo.",
+              phase_adjusted: false
             )
           elsif avg_by_subcategory.key?(sub.id)
+            raw = avg_by_subcategory[sub.id]
+            adjusted = goal_flex_cat ? (raw * (1 - phase_discount_rate)).round : raw
             rows << build_subcategory_row(
               sub,
-              suggested_amount: avg_by_subcategory[sub.id],
+              suggested_amount: adjusted,
               confidence: "medium",
               source: "history",
               locked: false,
               source_of_truth: "transactions",
-              edit_hint: "Se estima por historial reciente."
+              edit_hint: goal_flex_cat ? "Estimado por historial, ajustado por tu objetivo financiero." : "Se estima por historial reciente.",
+              phase_adjusted: goal_flex_cat
             )
           else
             pending << sub
@@ -235,7 +268,8 @@ module Finanzas
               source: "recurring",
               locked: false,
               source_of_truth: "recurring_obligations",
-              edit_hint: "Monto sugerido por gastos recurrentes de esta categoría."
+              edit_hint: "Monto sugerido por gastos recurrentes de esta categoría.",
+              phase_adjusted: false
             )
           end
         elsif benchmark_pct && income > 0
@@ -243,6 +277,7 @@ module Finanzas
           already_covered = rows.sum { |row| row[:suggested_amount] }
           remaining_benchmark = [ benchmark_total - already_covered, 0 ].max
           per_sub = (remaining_benchmark.to_f / pending.size).round
+          per_sub = goal_flex_cat ? (per_sub * (1 - phase_discount_rate)).round : per_sub
 
           pending.each do |sub|
             rows << build_subcategory_row(
@@ -252,7 +287,8 @@ module Finanzas
               source: "benchmark",
               locked: false,
               source_of_truth: "benchmarks",
-              edit_hint: "Es una referencia inicial; puedes ajustarla."
+              edit_hint: goal_flex_cat ? "Referencia inicial ajustada por tu objetivo financiero." : "Es una referencia inicial; puedes ajustarla.",
+              phase_adjusted: goal_flex_cat
             )
           end
         else
@@ -264,7 +300,8 @@ module Finanzas
               source: "benchmark",
               locked: false,
               source_of_truth: "benchmarks",
-              edit_hint: "Sin historial ni fuente estructural; define un monto inicial."
+              edit_hint: "Sin historial ni fuente estructural; define un monto inicial.",
+              phase_adjusted: false
             )
           end
         end
@@ -272,7 +309,7 @@ module Finanzas
         rows
       end
 
-      def build_subcategory_row(subcategory, suggested_amount:, confidence:, source:, locked:, source_of_truth:, edit_hint:)
+      def build_subcategory_row(subcategory, suggested_amount:, confidence:, source:, locked:, source_of_truth:, edit_hint:, phase_adjusted: false)
         {
           code:             subcategory.code,
           name:             subcategory.name,
@@ -282,8 +319,30 @@ module Finanzas
           source:           source,
           locked:           locked,
           source_of_truth:  source_of_truth,
-          edit_hint:        edit_hint
+          edit_hint:        edit_hint,
+          phase_adjusted:   phase_adjusted
         }
+      end
+
+      def compute_phase_discount_rate(phase, reward_pct)
+        return 0 unless %w[debt_payoff emergency_fund].include?(phase.to_s)
+
+        reward_pct > 0 ? (reward_pct / 100.0) : 0.10
+      end
+
+      def compute_wizard_surplus_target(phase, reward_pct, income)
+        return 0 unless %w[debt_payoff emergency_fund].include?(phase.to_s)
+        return 0 if income <= 0
+
+        rate = reward_pct > 0 ? (reward_pct / 100.0) : 0.10
+        (income * rate).round
+      end
+
+      def surplus_target_label(phase)
+        case phase.to_s
+        when "debt_payoff"    then "Reservado para pago extra de deuda"
+        when "emergency_fund" then "Reservado para fondo de emergencia"
+        end
       end
 
       # ── DB Queries ────────────────────────────────────────────────────────
