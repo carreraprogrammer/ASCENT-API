@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_05_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -159,6 +159,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
     t.text "notes"
     t.jsonb "ai_analysis", default: [], null: false
     t.bigint "account_id"
+    t.date "interest_last_applied_on"
     t.index ["account_id", "status"], name: "index_debts_on_account_id_and_status"
     t.index ["account_id"], name: "index_debts_on_account_id"
     t.index ["user_id", "status"], name: "index_debts_on_user_id_and_status"
@@ -193,7 +194,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "bank_senders"
+    t.string "gmail_address"
+    t.string "gmail_history_id"
+    t.datetime "gmail_watch_expires_at"
     t.index ["account_id"], name: "index_email_connections_on_account_id", unique: true
+    t.index ["gmail_address"], name: "index_email_connections_on_gmail_address", unique: true, where: "(gmail_address IS NOT NULL)"
   end
 
   create_table "error_reports", force: :cascade do |t|
@@ -237,6 +242,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
     t.datetime "updated_at", null: false
     t.bigint "account_id"
     t.datetime "debts_confirmed_at"
+    t.integer "monthly_goal_contribution"
     t.index ["account_id"], name: "index_financial_contexts_on_account_id"
     t.index ["user_id"], name: "index_financial_contexts_on_user_id", unique: true
   end
@@ -407,10 +413,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
     t.bigint "subcategory_id"
     t.string "source_type"
     t.bigint "source_id"
+    t.date "end_date"
     t.index ["account_id", "active"], name: "index_recurring_obligations_on_account_id_and_active"
     t.index ["account_id", "budget_category"], name: "index_recurring_obligations_on_account_budget_category"
     t.index ["account_id"], name: "index_recurring_obligations_on_account_id"
     t.index ["category_id"], name: "index_recurring_obligations_on_category_id"
+    t.index ["end_date"], name: "index_recurring_obligations_on_end_date"
     t.index ["source_type", "source_id"], name: "index_recurring_obligations_on_source"
     t.index ["subcategory_id"], name: "index_recurring_obligations_on_subcategory_id"
     t.index ["user_id", "active"], name: "index_recurring_obligations_on_user_id_and_active"
@@ -539,6 +547,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_121042) do
     t.bigint "recurring_obligation_id"
     t.bigint "income_source_id"
     t.bigint "sinking_fund_id"
+    t.integer "covers_period_month"
+    t.integer "covers_period_year"
+    t.index ["account_id", "covers_period_year", "covers_period_month"], name: "index_transactions_on_account_covers_period", where: "(covers_period_month IS NOT NULL)"
     t.index ["account_id", "debt_id", "year", "month"], name: "index_transactions_on_account_debt_period"
     t.index ["account_id", "income_source_id", "year", "month"], name: "index_transactions_on_account_income_source_period"
     t.index ["account_id", "payment_source", "credit_card_status"], name: "index_transactions_on_account_credit_card_pending", where: "(((payment_source)::text = 'credit_card'::text) AND ((credit_card_status)::text = 'pending'::text))"
