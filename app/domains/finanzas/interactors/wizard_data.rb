@@ -54,12 +54,17 @@ module Finanzas
         # Previous month's confirmed budget — carry-forward suggestion
         prev_month_budget_by_subcategory = fetch_prev_month_budget_by_subcategory(account_id, month, year)
 
-        # Phase-awareness: discount factor applied to history/benchmark suggestions
-        # in discretionary/social categories so the plan reflects the user's financial goal.
         fin_ctx              = @ctx_repo.find_by_account(account_id) || {}
         phase                = fin_ctx[:phase]
         reward_pct           = fin_ctx[:reward_pct].to_f
-        goal_contribution    = fin_ctx[:monthly_goal_contribution].to_i
+        # If manually configured, use it. Otherwise derive from goals/debts automatically.
+        goal_contribution    = if fin_ctx[:monthly_goal_contribution].to_i > 0
+          fin_ctx[:monthly_goal_contribution].to_i
+        else
+          derive_goal_contribution(account_id, phase, suggested_total, recurring_by_category)
+        end
+        goal_contribution_configured = fin_ctx[:monthly_goal_contribution].to_i > 0
+
         phase_discount_rate  = compute_phase_discount_rate(phase, reward_pct)
         surplus_target       = compute_wizard_surplus_target(phase, reward_pct, suggested_total)
 
@@ -90,7 +95,7 @@ module Finanzas
             amount:     goal_contribution,
             label:      surplus_target_label(phase) || "Aporte a objetivo financiero",
             phase:      phase,
-            configured: goal_contribution > 0
+            configured: goal_contribution_configured
           },
           surplus_target:       surplus_target,
           surplus_target_label: surplus_target_label(phase),
@@ -334,6 +339,69 @@ module Finanzas
           edit_hint:        edit_hint,
           phase_adjusted:   phase_adjusted
         }
+      end
+
+      # ── Goal contribution derivation ──────────────────────────────────────
+      #
+      # When the user hasn't explicitly set monthly_goal_contribution, derive it
+      # automatically from the current phase and real financial data.
+      # This ensures the wizard always plans goal-first, not history-first.
+      def derive_goal_contribution(account_id, phase, income, recurring_by_category)
+        return 0 unless %w[emergency_fund debt_payoff].include?(phase.to_s)
+
+        case phase.to_s
+        when "emergency_fund"
+          derive_ef_contribution(account_id, recurring_by_category)
+        when "debt_payoff"
+          derive_debt_contribution(account_id, income)
+        end.to_i
+      end
+
+      # 1 month of essential spending = recurring obligations + debt minimums.
+      # Monthly contribution = gap between that target and current EF balance,
+      # spread over 12 months. Capped at 25% of income so it stays achievable.
+      def derive_ef_contribution(account_id, recurring_by_category)
+        ef_goal = ::SavingsGoal
+          .where(account_id: account_id)
+          .find { |g| g.name.match?(/emergencia|emergency/i) }
+
+        # If there's a savings goal with a computed monthly_contribution_needed, use it.
+        if ef_goal&.monthly_contribution_needed.to_i > 0
+          return round_to_thousands(ef_goal.monthly_contribution_needed)
+        end
+
+        # Fallback: compute from current balance vs 1-month target.
+        # 1-month target = total committed recurring obligations.
+        committed_monthly = recurring_by_category.values.sum.to_i
+        return 0 if committed_monthly <= 0
+
+        current_ef = ef_goal&.current_amount.to_i
+        gap = [ committed_monthly - current_ef, 0 ].max
+        return 0 if gap <= 0
+
+        # Spread over 12 months, round to nearest 50K.
+        monthly = (gap.to_f / 12).ceil
+        round_to_thousands(monthly)
+      end
+
+      # Snowball: focus on the debt with the smallest balance.
+      # Monthly contribution = balance / 12, floored at 100K, capped at 20% of income.
+      def derive_debt_contribution(account_id, income)
+        focal_debt = ::Debt
+          .where(account_id: account_id, status: :active)
+          .order(:current_balance)
+          .first
+
+        return 0 unless focal_debt
+
+        monthly = (focal_debt.current_balance.to_f / 12).ceil
+        monthly = [ monthly, 100_000 ].max
+        monthly = [ monthly, (income * 0.20).to_i ].min
+        round_to_thousands(monthly)
+      end
+
+      def round_to_thousands(amount)
+        ((amount.to_f / 1000).round * 1000).to_i
       end
 
       def compute_phase_discount_rate(phase, reward_pct)
