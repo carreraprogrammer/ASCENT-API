@@ -36,9 +36,16 @@ module Finanzas
         free_margin       = planning_income - committed_total
         has_history       = ctx[:spending_history].any?
 
+        # Phase-aware: reserve surplus for the user's goal before distributing to discretionary.
+        # This ensures the plan reflects the financial objective, not just historical spending.
+        phase           = ctx.dig(:financial_context, :phase)
+        reward_pct      = ctx.dig(:financial_context, :reward_pct).to_f
+        surplus_target  = compute_surplus_target(phase, reward_pct, planning_income, free_margin)
+        effective_margin = [ free_margin - surplus_target, 0 ].max
+
         closed_plans = @plan_repo.last_closed(account_id: account_id, limit: 3)
         last_plan_budgets = extract_last_plan_budgets(closed_plans.first)
-        categories, available = build_categories(ctx, free_margin, has_history, last_plan_budgets)
+        categories, available = build_categories(ctx, effective_margin, has_history, last_plan_budgets)
         historical_patterns = extract_patterns(closed_plans)
 
         {
@@ -62,6 +69,10 @@ module Finanzas
           categories:           categories,
           available_categories: available,
           free_margin:          free_margin,
+          effective_margin:     effective_margin,
+          surplus_target:       surplus_target,
+          surplus_target_label: surplus_target_label(phase),
+          phase:                phase,
           has_history:          has_history,
           mode:                 has_history ? "data_driven" : "provisional",
           warnings:             build_warnings(ctx, free_margin, has_history),
@@ -157,6 +168,22 @@ module Finanzas
               range_hint:    range ? "#{range[:hint]} · #{format_cop(range[:min])}–#{format_cop(range[:max])}" : nil
             }
           end
+      end
+
+      def compute_surplus_target(phase, reward_pct, income, free_margin)
+        return 0 unless %w[debt_payoff emergency_fund].include?(phase.to_s)
+        return 0 if free_margin <= 0
+
+        rate   = reward_pct > 0 ? (reward_pct / 100.0) : 0.10
+        target = (income * rate).round
+        round_to_thousands([ target, free_margin ].min)
+      end
+
+      def surplus_target_label(phase)
+        case phase.to_s
+        when "debt_payoff"     then "Reservado para pago extra de deuda"
+        when "emergency_fund"  then "Reservado para fondo de emergencia"
+        end
       end
 
       def build_warnings(ctx, free_margin, has_history)
