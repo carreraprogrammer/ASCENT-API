@@ -1,6 +1,62 @@
 require "rails_helper"
 
 RSpec.describe RecurringObligation, type: :model do
+  describe "end_date — obligaciones temporales" do
+    let(:user)    { create(:user) }
+    let(:account) { user.default_account }
+    let(:category) { create(:category) }
+
+    def base_attrs
+      { user: user, account: account, category: category, name: "Tratamiento obesidad", amount: 1_000_000, due_day: 1 }
+    end
+
+    it "acepta end_date en el futuro" do
+      ob = described_class.new(base_attrs.merge(end_date: 5.months.from_now.to_date))
+      expect(ob).to be_valid
+    end
+
+    it "rechaza end_date en el pasado al crear" do
+      ob = described_class.new(base_attrs.merge(end_date: 1.month.ago.to_date))
+      expect(ob).not_to be_valid
+      expect(ob.errors[:end_date]).to be_present
+    end
+
+    it "permite end_date nil (obligación permanente)" do
+      ob = described_class.new(base_attrs)
+      expect(ob).to be_valid
+    end
+
+    it "temporary? es true cuando tiene end_date" do
+      ob = described_class.new(base_attrs.merge(end_date: 3.months.from_now.to_date))
+      expect(ob.temporary?).to be true
+    end
+
+    it "temporary? es false cuando no tiene end_date" do
+      ob = described_class.new(base_attrs)
+      expect(ob.temporary?).to be false
+    end
+
+    context "scope active filtra obligaciones vencidas" do
+      it "excluye registros cuyo end_date ya pasó" do
+        active  = create(:recurring_obligation, user: user, account: account, category: category)
+        expired = create(:recurring_obligation, :expired, user: user, account: account, category: category,
+                         name: "Tratamiento", amount: 500_000)
+
+        ids = described_class.where(account_id: account.id).active.pluck(:id)
+        expect(ids).to include(active.id)
+        expect(ids).not_to include(expired.id)
+      end
+
+      it "incluye obligaciones temporales cuyo end_date aún no llegó" do
+        temp = create(:recurring_obligation, :temporary, user: user, account: account, category: category,
+                      name: "Tratamiento", amount: 1_000_000)
+
+        ids = described_class.where(account_id: account.id).active.pluck(:id)
+        expect(ids).to include(temp.id)
+      end
+    end
+  end
+
   describe "source reference" do
     it "links correctly to a debt via source_type/source_id" do
       debt = create(:debt)

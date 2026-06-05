@@ -36,8 +36,9 @@ module Finanzas
         free_margin       = planning_income - committed_total
         has_history       = ctx[:spending_history].any?
 
-        categories, available = build_categories(ctx, free_margin, has_history)
         closed_plans = @plan_repo.last_closed(account_id: account_id, limit: 3)
+        last_plan_budgets = extract_last_plan_budgets(closed_plans.first)
+        categories, available = build_categories(ctx, free_margin, has_history, last_plan_budgets)
         historical_patterns = extract_patterns(closed_plans)
 
         {
@@ -73,29 +74,36 @@ module Finanzas
 
       private
 
-      def build_categories(ctx, free_margin, has_history)
+      def build_categories(ctx, free_margin, has_history, last_plan_budgets = {})
         obligated_codes = ctx[:obligations][:by_category].keys.map(&:to_s)
         cat_map = ctx[:budget_categories].index_by { |bc| bc[:code].to_s }
 
         if has_history
-          build_from_history(ctx, cat_map, obligated_codes, free_margin)
+          build_from_history(ctx, cat_map, obligated_codes, free_margin, last_plan_budgets)
         else
           build_from_ranges(cat_map, obligated_codes)
         end
       end
 
-      def build_from_history(ctx, cat_map, obligated_codes, free_margin)
+      def build_from_history(ctx, cat_map, obligated_codes, free_margin, last_plan_budgets = {})
         history = ctx[:spending_history].reject { |code, _| obligated_codes.include?(code.to_s) }
 
         suggestions = history.map do |code, data|
-          cat = cat_map[code.to_s]
-          range = COLOMBIAN_RANGES[code.to_s]
+          cat           = cat_map[code.to_s]
+          range         = COLOMBIAN_RANGES[code.to_s]
+          avg           = data[:average_monthly]
+          last_budgeted = last_plan_budgets[code.to_s]
+          overspent     = last_budgeted.present? && avg > last_budgeted
+
           {
             code:             code.to_s,
             name:             cat&.dig(:name) || code.to_s.humanize,
             category_type:    cat&.dig(:category_type) || "necessary",
-            suggested_amount: data[:average_monthly],
-            avg_spent:        data[:average_monthly],
+            suggested_amount: overspent ? last_budgeted : avg,
+            avg_spent:        avg,
+            last_budgeted:    last_budgeted,
+            overspent:        overspent,
+            overspend_pct:    overspent ? ((avg - last_budgeted).to_f / last_budgeted * 100).round : nil,
             months_with_data: data[:months_with_data],
             range_hint:       range ? "Rango referencia: #{format_cop(range[:min])}–#{format_cop(range[:max])}" : nil
           }
@@ -158,6 +166,20 @@ module Finanzas
           w << "Margen libre negativo — las obligaciones y deudas superan el ingreso base" if free_margin < 0
           w << "Las obligaciones parecen bajas (menos del 15% del ingreso)" if ctx[:gaps][:obligations_seem_low]
           w << "Sin historial de gastos — los montos son estimados. Revisá el plan después del primer mes." if !has_history
+        end
+      end
+
+      def extract_last_plan_budgets(plan)
+        return {} if plan.nil?
+
+        categories = plan.dig(:execution_snapshot, "categories") ||
+                     plan.dig(:execution_snapshot, :categories) ||
+                     []
+
+        categories.each_with_object({}) do |cat, hash|
+          code     = cat["code"] || cat[:code]
+          budgeted = (cat["budgeted"] || cat[:budgeted]).to_i
+          hash[code.to_s] = budgeted if code.present? && budgeted > 0
         end
       end
 

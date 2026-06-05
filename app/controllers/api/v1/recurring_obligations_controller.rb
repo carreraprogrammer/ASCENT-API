@@ -51,7 +51,7 @@ module Api
       def allowed_params
         params.permit(
           :name, :amount, :due_day, :category_id, :subcategory_id, :active,
-          :notes, :source_type, :source_id
+          :notes, :source_type, :source_id, :end_date
         ).to_h.symbolize_keys
       end
 
