@@ -137,6 +137,15 @@ module Api
         render_unprocessable(e.message)
       end
 
+      def destroy
+        return unless require_scope!("budgets:update")
+        plan = ::MonthlyFinancialPlan.find_by!(id: params[:id], account: current_account)
+        plan.destroy!
+        render json: { data: { id: params[:id] } }, status: :ok
+      rescue ActiveRecord::RecordNotFound
+        render json: { errors: [ { status: "404", detail: "Plan no encontrado" } ] }, status: :not_found
+      end
+
       private
 
       def repo
