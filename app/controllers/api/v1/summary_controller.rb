@@ -416,9 +416,10 @@ module Api
         return nil unless ctx
 
         {
-          phase:               ctx[:phase],
-          strategy:            ctx[:strategy],
-          monthly_plan_status: plan&.dig(:status) || "missing"
+          phase:                     ctx[:phase],
+          strategy:                  ctx[:strategy],
+          monthly_plan_status:       plan&.dig(:status) || "missing",
+          monthly_goal_contribution: ctx[:monthly_goal_contribution]
         }
       end
 
