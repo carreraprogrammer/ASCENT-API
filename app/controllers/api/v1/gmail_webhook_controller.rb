@@ -32,17 +32,25 @@ module Api
           return
         end
 
+        previous_history_id = conn.gmail_history_id.to_s
+
         # Idempotencia: si ya procesamos este historyId o uno posterior, ignorar.
-        if conn.gmail_history_id.to_i >= new_history_id.to_i
+        if previous_history_id.to_i >= new_history_id.to_i
           head :ok
           return
         end
 
-        conn.update_column(:gmail_history_id, new_history_id)
-
         account_id = conn.account_id
+        connection_id = conn.id
         Thread.new do
-          call_brain(account_id: account_id, history_id: new_history_id)
+          if call_brain(account_id: account_id, history_id: previous_history_id)
+            conn = EmailConnection.find(connection_id)
+            conn.with_lock do
+              if conn.gmail_history_id.to_i < new_history_id.to_i
+                conn.update_column(:gmail_history_id, new_history_id)
+              end
+            end
+          end
         end
 
         head :ok
@@ -79,9 +87,18 @@ module Api
         req["Content-Type"]  = "application/json"
         req.body = { account_id: account_id, history_id: history_id }.to_json
 
-        http.request(req)
+        response = http.request(req)
+        unless response.is_a?(Net::HTTPSuccess)
+          Rails.logger.error(
+            "[GmailWebhook] brain call failed account=#{account_id}: HTTP #{response.code} #{response.body}"
+          )
+          return false
+        end
+
+        true
       rescue => e
         Rails.logger.error("[GmailWebhook] brain call failed account=#{account_id}: #{e.message}")
+        false
       end
     end
   end
