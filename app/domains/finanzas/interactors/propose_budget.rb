@@ -171,11 +171,14 @@ module Finanzas
       end
 
       def compute_surplus_target(phase, reward_pct, income, free_margin)
+        # Only reserve when the user has explicitly configured a reward_pct goal.
+        # We never guess — the nightly agent uses commitment_gap (real-time, obligation-aware)
+        # to surface the safe deployable amount when income actually arrives.
         return 0 unless %w[debt_payoff emergency_fund].include?(phase.to_s)
+        return 0 unless reward_pct > 0
         return 0 if free_margin <= 0
 
-        rate   = reward_pct > 0 ? (reward_pct / 100.0) : 0.10
-        target = (income * rate).round
+        target = (income * (reward_pct / 100.0)).round
         round_to_thousands([ target, free_margin ].min)
       end
 

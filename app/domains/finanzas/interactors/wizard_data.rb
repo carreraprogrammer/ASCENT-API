@@ -325,17 +325,21 @@ module Finanzas
       end
 
       def compute_phase_discount_rate(phase, reward_pct)
+        # Only discount when the user explicitly configured a reward_pct.
+        # Without explicit configuration we don't invent a target — the agent
+        # computes the real safe amount from commitment_gap when income arrives.
         return 0 unless %w[debt_payoff emergency_fund].include?(phase.to_s)
+        return 0 unless reward_pct > 0
 
-        reward_pct > 0 ? (reward_pct / 100.0) : 0.10
+        reward_pct / 100.0
       end
 
       def compute_wizard_surplus_target(phase, reward_pct, income)
         return 0 unless %w[debt_payoff emergency_fund].include?(phase.to_s)
+        return 0 unless reward_pct > 0
         return 0 if income <= 0
 
-        rate = reward_pct > 0 ? (reward_pct / 100.0) : 0.10
-        (income * rate).round
+        (income * (reward_pct / 100.0)).round
       end
 
       def surplus_target_label(phase)
