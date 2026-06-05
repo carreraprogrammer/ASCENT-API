@@ -11,7 +11,7 @@ module Finanzas
 
           permitted = attrs.slice(:status, :category_id, :subcategory_id, :concept,
                                   :product, :amount, :date, :source, :metadata,
-                                  :clarification_resolved_at, :payment_source, :credit_card_status,
+                                  :clarification_resolved_at, :payment_source,
                                   :debt_id, :recurring_obligation_id, :income_source_id,
                                   :sinking_fund_id)
 
@@ -47,8 +47,6 @@ module Finanzas
           raise Finanzas::Errors::InvalidTransaction, "Sinking fund #{permitted[:sinking_fund_id]} not found" unless fund
         end
 
-        normalize_credit_card_status!(permitted, transaction)
-
         # Auto-confirm pending transactions when the user explicitly sets both category and subcategory
         if permitted[:category_id].present? && permitted[:subcategory_id].present? && transaction.status == "pending"
           permitted[:status] = "confirmed"
@@ -76,20 +74,6 @@ module Finanzas
         updated
       end
 
-      private
-
-      def normalize_credit_card_status!(permitted, transaction)
-        return unless permitted.key?(:payment_source)
-
-        if permitted[:payment_source] == "credit_card"
-          permitted[:credit_card_status] =
-            permitted[:credit_card_status].presence ||
-            transaction.credit_card_status.presence ||
-            "pending"
-        else
-          permitted[:credit_card_status] = nil
-        end
-      end
     end
   end
 end

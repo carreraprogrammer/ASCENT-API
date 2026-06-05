@@ -41,10 +41,8 @@ Rails.application.routes.draw do
         collection do
           get :pending
           get :needs_review
-          get :credit_card_pending
           get :balance
           post :batch
-          post :settle_credit_card
         end
       end
 
@@ -53,6 +51,9 @@ Rails.application.routes.draw do
       patch "financial_context", to: "financial_contexts#update"
 
       resources :debts,                only: [ :index, :create, :update, :destroy ] do
+        collection do
+          post :apply_interest
+        end
         member do
           post :payments
         end

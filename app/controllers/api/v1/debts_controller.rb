@@ -51,6 +51,28 @@ module Api
         render_unprocessable(e.message)
       end
 
+      # POST /api/v1/debts/apply_interest
+      def apply_interest
+        return unless require_scope!("debts:update")
+
+        p = params.permit(:month, :year)
+        kwargs = { account_id: current_account.id }
+        kwargs[:month] = p[:month].to_i if p[:month].present?
+        kwargs[:year]  = p[:year].to_i  if p[:year].present?
+
+        result = Finanzas::Interactors::ApplyMonthlyInterest.new.call(**kwargs)
+
+        Rails.logger.info(
+          "[DebtsController#apply_interest] account=#{current_account.id} " \
+          "month=#{result[:month]}/#{result[:year]} " \
+          "applied=#{result[:applied].size} skipped=#{result[:skipped].size}"
+        )
+
+        render json: { data: result }, status: :ok
+      rescue => e
+        render_unprocessable(e.message)
+      end
+
       # POST /api/v1/debts/:id/payments
       def payments
         return unless require_scope!("debts:update")

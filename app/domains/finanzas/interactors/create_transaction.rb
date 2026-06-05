@@ -73,13 +73,6 @@ module Finanzas
           metadata: metadata
         )
 
-        # Auto-set credit_card_status to pending when payment_source is credit_card
-        resolved_cc_status = if resolved_payment_source == "credit_card"
-          credit_card_status || "pending"
-        else
-          nil
-        end
-
         txn = @repo.create(
           user_id: user_id,
           account_id: account_id,
@@ -97,7 +90,7 @@ module Finanzas
             year: year,
             month: month,
             payment_source: resolved_payment_source,
-            credit_card_status: resolved_cc_status,
+            credit_card_status: nil,
             debt_id: debt_id,
             recurring_obligation_id: resolved_recurring_obligation_id,
             income_source_id: resolved_income_source_id,

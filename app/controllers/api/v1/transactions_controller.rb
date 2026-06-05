@@ -72,14 +72,6 @@ module Api
         render json: { data: unconfirmed + agent_flagged }
       end
 
-      def credit_card_pending
-        return unless require_scope!("transactions:read")
-        transactions = Finanzas::Repositories::TransactionRepository.new.credit_card_pending(
-          account_id: current_account.id
-        )
-        render json: Finanzas::Presenters::TransactionPresenter.collection(transactions)
-      end
-
       def balance
         return unless require_scope!("summary:read")
         month = params[:month] || Time.now.month
@@ -196,22 +188,6 @@ module Api
         render json: { data: results, errors: errors }, status: :created
       end
 
-      def settle_credit_card
-        return unless require_scope!("transactions:update")
-        amount = params[:amount].to_i
-        if amount <= 0
-          return render json: { errors: [ { status: "422", detail: "amount must be positive" } ] },
-                        status: :unprocessable_entity
-        end
-        result = Finanzas::Interactors::SettleCreditCardPayments.new.call(
-          account_id: current_account.id,
-          amount: amount
-        )
-        render json: { data: result }
-      rescue Finanzas::Errors::InvalidTransaction => e
-        render json: { errors: [ { status: "422", detail: e.message } ] }, status: :unprocessable_entity
-      end
-
       def destroy
         return unless require_scope!("transactions:delete")
         transaction_id = params[:id].to_s
@@ -229,7 +205,7 @@ module Api
         p = params.permit(
           :date, :concept, :product, :amount, :transaction_type,
           :category_id, :subcategory_id, :category_code, :subcategory_code,
-          :source, :status, :payment_source, :credit_card_status,
+          :source, :status, :payment_source,
           :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id,
           :covers_period_month, :covers_period_year,
           metadata: {}
@@ -242,7 +218,7 @@ module Api
           p = txn.permit(
             :date, :concept, :product, :amount, :transaction_type,
             :category_id, :subcategory_id, :category_code, :subcategory_code,
-            :source, :status, :payment_source, :credit_card_status,
+            :source, :status, :payment_source,
             :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id,
             :covers_period_month, :covers_period_year,
             metadata: {}
@@ -255,7 +231,7 @@ module Api
         p = params.permit(
           :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
           :concept, :product, :amount, :date, :source, :clarification_resolved_at,
-          :payment_source, :credit_card_status, :debt_id, :recurring_obligation_id,
+          :payment_source, :debt_id, :recurring_obligation_id,
           :income_source_id, :sinking_fund_id,
           :covers_period_month, :covers_period_year,
           metadata: {}

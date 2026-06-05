@@ -80,9 +80,10 @@ module Finanzas
           status:           record.status,
           payoff_date:      record.payoff_date,
           notes:            record.notes,
-          ai_analysis:      record.ai_analysis || [],
-          created_at:       record.created_at,
-          updated_at:       record.updated_at
+          ai_analysis:               record.ai_analysis || [],
+          interest_last_applied_on:  record.interest_last_applied_on,
+          created_at:                record.created_at,
+          updated_at:                record.updated_at
         }
       end
     end
