@@ -17,7 +17,11 @@ module Finanzas
       end
 
       def active_for_account(account_id)
-        for_account(account_id, filters: { active: true }, sort_by: "due_day", sort_dir: "asc")
+        ::RecurringObligation
+          .includes(:category, :subcategory)
+          .where(account_id: account_id)
+          .active
+          .map { |r| map_to_entity(r) }
       end
 
       def create(attrs)
@@ -88,6 +92,8 @@ module Finanzas
           ai_analysis:      record.ai_analysis || [],
           source_type:      record.source_type,
           source_id:        record.source_id,
+          end_date:         record.end_date,
+          temporary:        record.temporary?,
           created_at:       record.created_at,
           updated_at:       record.updated_at
         }

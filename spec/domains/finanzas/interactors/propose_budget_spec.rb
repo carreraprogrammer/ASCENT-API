@@ -209,6 +209,104 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
     end
   end
 
+  describe "budget capping when overspent (YNAB discipline)" do
+    def stub_closed_plan(budgeted_by_code)
+      categories = budgeted_by_code.map do |code, budgeted|
+        { "code" => code.to_s, "budgeted" => budgeted, "actual" => budgeted, "variance_pct" => 0 }
+      end
+      plan = closed_plan(
+        month: 4, year: 2026,
+        base_budget_income: 6_400_000, income_actual: 6_400_000,
+        execution_snapshot: { "categories" => categories }
+      )
+      allow_any_instance_of(Finanzas::Repositories::MonthlyFinancialPlanRepository)
+        .to receive(:last_closed).with(account_id: account.id, limit: 3).and_return([ plan ])
+    end
+
+    context "when avg_spent > last_budgeted (overspent)" do
+      before do
+        stub_ctx(spending_history: {
+          "dining_out" => { average_monthly: 400_000, months_with_data: 3 }
+        })
+        stub_closed_plan("dining_out" => 200_000)
+      end
+
+      it "caps suggested_amount at last_budgeted instead of inflating" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:suggested_amount]).to eq(200_000)
+      end
+
+      it "exposes avg_spent so the agent can communicate the overspend" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:avg_spent]).to eq(400_000)
+      end
+
+      it "marks the category as overspent" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:overspent]).to be true
+      end
+
+      it "reports the overspend percentage" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:overspend_pct]).to eq(100)
+      end
+    end
+
+    context "when avg_spent <= last_budgeted (within budget)" do
+      before do
+        stub_ctx(spending_history: {
+          "dining_out" => { average_monthly: 180_000, months_with_data: 3 }
+        })
+        stub_closed_plan("dining_out" => 200_000)
+      end
+
+      it "uses avg_spent as suggested_amount (not inflated by past budget)" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:suggested_amount]).to eq(180_000)
+      end
+
+      it "does not mark the category as overspent" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:overspent]).to be false
+      end
+
+      it "leaves overspend_pct nil" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:overspend_pct]).to be_nil
+      end
+    end
+
+    context "when there are no closed plans (first month)" do
+      before do
+        stub_ctx(spending_history: {
+          "dining_out" => { average_monthly: 400_000, months_with_data: 2 }
+        })
+        allow_any_instance_of(Finanzas::Repositories::MonthlyFinancialPlanRepository)
+          .to receive(:last_closed).and_return([])
+      end
+
+      it "falls back to avg_spent with no capping" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:suggested_amount]).to eq(400_000)
+      end
+
+      it "leaves overspent as false and overspend_pct nil" do
+        result = interactor.call(account_id: account.id, month: month, year: year)
+        cat = result[:categories].find { |c| c[:code] == "dining_out" }
+        expect(cat[:overspent]).to be false
+        expect(cat[:overspend_pct]).to be_nil
+      end
+    end
+  end
+
   describe "result structure" do
     before do
       stub_ctx

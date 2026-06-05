@@ -2,9 +2,10 @@ module Finanzas
   module Interactors
     class AgentPreflight
       def call(account_id:, month:, year:, intent:)
-        completeness = detector.call(account_id: account_id, month: month, year: year)
-        dimensions = completeness[:dimensions]
-        progress = AccountProgress.find_by(account_id: account_id)
+        completeness   = detector.call(account_id: account_id, month: month, year: year)
+        dimensions     = completeness[:dimensions]
+        progress       = AccountProgress.find_by(account_id: account_id)
+        temp_obs       = load_temporary_obligations(account_id)
 
         blocking_dimensions = []
         nudges = []
@@ -55,7 +56,8 @@ module Finanzas
             xp:              progress&.xp              || 0,
             streak_days:     progress&.streak_days     || 0,
             bypass_readiness: progress&.bypass_readiness || false
-          }
+          },
+          temporary_obligations: temp_obs
         )
       end
 
@@ -102,6 +104,24 @@ module Finanzas
           "monthly_plan"       => "plan mensual"
         }
         dimensions.map { |name| labels[name] || name }.join(", ")
+      end
+
+      def load_temporary_obligations(account_id)
+        ::RecurringObligation
+          .where(account_id: account_id)
+          .active
+          .where.not(end_date: nil)
+          .order(:end_date)
+          .map do |o|
+            months_left = ((o.end_date.year * 12 + o.end_date.month) - (Date.current.year * 12 + Date.current.month))
+            {
+              id:          o.id,
+              name:        o.name,
+              amount:      o.amount,
+              end_date:    o.end_date.iso8601,
+              months_left: [ months_left, 0 ].max
+            }
+          end
       end
 
       def detector

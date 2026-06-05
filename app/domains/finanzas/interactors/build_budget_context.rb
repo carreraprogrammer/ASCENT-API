@@ -37,6 +37,9 @@ module Finanzas
         obligations_total = obligations.sum { |o| o[:amount].to_i }
         debt_minimums_total = debts.sum { |d| d[:monthly_payment].to_i }
 
+        expiring_soon    = obligations.select { |o| o[:end_date].present? && o[:end_date] <= Date.current + 2.months }
+        temporary_total  = obligations.select { |o| o[:temporary] }.sum { |o| o[:amount].to_i }
+
         {
           income: {
             fixed_total:         fixed_total,
@@ -45,8 +48,9 @@ module Finanzas
             fixed_sources:       fixed_sources.map { |s| { name: s[:name], amount: s[:expected_amount] } }
           },
           obligations: {
-            total:       obligations_total,
-            by_category: build_by_category(obligations_by_category)
+            total:          obligations_total,
+            temporary_total: temporary_total,
+            by_category:    build_by_category(obligations_by_category)
           },
           debt_minimums: {
             total: debt_minimums_total,
@@ -57,7 +61,8 @@ module Finanzas
             strategy:   ctx[:strategy],
             reward_pct: ctx[:reward_pct]
           },
-          existing_plan: existing_plan,
+          existing_plan:    existing_plan,
+          expiring_soon:    expiring_soon.map { |o| { id: o[:id], name: o[:name], amount: o[:amount], end_date: o[:end_date] } },
           gaps: {
             missing_income:       income_sources.empty?,
             missing_obligations:  obligations.empty?,

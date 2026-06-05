@@ -25,11 +25,21 @@ class RecurringObligation < ApplicationRecord
   validate :debt_source_must_exist
   validate :debt_source_must_use_credit_subcategory
   validate :credit_subcategory_requires_debt_source
+  validate :end_date_not_in_past, if: -> { end_date.present? && end_date_changed? }
 
-  scope :active, -> { where(active: true).order(:due_day) }
+  # Excludes obligations whose end_date has already passed.
+  scope :active, -> { where(active: true).where("end_date IS NULL OR end_date >= ?", Date.current).order(:due_day) }
 
   def debt_source?
     source_type == DEBT_SOURCE_TYPE
+  end
+
+  def temporary?
+    end_date.present?
+  end
+
+  def expiring_within?(months)
+    end_date.present? && end_date <= Date.current + months.months
   end
 
   def add_ai_observation(text)
@@ -66,5 +76,9 @@ class RecurringObligation < ApplicationRecord
     return if source_type == DEBT_SOURCE_TYPE && source_id.present?
 
     errors.add(:base, "La subcategoría 'Créditos' requiere vincular una deuda (source_type: Debt, source_id: id)")
+  end
+
+  def end_date_not_in_past
+    errors.add(:end_date, "no puede ser anterior a hoy") if end_date < Date.current
   end
 end
