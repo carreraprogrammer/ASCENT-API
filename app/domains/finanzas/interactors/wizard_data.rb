@@ -56,11 +56,12 @@ module Finanzas
 
         # Phase-awareness: discount factor applied to history/benchmark suggestions
         # in discretionary/social categories so the plan reflects the user's financial goal.
-        fin_ctx            = @ctx_repo.find_by_account(account_id) || {}
-        phase              = fin_ctx[:phase]
-        reward_pct         = fin_ctx[:reward_pct].to_f
-        phase_discount_rate = compute_phase_discount_rate(phase, reward_pct)
-        surplus_target     = compute_wizard_surplus_target(phase, reward_pct, suggested_total)
+        fin_ctx              = @ctx_repo.find_by_account(account_id) || {}
+        phase                = fin_ctx[:phase]
+        reward_pct           = fin_ctx[:reward_pct].to_f
+        goal_contribution    = fin_ctx[:monthly_goal_contribution].to_i
+        phase_discount_rate  = compute_phase_discount_rate(phase, reward_pct)
+        surplus_target       = compute_wizard_surplus_target(phase, reward_pct, suggested_total)
 
         income_section           = build_income_section(income_sources, suggested_total)
         category_rows            = build_category_rows(
@@ -80,9 +81,15 @@ module Finanzas
           income:                  income_section,
           categories:              category_rows,
           suggested_sinking_funds: suggested_sinking_funds,
-          surplus_target:          surplus_target,
-          surplus_target_label:    surplus_target_label(phase),
-          phase:                   phase
+          goal_contribution: {
+            amount:     goal_contribution,
+            label:      surplus_target_label(phase) || "Aporte a objetivo financiero",
+            phase:      phase,
+            configured: goal_contribution > 0
+          },
+          surplus_target:       surplus_target,
+          surplus_target_label: surplus_target_label(phase),
+          phase:                phase
         }
       end
 

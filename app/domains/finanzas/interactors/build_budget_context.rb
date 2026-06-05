@@ -39,6 +39,7 @@ module Finanzas
 
         expiring_soon    = obligations.select { |o| o[:end_date].present? && o[:end_date] <= Date.current + 2.months }
         temporary_total  = obligations.select { |o| o[:temporary] }.sum { |o| o[:amount].to_i }
+        goal_contribution = ctx[:monthly_goal_contribution].to_i
 
         {
           income: {
@@ -48,18 +49,24 @@ module Finanzas
             fixed_sources:       fixed_sources.map { |s| { name: s[:name], amount: s[:expected_amount] } }
           },
           obligations: {
-            total:          obligations_total,
+            total:           obligations_total,
             temporary_total: temporary_total,
-            by_category:    build_by_category(obligations_by_category)
+            by_category:     build_by_category(obligations_by_category)
           },
           debt_minimums: {
             total: debt_minimums_total,
             debts: debts.map { |d| { id: d[:id], name: d[:name], monthly_payment: d[:monthly_payment], current_balance: d[:current_balance] } }
           },
+          goal_contribution: {
+            amount: goal_contribution,
+            phase:  ctx[:phase],
+            label:  goal_contribution_label(ctx[:phase])
+          },
           financial_context: {
-            phase:      ctx[:phase],
-            strategy:   ctx[:strategy],
-            reward_pct: ctx[:reward_pct]
+            phase:                     ctx[:phase],
+            strategy:                  ctx[:strategy],
+            reward_pct:                ctx[:reward_pct],
+            monthly_goal_contribution: goal_contribution
           },
           existing_plan:    existing_plan,
           expiring_soon:    expiring_soon.map { |o| { id: o[:id], name: o[:name], amount: o[:amount], end_date: o[:end_date] } },
@@ -163,6 +170,15 @@ module Finanzas
             system:        bc.system,
             sort_order:    bc.sort_order
           }
+        end
+      end
+
+      def goal_contribution_label(phase)
+        case phase.to_s
+        when "debt_payoff"     then "Aporte mensual a deuda (objetivo)"
+        when "emergency_fund"  then "Aporte mensual a fondo de emergencia"
+        when "investing"       then "Aporte mensual a inversión"
+        else                        "Aporte a objetivo financiero"
         end
       end
 

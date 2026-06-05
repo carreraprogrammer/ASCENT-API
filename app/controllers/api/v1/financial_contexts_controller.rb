@@ -28,7 +28,7 @@ module Api
       end
 
       def allowed_params
-        params.permit(:phase, :strategy, :reward_pct, :notes, :debts_confirmed_at).to_h.symbolize_keys
+        params.permit(:phase, :strategy, :reward_pct, :monthly_goal_contribution, :notes, :debts_confirmed_at).to_h.symbolize_keys
       end
     end
   end
