@@ -40,6 +40,14 @@ module Auth
           tokens = fetch_tokens(grant_type: "authorization_code", code: code)
 
           upsert_connection(account, tokens)
+
+          # Registrar watch de Pub/Sub en background para no bloquear el redirect
+          Thread.new do
+            GmailWatchRegistrar.call(account_id: account.id)
+          rescue => e
+            Rails.logger.error("[GmailOauth] watch registration failed account=#{account.id}: #{e.message}")
+          end
+
           account
         rescue ActiveSupport::MessageVerifier::InvalidSignature
           raise ArgumentError, "state inválido o expirado"
