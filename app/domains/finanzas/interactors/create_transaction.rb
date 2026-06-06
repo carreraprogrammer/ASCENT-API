@@ -22,7 +22,8 @@ module Finanzas
                  source: "manual", status: "confirmed", metadata: {},
                  payment_source: nil, credit_card_status: nil,
                  debt_id: nil, recurring_obligation_id: nil,
-                 income_source_id: nil, sinking_fund_id: nil)
+                 income_source_id: nil, sinking_fund_id: nil,
+                 covers_period_month: nil, covers_period_year: nil)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -94,7 +95,9 @@ module Finanzas
             debt_id: debt_id,
             recurring_obligation_id: resolved_recurring_obligation_id,
             income_source_id: resolved_income_source_id,
-            sinking_fund_id: resolved_sinking_fund_id
+            sinking_fund_id: resolved_sinking_fund_id,
+            covers_period_month: covers_period_month,
+            covers_period_year: covers_period_year
           )
 
         if transaction_type == "expense" && status == "confirmed"

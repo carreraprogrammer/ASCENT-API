@@ -135,6 +135,32 @@ RSpec.describe Finanzas::Interactors::BuildNightMetrics do
         expect(alert[:status]).to eq("over")
       end
     end
+
+    context "con un pago anticipado que cubre el mes analizado" do
+      let(:today) { Date.new(2026, 6, 12) }
+
+      let!(:budget_committed) do
+        create(:budget, account: account, month: 6, year: 2026,
+               category: cat_committed, amount_limit: 1_500_000)
+      end
+      let!(:prepaid_rent) do
+        create(:transaction, account: account, transaction_type: "expense",
+               status: "confirmed", amount: 1_500_000, month: 5, year: 2026,
+               date: "29/5", category: cat_committed,
+               covers_period_month: 6, covers_period_year: 2026,
+               concept: "Arriendo junio pagado en mayo")
+      end
+
+      it "lo cuenta dentro de la ejecución presupuestal del período cubierto" do
+        result = call
+        alert = result[:category_alerts].find { |a| a[:category_type] == "committed" }
+        burn = result[:burn_vs_plan].find { |a| a[:category_type] == "committed" }
+
+        expect(alert[:spent]).to eq(1_500_000)
+        expect(alert[:pct_used]).to eq(100)
+        expect(burn[:spent]).to eq(1_500_000)
+      end
+    end
   end
 
   describe "health_status" do

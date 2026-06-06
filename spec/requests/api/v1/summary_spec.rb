@@ -314,6 +314,60 @@ RSpec.describe "Summary API" do
       expect(data["cash_flow_runway"]).to include("confirmed_balance", "health_status", "commitment_gap")
     end
 
+    it "applies native covered-period fields to the budget month instead of the payment month" do
+      category = create(:category, :committed)
+      subcategory = create(:subcategory, category: category, name: "Arriendo", code: "arriendo")
+      obligation = create(
+        :recurring_obligation,
+        user: user,
+        account: user.default_account,
+        category: category,
+        subcategory: subcategory,
+        amount: 1_500_000,
+        name: "Arriendo"
+      )
+      create(
+        :budget,
+        user: user,
+        account: user.default_account,
+        category: category,
+        subcategory: subcategory,
+        month: 6,
+        year: 2026,
+        amount_limit: 1_500_000
+      )
+      create(
+        :transaction,
+        user: user,
+        account: user.default_account,
+        date: Date.new(2026, 5, 29),
+        year: 2026,
+        month: 5,
+        amount: 1_500_000,
+        transaction_type: "expense",
+        status: "confirmed",
+        source: "manual",
+        concept: "Arriendo junio pagado en mayo",
+        category: category,
+        subcategory: subcategory,
+        recurring_obligation_id: obligation.id,
+        covers_period_month: 6,
+        covers_period_year: 2026
+      )
+
+      get "/api/v1/summary", params: { month: 6, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      execution = data.dig("month_execution", "recurring_obligations")
+      committed_burn = data.dig("burn_rate", "categories").find { |row| row["category_id"] == category.id }
+
+      expect(execution["items"].find { |item| item["id"] == obligation.id }["status"]).to eq("covered")
+      expect(execution["covered_total"]).to eq(1_500_000)
+      expect(committed_burn["spent"]).to eq(1_500_000)
+      expect(committed_burn["primary_metric"]["title"]).to eq("Pago cubierto")
+    end
+
     it "carries previous month net cash even when the previous plan overflow is zero" do
       create(
         :monthly_financial_plan,

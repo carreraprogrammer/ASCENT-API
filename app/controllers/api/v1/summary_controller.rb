@@ -22,9 +22,9 @@ module Api
         income_sources       = income_source_repo.active_for_account(account_id)
         realized_income_by_source = income_realized_by_source(account_id, month, year)
 
-        # confirmed_balance del account = saldo acumulado real de todos los meses.
-        # El carryover es ese total menos el P&L del mes actual.
-        account_confirmed_balance     = current_account.confirmed_balance.to_i
+        # Saldo acumulado real de todos los meses. El carryover es ese total
+        # menos el P&L del mes actual.
+        account_confirmed_balance     = ledger_confirmed_balance(account_id)
         carryover_from_previous_month = account_confirmed_balance - balance[:balance_confirmed].to_i
         balance = balance.merge(
           carryover_from_previous_month: carryover_from_previous_month,
@@ -261,6 +261,11 @@ module Api
       end
 
       def transaction_applies_to_period?(transaction, period)
+        if transaction.covers_period_month.present? && transaction.covers_period_year.present?
+          return transaction.covers_period_month.to_i == period.month &&
+            transaction.covers_period_year.to_i == period.year
+        end
+
         data = (transaction.metadata || {}).to_h.stringify_keys
         explicit_period = data["applies_to_period"].presence
         return explicit_period == period.strftime("%Y-%m") if explicit_period
@@ -501,6 +506,15 @@ module Api
           .where.not(income_source_id: nil)
           .group(:income_source_id)
           .sum(:amount)
+      end
+
+      def ledger_confirmed_balance(account_id)
+        rows = ::Transaction
+          .where(account_id: account_id, status: "confirmed")
+          .group(:transaction_type)
+          .sum(:amount)
+
+        rows["income"].to_i - rows["expense"].to_i
       end
 
       def necessary_transactions_for_burn(account_id, today)

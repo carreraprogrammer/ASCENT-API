@@ -209,13 +209,50 @@ module Finanzas
       end
 
       def load_month_transactions(account_id, month, year)
+        period = Date.new(year.to_i, month.to_i, 1)
+
         ::Transaction
-          .where(account_id: account_id, month: month, year: year, status: "confirmed")
+          .where(account_id: account_id, status: "confirmed")
           .joins("LEFT JOIN categories ON categories.id = transactions.category_id")
-          .pluck(:id, :amount, :transaction_type, "categories.category_type")
-          .map do |id, amount, type, cat_type|
-            { id: id, amount: amount.to_i, transaction_type: type, category_type: cat_type }
+          .select(
+            "transactions.id",
+            "transactions.amount",
+            "transactions.transaction_type",
+            "transactions.month",
+            "transactions.year",
+            "transactions.metadata",
+            "transactions.covers_period_month",
+            "transactions.covers_period_year",
+            "categories.category_type AS category_type"
+          )
+          .select { |transaction| transaction_applies_to_period?(transaction, period) }
+          .map do |transaction|
+            {
+              id: transaction.id,
+              amount: transaction.amount.to_i,
+              transaction_type: transaction.transaction_type,
+              category_type: transaction.category_type
+            }
           end
+      end
+
+      def transaction_applies_to_period?(transaction, period)
+        if transaction.covers_period_month.present? && transaction.covers_period_year.present?
+          return transaction.covers_period_month.to_i == period.month &&
+            transaction.covers_period_year.to_i == period.year
+        end
+
+        data = (transaction.metadata || {}).to_h.stringify_keys
+        explicit_period = data["applies_to_period"].presence
+        return explicit_period == period.strftime("%Y-%m") if explicit_period
+
+        explicit_month = data["applies_to_month"].presence
+        explicit_year = data["applies_to_year"].presence
+        if explicit_month && explicit_year
+          return explicit_month.to_i == period.month && explicit_year.to_i == period.year
+        end
+
+        transaction.month.to_i == period.month && transaction.year.to_i == period.year
       end
 
       def load_budgets(account_id, month, year)
