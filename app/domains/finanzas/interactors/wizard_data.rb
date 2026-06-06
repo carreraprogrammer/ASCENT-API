@@ -74,7 +74,7 @@ module Finanzas
         discretionary_income = [ suggested_total - goal_contribution, 0 ].max
 
         income_section           = build_income_section(income_sources, suggested_total)
-        category_rows            = build_category_rows(
+        raw_category_rows        = build_category_rows(
           all_categories,
           recurring_by_category,
           recurring_by_subcategory,
@@ -85,6 +85,8 @@ module Finanzas
           prev_month_budget_by_subcategory,
           phase_discount_rate
         )
+        # Guarantee porAsignar >= 0: scale down flexible lines so total <= available_pool.
+        category_rows, normalization_meta = normalize_category_rows(raw_category_rows, discretionary_income)
         suggested_sinking_funds  = build_suggested_sinking_funds(account_id)
 
         {
@@ -99,7 +101,8 @@ module Finanzas
           },
           surplus_target:       surplus_target,
           surplus_target_label: surplus_target_label(phase),
-          phase:                phase
+          phase:                phase,
+          meta:                 normalization_meta
         }
       end
 
@@ -339,6 +342,41 @@ module Finanzas
           edit_hint:        edit_hint,
           phase_adjusted:   phase_adjusted
         }
+      end
+
+      # ── Normalization ────────────────────────────────────────────────────────
+      #
+      # Scales down flexible (unlocked) subcategory suggestions so that
+      # locked_total + flexible_total <= available_pool.
+      # Locked lines (recurring obligations) are never touched.
+      # Returns [normalized_rows, meta_hash].
+      def normalize_category_rows(rows, available_pool)
+        all_subs = rows.flat_map { |c| c[:subcategories] }
+
+        locked_total   = all_subs.sum { |s| s[:locked] ? s[:suggested_amount] : 0 }
+        flexible_total = all_subs.sum { |s| s[:locked] ? 0 : s[:suggested_amount] }
+        flexible_budget = [ available_pool - locked_total, 0 ].max
+
+        if flexible_total <= flexible_budget
+          return [ rows, { normalized: false, trimmed_amount: 0 } ]
+        end
+
+        trimmed_amount = flexible_total - flexible_budget
+        scale = flexible_total > 0 ? flexible_budget.to_f / flexible_total : 0.0
+
+        normalized = rows.map do |cat|
+          subs = cat[:subcategories].map do |sub|
+            next sub if sub[:locked]
+
+            sub.merge(suggested_amount: (sub[:suggested_amount] * scale).floor)
+          end
+          cat.merge(
+            subcategories:   subs,
+            suggested_total: subs.sum { |s| s[:suggested_amount] }
+          )
+        end
+
+        [ normalized, { normalized: true, trimmed_amount: trimmed_amount } ]
       end
 
       # ── Goal contribution derivation ──────────────────────────────────────
