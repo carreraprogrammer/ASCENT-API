@@ -104,6 +104,9 @@ module Finanzas
         reward_pct = rolling ? previous_plan[:reward_pct] || calculated_reward_pct : calculated_reward_pct
         debt_strategy = rolling ? previous_plan[:debt_strategy] : calculated_debt_strategy
 
+        previous_closed        = @plan_repo.last_closed(account_id: account_id, limit: 1).first
+        carryover_from_previous = previous_closed&.dig(:execution_snapshot, "overflow_amount").to_i
+
         assumptions = {
           planning_income_used: planning_income,
           base_sources: base_sources.map { |source| source[:name] },
@@ -113,6 +116,7 @@ module Finanzas
           weighted_variable_income: weighted_variable_income,
           discretionary_rate_pct: (disc_rate * 100).round(1),
           financial_phase: phase,
+          carryover_from_previous: carryover_from_previous,
           generated_from: "income_sources",
           generated_at: Time.current.iso8601
         }

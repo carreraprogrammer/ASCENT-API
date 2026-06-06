@@ -57,6 +57,44 @@ RSpec.describe RecurringObligation, type: :model do
     end
   end
 
+  describe "SavingsGoal source" do
+    let(:goal) { create(:savings_goal) }
+
+    it "accepts SavingsGoal as a valid source_type" do
+      obligation = described_class.new(
+        user:        goal.user,
+        account:     goal.account,
+        name:        "Aporte a #{goal.name}",
+        amount:      300_000,
+        due_day:     1,
+        source_type: "SavingsGoal",
+        source_id:   goal.id
+      )
+      expect(obligation).to be_valid
+    end
+
+    it "syncs a RecurringObligation when a SavingsGoal is created" do
+      expect {
+        create(:savings_goal,
+               name: "Fondo emergencia",
+               target_amount: 6_000_000,
+               current_amount: 0,
+               target_date: 12.months.from_now.to_date)
+      }.to change { RecurringObligation.where(source_type: "SavingsGoal").count }.by(1)
+    end
+
+    it "deactivates the obligation when the goal is paused" do
+      goal = create(:savings_goal, status: "active",
+                    target_amount: 3_000_000, current_amount: 0,
+                    target_date: 6.months.from_now.to_date)
+      obligation = RecurringObligation.find_by(source_type: "SavingsGoal", source_id: goal.id)
+      expect(obligation).to be_present
+
+      goal.update!(status: "paused")
+      expect(obligation.reload.active).to be false
+    end
+  end
+
   describe "source reference" do
     it "links correctly to a debt via source_type/source_id" do
       debt = create(:debt)

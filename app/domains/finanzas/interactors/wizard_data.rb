@@ -26,11 +26,13 @@ module Finanzas
       def initialize(
         income_repo:   Finanzas::Repositories::IncomeSourceRepository.new,
         category_repo: Finanzas::Repositories::CategoryRepository.new,
-        ctx_repo:      Finanzas::Repositories::FinancialContextRepository.new
+        ctx_repo:      Finanzas::Repositories::FinancialContextRepository.new,
+        plan_repo:     Finanzas::Repositories::MonthlyFinancialPlanRepository.new
       )
         @income_repo   = income_repo
         @category_repo = category_repo
         @ctx_repo      = ctx_repo
+        @plan_repo     = plan_repo
       end
 
       def call(account_id:, user_id:, month: Date.current.month, year: Date.current.year)
@@ -57,9 +59,12 @@ module Finanzas
         fin_ctx              = @ctx_repo.find_by_account(account_id) || {}
         phase                = Finanzas::Interactors::DerivePhase.new.call(account_id: account_id)
         reward_pct           = fin_ctx[:reward_pct].to_f
-        # If manually configured, use it. Otherwise derive from goals/debts automatically.
+        # Priority: (1) manual override, (2) materialized SavingsGoal obligations, (3) auto-derived.
+        savings_goal_total   = fetch_savings_goal_obligations_total(account_id)
         goal_contribution    = if fin_ctx[:monthly_goal_contribution].to_i > 0
           fin_ctx[:monthly_goal_contribution].to_i
+        elsif savings_goal_total > 0
+          savings_goal_total
         else
           derive_goal_contribution(account_id, phase, suggested_total, recurring_by_category)
         end
@@ -93,6 +98,7 @@ module Finanzas
         category_rows = enrich_with_funding_status(category_rows, paid_this_month_by_code)
 
         suggested_sinking_funds  = build_suggested_sinking_funds(account_id)
+        carryover_from_previous  = fetch_carryover_from_previous_plan(account_id, month, year)
 
         {
           income:                  income_section,
@@ -104,10 +110,11 @@ module Finanzas
             phase:      phase,
             configured: goal_contribution_configured
           },
-          surplus_target:       surplus_target,
-          surplus_target_label: surplus_target_label(phase),
-          phase:                phase,
-          meta:                 normalization_meta
+          surplus_target:          surplus_target,
+          surplus_target_label:    surplus_target_label(phase),
+          phase:                   phase,
+          carryover_from_previous: carryover_from_previous,
+          meta:                    normalization_meta
         }
       end
 
@@ -470,6 +477,29 @@ module Finanzas
         when "debt_payoff"    then "Reservado para pago extra de deuda"
         when "emergency_fund" then "Reservado para fondo de emergencia"
         end
+      end
+
+      # ── Goal obligations & carryover ─────────────────────────────────────────
+
+      # Sum of active RecurringObligations materialized from SavingsGoals.
+      # Used as the authoritative goal_contribution when obligations exist.
+      def fetch_savings_goal_obligations_total(account_id)
+        ::RecurringObligation.active
+          .where(account_id: account_id, source_type: "SavingsGoal")
+          .sum(:amount)
+          .to_i
+      end
+
+      # Returns the overflow_amount from the immediately preceding closed plan.
+      # Exposed to the wizard as opt-in carryover — never auto-added to income.
+      def fetch_carryover_from_previous_plan(account_id, month, year)
+        last = @plan_repo.last_closed(account_id: account_id, limit: 1).first
+        return 0 unless last
+
+        prev = Date.new(year, month, 1).prev_month
+        return 0 unless last[:month] == prev.month && last[:year] == prev.year
+
+        last.dig(:execution_snapshot, "overflow_amount").to_i
       end
 
       # ── Funding status ───────────────────────────────────────────────────────
