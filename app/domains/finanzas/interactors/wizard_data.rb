@@ -87,6 +87,11 @@ module Finanzas
         )
         # Guarantee porAsignar >= 0: scale down flexible lines so total <= available_pool.
         category_rows, normalization_meta = normalize_category_rows(raw_category_rows, discretionary_income)
+
+        # Enrich locked rows with payment status for this month (informational only).
+        paid_this_month_by_code = fetch_paid_this_month_by_subcategory_code(account_id, month, year)
+        category_rows = enrich_with_funding_status(category_rows, paid_this_month_by_code)
+
         suggested_sinking_funds  = build_suggested_sinking_funds(account_id)
 
         {
@@ -465,6 +470,39 @@ module Finanzas
         when "debt_payoff"    then "Reservado para pago extra de deuda"
         when "emergency_fund" then "Reservado para fondo de emergencia"
         end
+      end
+
+      # ── Funding status ───────────────────────────────────────────────────────
+
+      # Adds funding_status and paid_this_month to every locked subcategory row.
+      # "covered" = confirmed spend >= obligation amount; "pending" = not yet paid.
+      def enrich_with_funding_status(rows, paid_by_code)
+        rows.map do |cat|
+          subs = cat[:subcategories].map do |sub|
+            next sub unless sub[:locked]
+
+            paid   = paid_by_code[sub[:code]].to_i
+            status = paid >= sub[:suggested_amount] ? "covered" : "pending"
+            sub.merge(funding_status: status, paid_this_month: paid)
+          end
+          cat.merge(subcategories: subs)
+        end
+      end
+
+      # Returns { subcategory_code => total_confirmed_spend } for the given month.
+      def fetch_paid_this_month_by_subcategory_code(account_id, month, year)
+        ::Transaction
+          .joins(:subcategory)
+          .where(
+            account_id:       account_id,
+            transaction_type: "expense",
+            status:           "confirmed",
+            month:            month,
+            year:             year
+          )
+          .group("subcategories.code")
+          .sum("transactions.amount")
+          .transform_values(&:to_i)
       end
 
       # ── DB Queries ────────────────────────────────────────────────────────
