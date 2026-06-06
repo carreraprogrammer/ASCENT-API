@@ -1,7 +1,7 @@
 class RecurringObligation < ApplicationRecord
   include AccountScopedFromUser
 
-  SOURCE_TYPES    = %w[Debt Investment].freeze
+  SOURCE_TYPES    = %w[Debt Investment SavingsGoal].freeze
   DEBT_SOURCE_TYPE = "Debt".freeze
 
   belongs_to :user
