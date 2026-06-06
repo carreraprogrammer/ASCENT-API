@@ -49,15 +49,16 @@ module Finanzas
           0
         ].max
 
-        ctx = @ctx_repo.find_by_account(account_id) || {}
+        ctx   = @ctx_repo.find_by_account(account_id) || {}
+        phase = Finanzas::Interactors::DerivePhase.new.call(account_id: account_id)
 
-        disc_rate = discretionary_rate_for_phase(ctx[:phase])
+        disc_rate = discretionary_rate_for_phase(phase)
         calculated_discretionary_limit = [
           round_to_thousands((calculated_planning_income * disc_rate).round),
           calculated_available_after_fixed
         ].min
 
-        calculated_overflow_rule = infer_overflow_rule(ctx[:phase])
+        calculated_overflow_rule = infer_overflow_rule(phase)
         calculated_reward_pct = ctx[:reward_pct] || 5
         calculated_debt_strategy = ctx[:strategy]
 
@@ -111,7 +112,7 @@ module Finanzas
           },
           weighted_variable_income: weighted_variable_income,
           discretionary_rate_pct: (disc_rate * 100).round(1),
-          financial_phase: ctx[:phase],
+          financial_phase: phase,
           generated_from: "income_sources",
           generated_at: Time.current.iso8601
         }

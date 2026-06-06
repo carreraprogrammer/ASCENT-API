@@ -55,7 +55,7 @@ module Finanzas
         prev_month_budget_by_subcategory = fetch_prev_month_budget_by_subcategory(account_id, month, year)
 
         fin_ctx              = @ctx_repo.find_by_account(account_id) || {}
-        phase                = fin_ctx[:phase]
+        phase                = Finanzas::Interactors::DerivePhase.new.call(account_id: account_id)
         reward_pct           = fin_ctx[:reward_pct].to_f
         # If manually configured, use it. Otherwise derive from goals/debts automatically.
         goal_contribution    = if fin_ctx[:monthly_goal_contribution].to_i > 0
