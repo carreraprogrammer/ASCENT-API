@@ -70,28 +70,55 @@ module Finanzas
       # ── Queries ──────────────────────────────────────────────────────────────
 
       def load_spent_by_category(account_id, month, year)
-        ::Transaction
-          .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
-          .where(status: %w[confirmed pending])
-          .where(sinking_fund_id: nil)
-          .where.not(category_id: nil)
-          .group(:category_id)
-          .sum(:amount)
+        expense_transactions_for_budget_period(account_id, month, year)
+          .reject { |transaction| transaction.category_id.nil? }
+          .group_by(&:category_id)
+          .transform_values { |transactions| transactions.sum { |transaction| transaction.amount.to_i } }
       end
 
       def load_subcategory_breakdown(account_id, month, year)
-        ::Transaction
-          .where(account_id: account_id, month: month, year: year, transaction_type: "expense")
-          .where(status: %w[confirmed pending])
-          .where(sinking_fund_id: nil)
-          .where.not(subcategory_id: nil)
-          .joins(:subcategory)
-          .group("transactions.category_id", "transactions.subcategory_id", "subcategories.name")
-          .sum("transactions.amount")
-          .map { |(cat_id, sub_id, sub_name), spent|
-            { category_id: cat_id, subcategory_id: sub_id, subcategory: sub_name, spent: spent }
+        expense_transactions_for_budget_period(account_id, month, year)
+          .reject { |transaction| transaction.subcategory_id.nil? }
+          .group_by { |transaction| [ transaction.category_id, transaction.subcategory_id, transaction.subcategory&.name ] }
+          .map { |(cat_id, sub_id, sub_name), transactions|
+            {
+              category_id: cat_id,
+              subcategory_id: sub_id,
+              subcategory: sub_name,
+              spent: transactions.sum { |transaction| transaction.amount.to_i }
+            }
           }
           .group_by { |r| r[:category_id] }
+      end
+
+      def expense_transactions_for_budget_period(account_id, month, year)
+        period = Date.new(year.to_i, month.to_i, 1)
+
+        ::Transaction
+          .includes(:subcategory)
+          .where(account_id: account_id, transaction_type: "expense")
+          .where(status: %w[confirmed pending])
+          .where(sinking_fund_id: nil)
+          .select { |transaction| transaction_applies_to_period?(transaction, period) }
+      end
+
+      def transaction_applies_to_period?(transaction, period)
+        if transaction.covers_period_month.present? && transaction.covers_period_year.present?
+          return transaction.covers_period_month.to_i == period.month &&
+            transaction.covers_period_year.to_i == period.year
+        end
+
+        data = (transaction.metadata || {}).to_h.stringify_keys
+        explicit_period = data["applies_to_period"].presence
+        return explicit_period == period.strftime("%Y-%m") if explicit_period
+
+        explicit_month = data["applies_to_month"].presence
+        explicit_year = data["applies_to_year"].presence
+        if explicit_month && explicit_year
+          return explicit_month.to_i == period.month && explicit_year.to_i == period.year
+        end
+
+        transaction.month.to_i == period.month && transaction.year.to_i == period.year
       end
 
       def group_budgets_by_category(budgets)

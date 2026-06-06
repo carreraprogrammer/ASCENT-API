@@ -13,7 +13,7 @@ module Finanzas
                                   :product, :amount, :date, :source, :metadata,
                                   :clarification_resolved_at, :payment_source,
                                   :debt_id, :recurring_obligation_id, :income_source_id,
-                                  :sinking_fund_id)
+                                  :sinking_fund_id, :covers_period_month, :covers_period_year)
 
         if permitted[:date].present?
           parsed = Date.parse(permitted[:date].to_s) rescue nil

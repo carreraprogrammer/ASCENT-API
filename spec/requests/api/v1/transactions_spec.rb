@@ -169,6 +169,27 @@ RSpec.describe "Transactions API" do
       expect(json.dig("data", "relationships", "recurring_obligation", "data", "id")).to eq(obligation.id.to_s)
     end
 
+    it "persists the budget period covered by the transaction" do
+      post "/api/v1/transactions",
+           params: {
+             date: "29/05/2026",
+             concept: "Arriendo junio pagado por adelantado",
+             amount: 1_500_000,
+             transaction_type: "expense",
+             source: "manual",
+             covers_period_month: 6,
+             covers_period_year: 2026
+           },
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json.dig("data", "attributes", "month")).to eq(5)
+      expect(json.dig("data", "attributes", "year")).to eq(2026)
+      expect(json.dig("data", "attributes", "covers_period_month")).to eq(6)
+      expect(json.dig("data", "attributes", "covers_period_year")).to eq(2026)
+    end
+
     it "links pocket contributions to a sinking fund and increases its balance" do
       fund = create(:sinking_fund, user: user, account: user.default_account, current_balance: 20_000)
 
