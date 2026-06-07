@@ -108,7 +108,9 @@ module Finanzas
           days.map { |d| { day: d, name: s[:name], classification: s[:classification] } }
         end
 
-        future = candidates.select { |c| c[:day] > 0 && c[:day] >= today_day }.min_by { |c| c[:day] }
+        # Exclude today: income arriving today is already reflected in confirmed_balance.
+        # The window we care about is "now → next injection of cash after today."
+        future = candidates.select { |c| c[:day] > 0 && c[:day] > today_day }.min_by { |c| c[:day] }
 
         future || { day: Date.new(today.year, today.month, -1).day, name: nil, classification: nil }
       end
