@@ -170,6 +170,7 @@ module Api
             category_code: obligation.category&.code,
             subcategory_id: obligation.subcategory_id,
             subcategory_code: obligation.subcategory&.code,
+            subcategory_icon: obligation.subcategory&.icon,
             source_type: obligation.source_type,
             source_id: obligation.source_id
           }
