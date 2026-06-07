@@ -374,11 +374,80 @@ module Api
           }
         end
 
+        # Append savings goal obligations as synthetic rows so they appear in the
+        # plan detail even though they have no subcategory_id / Budget record.
+        savings_rows = build_savings_goal_rows(elapsed, days_in)
+        category_rows += savings_rows
+
         plan.merge(
           month_label: "#{year}-#{month.to_s.rjust(2, '0')}",
           total_income: (plan[:base_budget_income].to_i + plan[:expected_variable_income].to_i),
           categories: category_rows
         )
+      end
+
+      # Returns one synthetic category row per active SavingsGoal RecurringObligation.
+      # These obligations are tracked outside the Budget table so they'd otherwise
+      # be invisible in the plan detail view.
+      def build_savings_goal_rows(elapsed, days_in)
+        obligations = ::RecurringObligation
+          .where(account_id: current_account.id, active: true, source_type: "SavingsGoal")
+          .includes(:source)
+
+        return [] if obligations.empty?
+
+        obligations.map do |ob|
+          goal   = ob.source
+          amount = ob.amount.to_i
+          name   = goal&.name || ob.name
+
+          sub_row = {
+            id:        nil,
+            code:      "savings_goal_#{ob.source_id}",
+            name:      ob.name,
+            icon:      "trophy",
+            budgeted:  amount,
+            spent:     0,
+            projected: 0,
+            behavior:  "savings_goal",
+            primary_metric: budget_primary_metric(
+              behavior: "savings_goal",
+              name:     ob.name,
+              budgeted: amount,
+              spent:    0,
+              projected: 0,
+              elapsed:  elapsed,
+              days_in:  days_in
+            ),
+            signal_kind:   "positive",
+            signal_label:  "Comprometido",
+            signal_detail: "Separado antes de distribuir el presupuesto."
+          }
+
+          {
+            code:          "objetivos",
+            name:          name,
+            color:         "#1A9E4A",
+            icon:          "trophy",
+            budgeted:      amount,
+            spent:         0,
+            projected:     0,
+            behavior:      "savings_goal",
+            primary_metric: budget_primary_metric(
+              behavior: "savings_goal",
+              name:     name,
+              budgeted: amount,
+              spent:    0,
+              projected: 0,
+              elapsed:  elapsed,
+              days_in:  days_in
+            ),
+            signal_kind:   "positive",
+            signal_label:  "Comprometido",
+            signal_detail: "Este aporte está reservado antes de distribuir el resto del presupuesto.",
+            subcategories: [ sub_row ]
+          }
+        end
       end
 
       def build_category_signal(category:, budgeted:, spent:, subcategories:)
