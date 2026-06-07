@@ -326,41 +326,45 @@ module Api
           cat_confirmed = cat_spend[:confirmed]
           cat_total     = cat_confirmed + cat_spend[:pending]
           cat_projected = (cat_confirmed * projection_scale).round
-          cat_budgeted  = cat_budgets.sum(&:amount_limit)
+          cat_budgeted  = cat_budgets.sum { |b| b.amount_limit.to_i }
           cat_behavior  = financial_behavior_for(category: cat)
 
-          subcategory_rows = cat_budgets.map do |b|
-            sub   = b.subcategory
-            sub_spend = spend_by_sub[[ cat_id, b.subcategory_id ]]
-            sub_confirmed = sub_spend[:confirmed]
-            sub_total     = sub_confirmed + sub_spend[:pending]
-            sub_projected = (sub_confirmed * projection_scale).round
-            sub_behavior  = financial_behavior_for(category: cat, subcategory: sub)
-            sub_signal    = build_budget_signal(category: cat, subcategory: sub, budgeted: b.amount_limit, spent: sub_total)
+          subcategory_rows = cat_budgets
+            .reject { |b| b.amount_limit.to_i == 0 }
+            .map do |b|
+              sub   = b.subcategory
+              sub_spend = spend_by_sub[[ cat_id, b.subcategory_id ]]
+              sub_confirmed = sub_spend[:confirmed]
+              sub_total     = sub_confirmed + sub_spend[:pending]
+              sub_projected = (sub_confirmed * projection_scale).round
+              sub_behavior  = financial_behavior_for(category: cat, subcategory: sub)
+              sub_signal    = build_budget_signal(category: cat, subcategory: sub, budgeted: b.amount_limit, spent: sub_total)
 
-            {
-              id:        b.subcategory_id,
-              code:      sub&.code,
-              name:      sub&.name,
-              icon:      sub&.icon,
-              budgeted:  b.amount_limit,
-              spent:     sub_total,
-              projected: sub_projected,
-              behavior:  sub_behavior,
-              primary_metric: budget_primary_metric(
-                behavior: sub_behavior,
-                name: sub&.name || sub&.code || "Esta línea",
-                budgeted: b.amount_limit,
-                spent: sub_total,
+              {
+                id:        b.subcategory_id,
+                code:      sub&.code,
+                name:      sub&.name,
+                icon:      sub&.icon,
+                budgeted:  b.amount_limit,
+                spent:     sub_total,
                 projected: sub_projected,
-                elapsed: elapsed,
-                days_in: days_in
-              ),
-              signal_kind:   sub_signal[:kind],
-              signal_label:  sub_signal[:label],
-              signal_detail: sub_signal[:detail]
-            }
-          end
+                behavior:  sub_behavior,
+                primary_metric: budget_primary_metric(
+                  behavior: sub_behavior,
+                  name: sub&.name || sub&.code || "Esta línea",
+                  budgeted: b.amount_limit,
+                  spent: sub_total,
+                  projected: sub_projected,
+                  elapsed: elapsed,
+                  days_in: days_in
+                ),
+                signal_kind:   sub_signal[:kind],
+                signal_label:  sub_signal[:label],
+                signal_detail: sub_signal[:detail]
+              }
+            end
+
+          next if subcategory_rows.empty? && cat_budgeted == 0
 
           category_signal = build_category_signal(
             category: cat,
