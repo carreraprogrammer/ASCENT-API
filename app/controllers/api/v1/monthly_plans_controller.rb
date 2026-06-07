@@ -103,6 +103,9 @@ module Api
           )
         end
 
+        goal_contribution_amount = params[:goal_contribution_amount].to_i
+        materialize_goal_contribution(goal_contribution_amount, plan[:month], plan[:year]) if goal_contribution_amount > 0
+
         EventBus.publish("xp.plan_confirmed", account_id: current_account.id, plan_id: plan[:id])
         render json: { data: plan }
       rescue ActiveRecord::RecordNotFound => e
@@ -147,6 +150,30 @@ module Api
       end
 
       private
+
+      # Creates a SavingsGoal for the emergency fund when the wizard confirms a plan
+      # with a goal_contribution_amount. The goal's after_commit will create the linked
+      # RecurringObligation so the contribution appears in the dashboard obligations list.
+      def materialize_goal_contribution(amount, month, year)
+        return if ::SavingsGoal
+          .where(account_id: current_account.id)
+          .any? { |g| g.name.match?(/emergencia|emergency|fondo/i) }
+
+        target_amount = amount * 12
+        target_date   = Date.new(year.to_i, month.to_i, 1) >> 12
+
+        ::SavingsGoal.create!(
+          user_id:       current_owner_user_id,
+          account_id:    current_account.id,
+          name:          "Fondo de Emergencia",
+          target_amount: target_amount,
+          current_amount: 0,
+          target_date:   target_date,
+          status:        "active"
+        )
+      rescue => e
+        Rails.logger.warn "[monthly_plans#confirm] materialize_goal_contribution failed: #{e.message}"
+      end
 
       def repo
         @repo ||= Finanzas::Repositories::MonthlyFinancialPlanRepository.new
@@ -229,10 +256,17 @@ module Api
           .where(account_id: current_account.id, month: month, year: year)
           .includes(:category, :subcategory)
 
-        # Fetch spend totals per (category, subcategory, status) in one query
+        # Fetch spend totals per (category, subcategory, status) — respects covers_period_month/year
+        # so transactions paid in a prior month that cover this period are counted correctly.
         spend_rows = ::Transaction
-          .where(account_id: current_account.id, month: month, year: year, transaction_type: "expense")
+          .where(account_id: current_account.id, transaction_type: "expense")
           .where.not(category_id: nil)
+          .where(
+            "(covers_period_month IS NOT NULL AND covers_period_year IS NOT NULL" \
+            "  AND covers_period_month = :m AND covers_period_year = :y)" \
+            " OR (covers_period_month IS NULL AND month = :m AND year = :y)",
+            m: month, y: year
+          )
           .select("category_id, subcategory_id, status, SUM(amount) AS total")
           .group(:category_id, :subcategory_id, :status)
 
