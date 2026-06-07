@@ -360,14 +360,18 @@ module Finanzas
       #
       # Scales down flexible (unlocked) subcategory suggestions so that
       # locked_total + flexible_total <= available_pool.
-      # Locked lines (recurring obligations) are never touched.
+      #
+      # Protected (never touched):
+      #   - locked: true  — recurring obligations (source of truth)
+      #   - source == "confirmed_budget" — user's explicit decisions for this month
+      #
       # Returns [normalized_rows, meta_hash].
       def normalize_category_rows(rows, available_pool)
         all_subs = rows.flat_map { |c| c[:subcategories] }
 
-        locked_total   = all_subs.sum { |s| s[:locked] ? s[:suggested_amount] : 0 }
-        flexible_total = all_subs.sum { |s| s[:locked] ? 0 : s[:suggested_amount] }
-        flexible_budget = [ available_pool - locked_total, 0 ].max
+        protected_total = all_subs.sum { |s| protected_sub?(s) ? s[:suggested_amount] : 0 }
+        flexible_total  = all_subs.sum { |s| protected_sub?(s) ? 0 : s[:suggested_amount] }
+        flexible_budget = [ available_pool - protected_total, 0 ].max
 
         if flexible_total <= flexible_budget
           return [ rows, { normalized: false, trimmed_amount: 0 } ]
@@ -378,7 +382,7 @@ module Finanzas
 
         normalized = rows.map do |cat|
           subs = cat[:subcategories].map do |sub|
-            next sub if sub[:locked]
+            next sub if protected_sub?(sub)
 
             sub.merge(suggested_amount: (sub[:suggested_amount] * scale).floor)
           end
@@ -389,6 +393,10 @@ module Finanzas
         end
 
         [ normalized, { normalized: true, trimmed_amount: trimmed_amount } ]
+      end
+
+      def protected_sub?(sub)
+        sub[:locked] || sub[:source] == "confirmed_budget"
       end
 
       # ── Goal contribution derivation ──────────────────────────────────────
