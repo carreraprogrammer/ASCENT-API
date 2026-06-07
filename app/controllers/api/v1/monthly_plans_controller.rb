@@ -103,8 +103,7 @@ module Api
           )
         end
 
-        goal_contribution_amount = params[:goal_contribution_amount].to_i
-        materialize_goal_contribution(goal_contribution_amount, plan[:month], plan[:year]) if goal_contribution_amount > 0
+        materialize_goal_contribution(plan[:month], plan[:year])
 
         EventBus.publish("xp.plan_confirmed", account_id: current_account.id, plan_id: plan[:id])
         render json: { data: plan }
@@ -151,25 +150,37 @@ module Api
 
       private
 
-      # Creates a SavingsGoal for the emergency fund when the wizard confirms a plan
-      # with a goal_contribution_amount. The goal's after_commit will create the linked
-      # RecurringObligation so the contribution appears in the dashboard obligations list.
-      def materialize_goal_contribution(amount, month, year)
+      # On every plan confirmation, creates a SavingsGoal for the emergency fund if the
+      # account is in the emergency_fund phase and no EF goal exists yet.
+      # The goal's after_commit hook creates the linked RecurringObligation so the
+      # contribution appears in the dashboard obligations list.
+      def materialize_goal_contribution(month, year)
+        phase = Finanzas::Interactors::DerivePhase.new.call(account_id: current_account.id)
+        return unless phase == "emergency_fund"
+
         return if ::SavingsGoal
           .where(account_id: current_account.id)
           .any? { |g| g.name.match?(/emergencia|emergency|fondo/i) }
 
-        target_amount = amount * 12
-        target_date   = Date.new(year.to_i, month.to_i, 1) >> 12
+        committed_monthly = ::RecurringObligation
+          .where(account_id: current_account.id, active: true)
+          .sum(:amount).to_i
+
+        return if committed_monthly <= 0
+
+        raw_monthly          = (committed_monthly / 12.0).ceil
+        monthly_contribution = [ (raw_monthly / 1000.0).round * 1000, 1000 ].max
+        target_amount        = monthly_contribution * 12
+        target_date          = Date.new(year.to_i, month.to_i, 1) >> 12
 
         ::SavingsGoal.create!(
-          user_id:       current_owner_user_id,
-          account_id:    current_account.id,
-          name:          "Fondo de Emergencia",
-          target_amount: target_amount,
+          user_id:        current_owner_user_id,
+          account_id:     current_account.id,
+          name:           "Fondo de Emergencia",
+          target_amount:  target_amount,
           current_amount: 0,
-          target_date:   target_date,
-          status:        "active"
+          target_date:    target_date,
+          status:         "active"
         )
       rescue => e
         Rails.logger.warn "[monthly_plans#confirm] materialize_goal_contribution failed: #{e.message}"
