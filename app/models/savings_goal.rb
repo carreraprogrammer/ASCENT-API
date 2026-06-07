@@ -33,12 +33,20 @@ class SavingsGoal < ApplicationRecord
         name:    "Aporte a #{name}",
         amount:  rounded,
         active:  true,
-        due_day: 1
+        due_day: safe_due_day
       )
       obligation.save! if obligation.new_record? || obligation.changed?
     elsif obligation.persisted? && obligation.active?
       obligation.update_column(:active, false)
     end
+  end
+
+  def safe_due_day
+    max_committed = RecurringObligation
+      .where(account_id: account_id, active: true)
+      .where.not(source_type: "SavingsGoal")
+      .maximum(:due_day)
+    max_committed ? [max_committed + 1, 28].min : 28
   end
 
   def round_contribution(amount)
