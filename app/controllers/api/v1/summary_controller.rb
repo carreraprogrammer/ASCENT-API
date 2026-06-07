@@ -22,9 +22,11 @@ module Api
         income_sources       = income_source_repo.active_for_account(account_id)
         realized_income_by_source = income_realized_by_source(account_id, month, year)
 
-        # Saldo acumulado real de todos los meses. El carryover es ese total
-        # menos el P&L del mes actual.
-        account_confirmed_balance     = ledger_confirmed_balance(account_id)
+        # confirmed_balance es el saldo acumulado mantenido en accounts.confirmed_balance
+        # (actualizado por TransactionRepository#apply_account_balance_delta!). No usar
+        # ledger_confirmed_balance — ese suma todos los meses incluyendo meses solo-ingreso
+        # que la migración excluyó intencionalmente para evitar saldo artificial.
+        account_confirmed_balance     = current_account.confirmed_balance.to_i
         carryover_from_previous_month = account_confirmed_balance - balance[:balance_confirmed].to_i
         balance = balance.merge(
           carryover_from_previous_month: carryover_from_previous_month,
