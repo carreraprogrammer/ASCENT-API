@@ -104,6 +104,7 @@ module Api
         end
 
         materialize_goal_contribution(plan[:month], plan[:year])
+        apply_goal_contribution_amount if params[:goal_contribution_amount].present?
 
         EventBus.publish("xp.plan_confirmed", account_id: current_account.id, plan_id: plan[:id])
         render json: { data: plan }
@@ -149,6 +150,25 @@ module Api
       end
 
       private
+
+      # Applies the user-specified monthly contribution amount to the first active
+      # SavingsGoal obligation for the account. Uses update_column to bypass callbacks
+      # so we don't trigger a full recalculation loop.
+      def apply_goal_contribution_amount
+        desired = params[:goal_contribution_amount].to_i
+        return if desired <= 0
+
+        obligation = ::RecurringObligation
+          .where(account_id: current_account.id, active: true, source_type: "SavingsGoal")
+          .first
+        return unless obligation
+        return if obligation.amount == desired
+
+        obligation.update_column(:amount, desired)
+        obligation.source&.update_column(:monthly_contribution_needed, desired)
+      rescue => e
+        Rails.logger.warn "[monthly_plans#confirm] apply_goal_contribution_amount failed: #{e.message}"
+      end
 
       # On every plan confirmation, creates a SavingsGoal for the emergency fund if the
       # account is in the emergency_fund phase and no EF goal exists yet.
