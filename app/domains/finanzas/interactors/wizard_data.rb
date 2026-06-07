@@ -79,6 +79,11 @@ module Finanzas
         discretionary_income = [ suggested_total - goal_contribution, 0 ].max
 
         income_section           = build_income_section(income_sources, suggested_total)
+        # True once the account has confirmed at least one plan. When true, unused
+        # subcategories (no history, no confirmed, no recurring) get $0 instead of
+        # a phantom benchmark amount — benchmarks are only useful for new users.
+        has_plan_history = confirmed_by_subcategory.any? || prev_month_budget_by_subcategory.any?
+
         raw_category_rows        = build_category_rows(
           all_categories,
           recurring_by_category,
@@ -88,7 +93,8 @@ module Finanzas
           discretionary_income,
           confirmed_by_subcategory,
           prev_month_budget_by_subcategory,
-          phase_discount_rate
+          phase_discount_rate,
+          has_plan_history
         )
         # Guarantee porAsignar >= 0: scale down flexible lines so total <= available_pool.
         category_rows, normalization_meta = normalize_category_rows(raw_category_rows, discretionary_income)
@@ -150,7 +156,8 @@ module Finanzas
         income,
         confirmed_by_subcategory = {},
         prev_month_budget_by_subcategory = {},
-        phase_discount_rate = 0
+        phase_discount_rate = 0,
+        has_plan_history = false
       )
         rows = []
 
@@ -173,7 +180,8 @@ module Finanzas
             pct,
             confirmed_by_subcategory,
             prev_month_budget_by_subcategory,
-            phase_discount_rate
+            phase_discount_rate,
+            has_plan_history
           )
 
           suggested_total = sub_rows.sum { |s| s[:suggested_amount] }
@@ -201,7 +209,8 @@ module Finanzas
         benchmark_pct,
         confirmed_by_subcategory = {},
         prev_month_budget_by_subcategory = {},
-        phase_discount_rate = 0
+        phase_discount_rate = 0,
+        has_plan_history = false
       )
         subcategories = category.subcategories
         return [] if subcategories.empty?
@@ -304,7 +313,10 @@ module Finanzas
               phase_adjusted: false
             )
           end
-        elsif benchmark_pct && income > 0
+        elsif benchmark_pct && income > 0 && !has_plan_history
+          # Benchmark amounts only apply for new users with no plan history.
+          # Once a user has confirmed at least one plan, unused subcategories
+          # (no history, no confirmed, no recurring) get $0 — not phantom suggestions.
           benchmark_total = (income * benchmark_pct).round
           already_covered = rows.sum { |row| row[:suggested_amount] }
           remaining_benchmark = [ benchmark_total - already_covered, 0 ].max
