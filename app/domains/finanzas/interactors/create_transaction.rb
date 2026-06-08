@@ -29,6 +29,21 @@ module Finanzas
         metadata = (metadata || {}).to_h.stringify_keys
         source_event_id = metadata["source_event_id"].presence
 
+        # Backfill covers_period columns from metadata when the agent uses the legacy
+        # applies_to_month/applies_to_year/applies_to_period keys instead of explicit params.
+        if covers_period_month.nil? && covers_period_year.nil?
+          if metadata["applies_to_period"].present?
+            parts = metadata["applies_to_period"].to_s.split("-")
+            if parts.length == 2
+              covers_period_year  = parts[0].to_i
+              covers_period_month = parts[1].to_i
+            end
+          elsif metadata["applies_to_month"].present? && metadata["applies_to_year"].present?
+            covers_period_month = metadata["applies_to_month"].to_i
+            covers_period_year  = metadata["applies_to_year"].to_i
+          end
+        end
+
         # Idempotencia técnica: si viene source_event_id, bloquear solo si ya existe ese evento técnico
         if source_event_id
           existing = @repo.find_by_source_event_id(

@@ -79,7 +79,7 @@ module Api
         result = Finanzas::Repositories::TransactionRepository.new.balance(
           account_id: current_account.id, month: month, year: year
         )
-        render json: { data: result }
+        render json: { data: result.merge(account_confirmed_balance: current_account.confirmed_balance.to_i) }
       end
 
       def show
