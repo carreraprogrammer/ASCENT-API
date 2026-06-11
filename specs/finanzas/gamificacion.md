@@ -1,8 +1,9 @@
 # Spec — Gamificación madura y aplicación viva
 
 > Producto: Daniel 15K / versión productizable futura
-> Estado: borrador estratégico
-> Propósito: definir una estrategia de gamificación progresiva, madura y coherente con una aplicación de coaching personal basada en agentes.
+> Estado: **obsoleto — pendiente de redefinición (2026-06-11)**
+> La dirección de gamificación va a cambiar. Las metáforas de experiencia (núcleo, niveles, evolución del avatar) descritas aquí NO deben usarse como referencia para nuevas features de UI ni de agente hasta que se confirme la nueva dirección. El backend existente (XP, niveles, racha) se mantiene pero no se expone en UI.
+> Propósito original: definir una estrategia de gamificación progresiva, madura y coherente con una aplicación de coaching personal basada en agentes.
 
 ---
 

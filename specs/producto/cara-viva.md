@@ -1,8 +1,9 @@
 # Spec — La Cara Viva
 
 > Estado: activo — en progreso
-> Última actualización: 2026-05-06
+> Última actualización: 2026-06-11
 > Backend Track A completado — avatar flotante + level switcher entregados; pendiente XP UI, agente y motor conductual
+> **Nota (2026-06-11): la dirección de gamificación está en revisión — ver `specs/finanzas/gamificacion.md` (obsoleto). Las secciones de XP UI, niveles visibles y progresión quedan en pending confirmation; no construir UI de gamificación hasta confirmar la nueva dirección.**
 > Propósito: definir la arquitectura de identidad de la aplicación y el camino hacia su distribución.
 
 ---
