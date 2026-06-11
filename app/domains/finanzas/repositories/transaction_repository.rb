@@ -74,6 +74,41 @@ module Finanzas
         }
       end
 
+      # Muestras históricas para inferir la subcategoría de un comercio.
+      # Matchea concept o product normalizados (exacto, o por prefijo si se pasa prefix).
+      # Devuelve filas crudas; la agregación vive en el interactor ClassificationHints.
+      def classification_samples(account_id:, key:, prefix: nil)
+        return [] if key.blank? && prefix.blank?
+
+        scope = ::Transaction
+          .where(account_id: account_id, status: "confirmed", transaction_type: "expense")
+          .where.not(subcategory_id: nil)
+          .joins("INNER JOIN subcategories ON subcategories.id = transactions.subcategory_id")
+          .joins("INNER JOIN categories ON categories.id = subcategories.category_id")
+
+        concept_norm = "UPPER(TRIM(COALESCE(transactions.concept, '')))"
+        product_norm = "UPPER(TRIM(COALESCE(transactions.product, '')))"
+        scope = if prefix.present?
+          scope.where("#{concept_norm} LIKE :p OR #{product_norm} LIKE :p", p: "#{ActiveRecord::Base.sanitize_sql_like(prefix)}%")
+        else
+          scope.where("#{concept_norm} = :k OR #{product_norm} = :k", k: key)
+        end
+
+        scope.pluck(
+          "subcategories.id", "subcategories.code", "subcategories.name",
+          "categories.id", "categories.category_type", "transactions.created_at"
+        ).map do |sub_id, sub_code, sub_name, cat_id, cat_type, created_at|
+          {
+            subcategory_id: sub_id,
+            subcategory_code: sub_code,
+            subcategory_name: sub_name,
+            category_id: cat_id,
+            category_type: cat_type,
+            created_at: created_at
+          }
+        end
+      end
+
       def find(id, account_id: nil)
         scope = ::Transaction.where(id: id)
         scope = scope.where(account_id: account_id) if account_id.present?

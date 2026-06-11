@@ -72,6 +72,21 @@ module Api
         render json: { data: unconfirmed + agent_flagged }
       end
 
+      def classification_hints
+        return unless require_scope!("transactions:read")
+
+        merchant = params[:merchant].to_s.strip
+        if merchant.blank?
+          return render json: { errors: [ { status: "422", code: "validation_error", detail: "merchant is required", source: { pointer: "/merchant" } } ] }, status: :unprocessable_entity
+        end
+
+        result = Finanzas::Interactors::ClassificationHints.new.call(
+          account_id: current_account.id,
+          merchant: merchant
+        )
+        render json: { data: result }
+      end
+
       def balance
         return unless require_scope!("summary:read")
         month = params[:month] || Time.now.month
