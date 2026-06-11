@@ -42,6 +42,7 @@ Rails.application.routes.draw do
           get :pending
           get :needs_review
           get :balance
+          get :classification_hints
           post :batch
         end
       end
