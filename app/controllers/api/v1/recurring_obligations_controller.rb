@@ -19,6 +19,7 @@ module Api
       def create
         return unless require_scope!("recurring_obligations:update")
         obligation = repo.create(allowed_params.merge(user_id: current_owner_user_id, account_id: current_account.id))
+        refresh_plan_totals
         render json: { data: obligation }, status: :created
       rescue => e
         render_unprocessable(e.message)
@@ -27,6 +28,7 @@ module Api
       def update
         return unless require_scope!("recurring_obligations:update")
         obligation = repo.update(params[:id], allowed_params, account_id: current_account.id)
+        refresh_plan_totals
         render json: { data: obligation }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
@@ -37,12 +39,21 @@ module Api
       def destroy
         return unless require_scope!("recurring_obligations:update")
         repo.destroy(params[:id], account_id: current_account.id)
+        refresh_plan_totals
         head :no_content
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
       end
 
       private
+
+      # El plan del mes abierto es un documento vivo: cada cambio estructural
+      # re-sincroniza sus totales (los meses cerrados nunca se tocan).
+      def refresh_plan_totals
+        Finanzas::Interactors::RefreshPlanStructureTotals.new.call(account_id: current_account.id)
+      rescue => e
+        Rails.logger.warn "[recurring_obligations] refresh_plan_totals failed: #{e.message}"
+      end
 
       def repo
         @repo ||= Finanzas::Repositories::RecurringObligationRepository.new

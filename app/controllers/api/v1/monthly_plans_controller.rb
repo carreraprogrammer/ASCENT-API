@@ -106,6 +106,12 @@ module Api
         materialize_goal_contribution(plan[:month], plan[:year])
         apply_goal_contribution_amount if params[:goal_contribution_amount].present?
 
+        # La confirmación sella la realidad del momento, no la foto de la generación:
+        # los totales estructurales se recalculan desde recurrentes/deudas vivas.
+        Finanzas::Interactors::RefreshPlanStructureTotals.new.call(
+          account_id: current_account.id, month: plan[:month], year: plan[:year]
+        )
+
         EventBus.publish("xp.plan_confirmed", account_id: current_account.id, plan_id: plan[:id])
         render json: { data: plan }
       rescue ActiveRecord::RecordNotFound => e
