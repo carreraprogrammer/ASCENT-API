@@ -25,10 +25,10 @@ module Finanzas
             month:       month.to_i,
             year:        year.to_i
           }
-          # When a subcategory_id is provided, scope the lookup to that subcategory so
-          # that each subcategory-level budget is tracked independently while the
-          # (account_id, category_id, month, year) legacy constraint is not violated.
-          lookup_attrs[:subcategory_id] = b[:subcategory_id] if b[:subcategory_id].present?
+          # Scope siempre por subcategory_id (incluido nil explícito): sin esto, un
+          # upsert a nivel de categoría puede encontrar y pisar una fila de
+          # subcategoría del mismo category_id.
+          lookup_attrs[:subcategory_id] = b[:subcategory_id].presence
 
           record = ::Budget.find_or_initialize_by(lookup_attrs)
           record.user_id      = user_id

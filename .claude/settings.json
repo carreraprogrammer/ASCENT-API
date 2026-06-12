@@ -44,7 +44,11 @@
       "Bash(gunzip -c \"/Users/danielcarrera/.claude/projects/-Users-danielcarrera-Documents-Claude-Projects-daniel15k-api/10528486-9442-4e24-b1d5-6b21d7be6771/tool-results/webfetch-1780777953025-674kuq.bin\")",
       "Read(//tmp/**)",
       "Bash(mkdir -p /tmp/design_bundle)",
-      "Bash(tar -xf /tmp/design_dashboard.html -C /tmp/design_bundle)"
+      "Bash(tar -xf /tmp/design_dashboard.html -C /tmp/design_bundle)",
+      "Bash(export CLAUDE_CODE_TMPDIR=/tmp)",
+      "Bash(curl -s -X GET 'https://daniel15k-api-production.up.railway.app/api/v1/summary?month=6&year=2026' -H 'Authorization: Bearer 7b818e6ba6f382f9016a01846230af9ecc93f8e6d06ee15931ff178c9c63beb2' -H 'X-Account-Id: 1' -H 'X-Agent-Type: finance_coach' -H 'Content-Type: application/json')",
+      "Bash(curl -s 'https://daniel15k-api-production.up.railway.app/api/v1/summary?month=6&year=2026' -H 'Authorization: Bearer 7b818e6ba6f382f9016a01846230af9ecc93f8e6d06ee15931ff178c9c63beb2' -H 'X-Account-Id: 4' -H 'X-Agent-Type: finance_coach')",
+      "Bash(curl -s https://daniel15k-api-production.up.railway.app/api/v1/income_sources -H 'Authorization: Bearer 7b818e6ba6f382f9016a01846230af9ecc93f8e6d06ee15931ff178c9c63beb2' -H 'X-Account-Id: 4' -H 'X-Agent-Type: finance_coach')"
     ]
   }
 }
