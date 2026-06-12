@@ -20,6 +20,7 @@ module Api
       def create
         return unless require_scope!("debts:update")
         debt = repo.create(allowed_create_params.merge(user_id: current_owner_user_id, account_id: current_account.id))
+        refresh_plan_totals
         render json: { data: debt, meta: debt_create_meta(debt) }, status: :created
       rescue => e
         render_unprocessable(e.message)
@@ -31,6 +32,7 @@ module Api
         debt = repo.find(params[:id], account_id: current_account.id)
         raise ActiveRecord::RecordNotFound unless debt
         ::Debt.find_by!(id: params[:id], account_id: current_account.id).destroy!
+        refresh_plan_totals
         head :no_content
       rescue ActiveRecord::RecordNotFound
         render json: { errors: [ { status: "404", detail: "Debt not found" } ] }, status: :not_found
@@ -44,6 +46,7 @@ module Api
           account_id: current_account.id,
           attrs: allowed_update_params
         )
+        refresh_plan_totals
         render json: { data: debt }
       rescue ActiveRecord::RecordNotFound => e
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
@@ -116,6 +119,14 @@ module Api
 
       def repo
         @repo ||= Finanzas::Repositories::DebtRepository.new
+      end
+
+      # El plan del mes abierto es un documento vivo: cada cambio estructural
+      # re-sincroniza sus totales (los meses cerrados nunca se tocan).
+      def refresh_plan_totals
+        Finanzas::Interactors::RefreshPlanStructureTotals.new.call(account_id: current_account.id)
+      rescue => e
+        Rails.logger.warn "[debts] refresh_plan_totals failed: #{e.message}"
       end
 
       def debt_create_meta(debt)
