@@ -67,7 +67,7 @@ The core module. Key interactors in `app/domains/finanzas/interactors/`:
 | `GenerateMonthlyFinancialPlan` | Generates draft plan for the month |
 | `CloseMonthlyPlan` | Closes month + saves `execution_snapshot` |
 | `ProposeBudget` | Reads last 3 closed plans for `consistently_over` / `income_overestimated` patterns |
-| `LiquidityProjection` | Calculates `safe_to_deploy` — universal guardrail for the agent |
+| `CashFlowRunway` | Calculates `commitment_gap` ("margen libre") — universal guardrail for the agent. Every user-facing formula is documented in `specs/finanzas/glosario-calculos.md` |
 | `DetectCompletenessState` | 5-dimension profile: `income_profile`, `debts`, `recurring_expenses`, `strategy`, `monthly_plan` |
 | `AgentPreflight` | Agent evaluates gaps before acting |
 | `InsightDriftChecker` | Guards daily insight regeneration against trivial drift |
@@ -76,7 +76,7 @@ The core module. Key interactors in `app/domains/finanzas/interactors/`:
 **Key invariants:**
 - `recurring_obligations.amount` is the source of truth for monthly cash impact, not `debts.monthly_payment`.
 - `source_event_id` deduplication is technical only — the agent is responsible for semantic deduplication.
-- `safe_to_deploy` = money available after next cycle's commitments. Every agent recommendation must respect this guardrail.
+- `commitment_gap` (margen libre) = money available after the commitments and daily burn until the next income. Every agent recommendation must respect this guardrail. (`safe_to_deploy`/`LiquidityProjection` was the old name; the interactor no longer exists.)
 - A `RecurringObligation` with subcategory `creditos` requires `source_type=Debt`. `POST /debts` suggests creating the obligation if it doesn't exist.
 
 ## Authentication
