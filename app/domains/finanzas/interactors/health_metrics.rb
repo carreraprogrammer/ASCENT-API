@@ -24,14 +24,16 @@ module Finanzas
         debts        = load_debts(account_id)
         goals        = load_goals(account_id)
         base_income  = plan&.base_budget_income.to_i
+        ef           = emergency_fund_metrics(goals, obligations)
 
         {
           base_income:                  base_income,
           ratio_gastos_fijos:           ratio_gastos_fijos(obligations, base_income),
-          emergency_fund:               emergency_fund_metrics(goals, obligations),
+          emergency_fund:               ef,
           tasa_ahorro:                  tasa_ahorro(goals, base_income),
           dti:                          dti(debts, base_income),
           age_of_money:                 age_of_money(account_id, today),
+          coaching_priority:            coaching_priority(ef, debts),
         }
       end
 
@@ -126,6 +128,48 @@ module Finanzas
         return "basic"        if pct < 10
         return "healthy"      if pct < 15
         "excellent"
+      end
+
+      # ── Prioridad de coaching (NC-3 + metodologías §4.3) ────────────────────
+      # Fuente única de verdad para "¿a dónde va el excedente?". Los agentes
+      # NUNCA deciden esto por su cuenta — consumen esta directiva tal cual.
+      # Secuencia: fondo starter (1 mes) → deuda → fondo completo (3m) → invertir.
+      def coaching_priority(ef, debts)
+        months       = ef[:months_covered].to_f
+        active_debts = debts.to_a # load_debts ya filtra status: active
+
+        if months < 1
+          {
+            code:      "emergency_fund_starter",
+            directive: "Todo excedente va al fondo de emergencia hasta cubrir 1 mes " \
+                       "(faltan #{ef[:gap_to_1m]} COP). No sugerir abonos extra a deuda " \
+                       "(solo mínimos) ni inversión.",
+            reason:    "Fondo cubre #{months} meses (< 1 mes starter). NC-3: ningún marco " \
+                       "recomienda atacar deuda o invertir sin colchón mínimo."
+          }
+        elsif active_debts.any?
+          {
+            code:      "debt_payoff",
+            directive: "Fondo starter cubierto. El excedente ataca la deuda según la " \
+                       "estrategia del usuario (snowball/avalanche). Mantener mínimos y " \
+                       "no crecer el fondo más allá de 1 mes mientras haya deuda activa.",
+            reason:    "Fondo cubre #{months} meses y hay #{active_debts.size} deuda(s) activa(s)."
+          }
+        elsif months < 3
+          {
+            code:      "complete_emergency_fund",
+            directive: "Sin deudas activas. El excedente completa el fondo de emergencia " \
+                       "hasta 3 meses (faltan #{ef[:gap_to_3m]} COP).",
+            reason:    "Fondo cubre #{months} meses (< 3 meses suficientes) y no hay deuda."
+          }
+        else
+          {
+            code:      "invest",
+            directive: "Fondo suficiente y sin deudas. El excedente puede ir a inversión — " \
+                       "sin recomendar instrumentos específicos (no somos asesores).",
+            reason:    "Fondo cubre #{months} meses (≥ 3) y no hay deuda activa."
+          }
+        end
       end
 
       # ── DTI — Debt-to-Income ratio (NC-6) ───────────────────────────────────

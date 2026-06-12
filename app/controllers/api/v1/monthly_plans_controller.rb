@@ -143,7 +143,12 @@ module Api
       def destroy
         return unless require_scope!("budgets:update")
         plan = ::MonthlyFinancialPlan.find_by!(id: params[:id], account: current_account)
-        plan.destroy!
+        ActiveRecord::Base.transaction do
+          # Sin esto, los budgets del mes quedan huérfanos y burn_rate sigue
+          # rindiendo "gavetas fantasma" en dashboard y detalle.
+          ::Budget.where(account_id: current_account.id, month: plan.month, year: plan.year).delete_all
+          plan.destroy!
+        end
         render json: { data: { id: params[:id] } }, status: :ok
       rescue ActiveRecord::RecordNotFound
         render json: { errors: [ { status: "404", detail: "Plan no encontrado" } ] }, status: :not_found
