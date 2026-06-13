@@ -15,6 +15,11 @@ class EmailConnection < ApplicationRecord
     expires_at.present? && expires_at <= Time.current + 5.minutes
   end
 
+  # true cuando el refresh token murió y el usuario debe reconectar Gmail.
+  def needs_reconnect?
+    reconnect_required_at.present?
+  end
+
   # Devuelve la lista de remitentes bancarios como array Ruby.
   # nil / vacío = sin configurar (el agente usará búsqueda por keywords).
   def bank_senders_list

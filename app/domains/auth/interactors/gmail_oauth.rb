@@ -60,10 +60,17 @@ module Auth
           conn = EmailConnection.find_by!(account_id: account_id)
 
           if conn.expired?
-            tokens = fetch_tokens(
-              grant_type:    "refresh_token",
-              refresh_token: conn.refresh_token
-            )
+            begin
+              tokens = fetch_tokens(
+                grant_type:    "refresh_token",
+                refresh_token: conn.refresh_token
+              )
+            rescue => e
+              # Refresh token muerto/revocado: el push y el nocturno seguirán fallando
+              # en silencio hasta que el usuario reconecte. Lo marcamos y avisamos.
+              flag_reconnect_required(conn, reason: e.message)
+              raise
+            end
             conn.update!(
               access_token: tokens["access_token"],
               expires_at:   Time.current + tokens.fetch("expires_in", 3600).to_i.seconds
@@ -124,9 +131,34 @@ module Auth
           conn.access_token  = tokens["access_token"]
           conn.expires_at    = Time.current + tokens.fetch("expires_in", 3600).to_i.seconds
           conn.connected_at  = Time.current
+          conn.reconnect_required_at = nil # reconexión exitosa: limpia el aviso
           # refresh_token solo viene en el primer exchange (access_type: offline + prompt: consent)
           conn.refresh_token = tokens["refresh_token"] if tokens["refresh_token"].present?
           conn.save!
+        end
+
+        # Marca la conexión como rota y emite un aviso de "reconectá Gmail" para la
+        # app. El flag es persistente (lo lee el endpoint de estado); el agent_event
+        # es el nudge inmediato si el usuario está activo. Solo avisa una vez por
+        # caída para no spamear en cada reintento diario.
+        def flag_reconnect_required(conn, reason: nil)
+          return if conn.reconnect_required_at.present?
+
+          conn.update_column(:reconnect_required_at, Time.current)
+          Rails.logger.warn("[GmailOauth] account=#{conn.account_id} requiere reconexión: #{reason}")
+
+          AgentUiEvent.create!(
+            account_id: conn.account_id,
+            event_type: "show_card",
+            payload: {
+              "title"  => "Reconectá tu Gmail",
+              "body"   => "Perdí el acceso a tu correo y dejé de registrar tus movimientos automáticamente. Reconectá Gmail desde Ajustes para retomar.",
+              "tone"   => "warning",
+              "action" => "reconnect_gmail"
+            }
+          )
+        rescue => e
+          Rails.logger.error("[GmailOauth] no se pudo emitir aviso de reconexión account=#{conn.account_id}: #{e.message}")
         end
 
         def client_id     = ENV.fetch("GOOGLE_CLIENT_ID")
