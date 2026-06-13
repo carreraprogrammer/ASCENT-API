@@ -2,14 +2,16 @@
 
 > Estado: 🟡 brief listo para entregar a diseñador UX/UI
 > Última actualización: 2026-06-13
-> Decisiones tomadas: **modalidad híbrida conversacional** · **profundidad mínima viable + progresiva**
+> Decisiones tomadas: **modalidad híbrida conversacional** · **un solo onboarding (sin niveles)** · **la app requiere compromiso del usuario** · **la estrategia se deriva, no se pregunta**
 > Para implementar después de tener el flujo y los wireframes aprobados.
 
 ---
 
 ## Cómo usar este documento
 
-Este es el **prompt que se le entrega a un diseñador profesional especialista en UX/UI** (humano o IA) para que diseñe el onboarding. Está escrito para que el diseñador tenga todo el contexto sin tener que leer el código: qué es el producto, quién es el usuario, qué dato necesita el sistema, qué NO debe pedir, y qué entregables esperamos.
+Este es el **prompt que se le entrega a un diseñador profesional especialista en UX/UI** (humano o IA) para que diseñe el onboarding. Está escrito para que el diseñador tenga todo el contexto sin tener que leer el código: qué es el producto, quién es el usuario, qué información necesitamos capturar, qué lógica corre por debajo, y qué entregables esperamos.
+
+**La regla que rige todo el brief:** nosotros (producto) definimos *la lógica y la información que necesitamos*; tú (diseño) defines *la mejor forma de capturarla para maximizar retención*. Ver §5.
 
 Copiar desde la línea `--- INICIO DEL PROMPT ---` hacia abajo si se quiere pasar tal cual.
 
@@ -19,7 +21,7 @@ Copiar desde la línea `--- INICIO DEL PROMPT ---` hacia abajo si se quiere pasa
 
 ## 1. Rol
 
-Eres un diseñador de producto senior especializado en UX/UI para productos financieros de consumo, con experiencia en onboarding conversacional y en diseño sensible a la psicología del usuario (reducción de fricción, reducción de vergüenza, motivación intrínseca). Tu trabajo aquí no es decorar pantallas: es diseñar el **primer momento de confianza** entre una persona y su coach financiero.
+Eres un diseñador de producto senior especializado en UX/UI para productos financieros de consumo, con experiencia en onboarding conversacional y en diseño sensible a la psicología del usuario (reducción de fricción, reducción de vergüenza, motivación intrínseca). Tu trabajo aquí no es decorar pantallas: es diseñar el **primer momento de confianza** entre una persona y su coach financiero, y hacerlo de forma que la gente **complete el onboarding y vuelva**.
 
 ## 2. El producto
 
@@ -41,52 +43,80 @@ La filosofía rectora: **la conducta importa más que la matemática**. Un estud
   - "**The secret sauce is culture, not language**" (Beatriz Acevedo, SUMA Wealth): no basta con estar en español; los supuestos deben ser latinoamericanos.
 - **Estado emocional probable al llegar:** mezcla de esperanza y vergüenza. Muchos llegan porque algo les preocupa (deuda, no llegar a fin de mes, no poder ahorrar). Pueden sentir que "son malos con el dinero".
 
-## 4. El problema a resolver
+## 4. El problema y las decisiones ya tomadas
 
-Diseñar un onboarding que **recolecte la información suficiente para que el coach pueda ayudar de verdad, sin abrumar al usuario**.
+Diseñar un onboarding que **capture la información que el coach necesita para ayudar de verdad, sin que la experiencia se sienta como un interrogatorio**.
 
-Tensión central: el sistema necesita datos para diagnosticar; el usuario nuevo no tiene paciencia ni confianza para entregar un formulario largo. Pedir demasiado mata la retención; pedir muy poco hace al coach inútil el día 1.
-
-**La decisión de producto ya tomada (no es tuya, es la base sobre la que diseñas):**
+Decisiones de producto ya tomadas (son la base sobre la que diseñas, no están a discusión):
 
 1. **Modalidad: híbrida conversacional.** Pantallas guiadas paso a paso, pero con tono de conversación y la presencia del coach (avatar/voz). Ni formulario frío ni chat 100% libre. El esqueleto es estructurado (garantiza datos completos y control de progreso); la piel es conversacional (genera confianza).
-2. **Profundidad: mínimo viable + progresiva.** El onboarding solo captura lo indispensable para la **primera interacción útil**. El resto lo completa el coach conversando en los días siguientes, *just-in-time*. Las razones (clave para que respetes el espíritu del diseño):
-   - Pedir el perfil financiero completo a un desconocido en la pantalla 2 dispara el **ciclo de vergüenza → evitación → abandono**.
-   - La confianza se construye antes de pedir datos sensibles (proceso *Engaging* de la Entrevista Motivacional).
-   - El sistema YA tiene mecanismos para detectar qué falta y pedirlo después de forma natural (ver §6, "Lo que NO va en el onboarding").
 
-## 5. Qué información necesita el sistema (mapa de datos completo)
+2. **Un solo onboarding, sin "niveles" ni etapas diferidas.** Capturamos en una sola sesión el conjunto que el coach necesita para funcionar. No fragmentamos en tiers. La razón es estructural: el valor central del producto es un **plan mensual estilo YNAB** ("asigna cada peso"), y eso no se puede armar con un tercio de la información — un plan a medias es un plan *equivocado*, y un número equivocado destruye la confianza.
 
-El sistema modela la salud financiera en **5 dimensiones**. Esto es lo que el coach eventualmente necesita. Tu trabajo es decidir **qué pedazo de esto entra en el onboarding (Tier 0) y qué se difiere** — abajo damos nuestra propuesta de corte, pero puedes refinarla y justificarla.
+3. **La app requiere compromiso del usuario, y está bien decirlo.** No se puede coachear sobre datos que no existen. Daniel15K es para gente lista para involucrarse; no intentamos "ayudar a quien no quiere ser ayudado". El onboarding puede pedir esfuerzo — tu trabajo es que ese esfuerzo no se sienta como una carga.
 
-| Dimensión | Qué necesita el sistema | Campos subyacentes |
-|-----------|--------------------------|--------------------|
-| **Ingresos** (`income_profile`) | Al menos **una fuente de ingreso "base" confiable**. En ingreso variable, se usa el *piso confiable*, no el promedio. | nombre, monto esperado, día(s) del mes en que llega, clasificación (`base` / `variable` / `seasonal` / `one_time`), cadencia (`monthly` / `biweekly` / `weekly` / `irregular`) |
-| **Deudas** (`debts`) | Inventario: por cada deuda → acreedor, saldo actual, pago mínimo/cuota, tasa de interés. O confirmación explícita de "no tengo deudas". | nombre, tipo (`credit_card` / `personal_loan` / `family` / `mortgage`), saldo actual, cuota mensual, tasa de interés |
-| **Gastos fijos** (`recurring_expenses`) | Compromisos recurrentes que salen sí o sí cada mes (arriendo, servicios, suscripciones, cuotas). | obligaciones recurrentes con monto y categoría |
-| **Estrategia** (`strategy`) | En qué fase está y qué quiere lograr. Fase: `debt_payoff` / `emergency_fund` / `investing` / `wealth_building`. Método de pago de deuda: `snowball` / `avalanche`. | fase financiera, estrategia |
-| **Plan mensual** (`monthly_plan`) | NO se captura: **se genera** a partir de lo anterior. | — |
+4. **La estrategia financiera se deriva, no se pregunta.** Con las respuestas básicas, el sistema *calcula* la fase y la estrategia (ver §7). El usuario nunca elige "snowball o avalanche"; el coach se lo recomienda y lo justifica.
 
-Además, datos base de identidad/contexto: **nombre**, moneda (default COP), y —críticamente— el **"para qué"** (motivación intrínseca).
+## 5. División de responsabilidades (LEER PRIMERO)
 
-### Propuesta de corte (recomendada, refinable por el diseñador)
+Esta es la frontera que rige todo el brief:
 
-**Tier 0 — Dentro del onboarding (lo mínimo para el primer valor):**
-1. **El "para qué" / motivación.** Pregunta abierta y cálida: *"¿Qué te gustaría que cambiara en tu relación con el dinero?"* o un set de metas seleccionables (salir de deudas / dejar de vivir al límite / empezar a ahorrar / ordenar mis gastos / otra). Esto ancla la identidad y le da al coach el "norte". Va **primero**, antes de cualquier número.
-2. **Un ingreso base.** Cuánto entra y cada cuánto (con una rama clara y sin culpa para "mis ingresos son variables / irregulares"). Solo uno; los demás se agregan después.
-3. **El dolor principal / situación percibida.** Una sola pregunta de auto-clasificación que oriente la primera conversación (p. ej.: *"¿Qué es lo que más te pesa hoy?"* → deudas / no llegar a fin de mes / no logro ahorrar / quiero invertir / no estoy seguro). Esto **deriva** una fase tentativa sin pedir datos duros aún.
+| Lo definimos NOSOTROS (producto) | Lo defines TÚ (diseño) |
+|----------------------------------|------------------------|
+| Qué información necesitamos capturar (§6) | **Cómo** se captura para maximizar retención |
+| La lógica que corre por debajo (detección de créditos §6.1, derivación de estrategia §7) | El flujo, las pantallas, la jerarquía visual, el copy |
+| Los principios de tono no-negociables (§9) | La modalidad de entrada de cada dato |
 
-**Tier 1 — Primeros días, guiado por el coach (no en el onboarding):** inventario de deudas, gastos fijos recurrentes, fuentes de ingreso adicionales, confirmación de estrategia (snowball/avalanche).
+**Modalidades de entrada — explícitamente abiertas a tu propuesta.** No nos casamos con "campos de texto". Si una entrada por **voz/audio** o por **foto** reduce fricción, proponla. Ejemplo real: dictar los gastos recurrentes ("pago 1.200.000 de arriendo, 80.000 de Netflix y luz, la cuota del carro 600.000…") es mucho más fácil que teclear uno por uno en un formulario. Lo mismo puede aplicar a foto de un extracto, captura de pantalla de un pago, o audio para el "para qué". Tú decides dónde cada modalidad ayuda y dónde estorba.
 
-**Tier 2 — Just-in-time, cuando es relevante:** metas de ahorro específicas, medios de pago, detalles de cada deuda, fondo de emergencia.
+## 6. La información que el onboarding debe capturar
 
-Objetivo de duración del Tier 0: **≤ 2 minutos, ≤ ~5-6 pantallas.** El usuario debe terminar el onboarding sintiendo alivio ("esto me entiende"), no agotamiento.
+El onboarding hace, como mínimo, estas preguntas. El orden, el formato y la modalidad los decides tú (§5); abajo va el dato que necesitamos y a qué se mapea internamente.
 
-## 6. Lo que NO va en el onboarding (y por qué puedes confiar en diferirlo)
+| # | Pregunta (intención) | Para qué la usamos |
+|---|----------------------|--------------------|
+| 1 | **¿Qué te gustaría que cambiara en tu relación con el dinero?** (motivación / el "para qué") | Ancla la identidad y le da al coach un mensaje de apertura personal, no genérico. Va **primero**, antes de cualquier número. |
+| 2 | **¿Cuánto tienes hoy en tu flujo de caja?** (dinero disponible / saldo de partida) | Punto de partida del plan (`confirmed_balance`). |
+| 3 | **¿Tienes un fondo de emergencia?** (sí/no; idealmente, cuánto o cuántos meses cubre) | Variable clave para derivar la estrategia (§7). |
+| 4 | **¿Qué gastos sabes que te salen cada mes?** (gastos recurrentes) | Carga fija mensual (`recurring_obligations`). **Aquí es donde aparecen las deudas** — ver §6.1. |
+| 5 | **¿Cuáles son tus ingresos?** (cuánto entra y cada cuánto; con una rama clara y sin culpa para ingresos variables/irregulares) | Fuentes de ingreso (`income_sources`). El ingreso variable usa el *piso confiable*, no el promedio. |
 
-El sistema tiene un detector de completitud (`DetectCompletenessState`) que sabe en todo momento qué dimensiones están `missing` / `partial` / `stale`, y un pre-chequeo del agente (`AgentPreflight`) que evalúa esos huecos **antes de actuar** y los pide conversando. Es decir: **no necesitas exprimir todo el perfil en el onboarding** — diferir es seguro y es el diseño correcto. El coach pedirá las deudas cuando hablar de deudas tenga sentido, no en una pantalla de formulario.
+Eso, más el plan mensual que se **genera** a partir de lo anterior, cubre todo lo que el coach necesita. No hace falta una sección aparte y fría de "deudas", "metas" ni "patrimonio": esos datos llegan después, conversando, cuando son relevantes.
 
-## 7. Principios de tono y voz (no-negociables)
+### 6.1 Las deudas aparecen por detección, no por interrogatorio
+
+No pedimos "listá todas tus deudas". En la pregunta 4 (gastos mensuales), el pago de una tarjeta o de un préstamo *ya es* uno de esos gastos. **El agente detecta que ese gasto es un crédito** y solo entonces pregunta lo adicional que necesita: tasa de interés y fecha/cuota. Así la deuda sale de cómo la gente ya piensa ("le pago X al banco cada mes"), sin un módulo que dispare vergüenza.
+
+Diseña la pregunta 4 sabiendo que algunos de esos gastos van a desencadenar un par de preguntas de seguimiento (idealmente en el mismo tono cálido, hechas por el coach).
+
+## 7. La estrategia se deriva automáticamente (lógica nuestra — tú diseñas cómo se presenta)
+
+Con dos respuestas (¿tiene deudas? ¿tiene fondo de emergencia?), el sistema deriva la fase y la estrategia. Esto es **lógica determinista basada en metodología**, no opinión del agente:
+
+| Deuda | Fondo | Fase derivada | Estrategia |
+|:-----:|:-----:|---------------|------------|
+| Sí | Sí | Pagar deuda (`debt_payoff`) | snowball por defecto* |
+| Sí | No | Colchón mínimo (~1 mes) **primero** → luego pagar deuda | starter fund, después snowball* |
+| No | No | Fondo de emergencia (objetivo 3–6 meses) → luego invertir | — |
+| No | Sí | Invertir / construir patrimonio (`investing`/`wealth_building`) | — |
+
+\* snowball por defecto porque al inicio no hay historial de consistencia (victorias tempranas = momentum). El coach puede ofrecer cambiar a avalanche más adelante. Si el ingreso es variable, el fondo objetivo sube (6–9 meses).
+
+**Implicación de diseño — el momento más importante del onboarding:** la pantalla de cierre **no** es un "¡listo, gracias!". Es el **primer acto de coaching**. El coach presenta la estrategia derivada y la **justifica con los propios datos y el "para qué" del usuario**:
+
+> *"Por lo que me contaste, tu prioridad ahora es [X], porque [Y, en tus términos]. El primer paso concreto es [Z]."*
+
+Esa pantalla es la que decide si el usuario confía en nosotros. La lógica es nuestra; **que el usuario la crea depende de cómo la diseñes y la redactes.** Es donde tienes que brillar.
+
+## 8. Restricciones técnicas / de contexto
+
+- **Plataforma:** web app responsive (móvil-first; muchos usuarios entran desde el celular). Existe ya una app web React con páginas de Auth/Registro, Dashboard, Chat, etc.
+- **Momento en el flujo:** el onboarding ocurre **después del registro** (email o Google) y **antes** del primer Dashboard. La cuenta ya queda provisionada automáticamente al registrarse.
+- **Existe un avatar/coach flotante** y backend de gamificación (XP, racha) ya construidos: el onboarding puede presentar al coach como personaje y dar la primera "victoria" (XP) por completarlo — úsalo para reforzar identidad, no para gamificar de forma vacía.
+- **Idioma:** español neutro-latinoamericano. Cálido, cercano, sin tecnicismos financieros innecesarios.
+- Si propones voz/audio o foto, ten en cuenta que requieren transcripción/OCR y manejo de permisos del dispositivo — indícalo para que lo dimensionemos, pero no te limites por eso en la fase de diseño.
+
+## 9. Principios de tono y voz (no-negociables)
 
 Derivados de la Entrevista Motivacional (Miller & Rollnick) y la psicología del dinero (Morgan Housel). El copy del onboarding debe cumplir esto:
 
@@ -101,40 +131,34 @@ Derivados de la Entrevista Motivacional (Miller & Rollnick) y la psicología del
 - Decir "deberías" / "tienes que". Usar "podrías" / "una opción sería".
 - Comparar contra un estándar externo ("un adulto responsable…").
 - Juzgar el pasado ("deberías haber empezado antes").
-- Pedir un dato sensible (deuda, saldo) **antes** de haber generado confianza.
 - Mostrar urgencia falsa o miedo.
 
-**Anti-vergüenza es la regla de oro:** vergüenza ("soy malo/a") → evitación → abandono. El onboarding nunca debe hacer sentir al usuario evaluado o reprobado. Celebrar el acto de registrar/responder, no el resultado.
+**Anti-vergüenza es la regla de oro:** vergüenza ("soy malo/a") → evitación → abandono. El onboarding nunca debe hacer sentir al usuario evaluado o reprobado. Celebrar el acto de registrar/responder, no el resultado. Nota: pedir compromiso (§4.3) y ser anti-vergüenza no se contradicen — pedimos el dato con calidez y contexto, no con presión.
 
-## 8. Restricciones técnicas / de contexto
+## 10. Entregables que esperamos de ti
 
-- **Plataforma:** web app responsive (móvil-first; muchos usuarios entran desde el celular). Existe ya una app web React con páginas de Auth/Registro, Dashboard, Chat, etc.
-- **Momento en el flujo:** el onboarding ocurre **después del registro** (email o Google) y **antes** del primer Dashboard. La cuenta ya queda provisionada automáticamente al registrarse.
-- **Existe un avatar/coach flotante** y backend de gamificación (XP, racha) ya construidos: el onboarding puede presentar al coach como personaje y, opcionalmente, dar la primera "victoria" (XP) por completarlo — úsalo para reforzar identidad, no para gamificar de forma vacía.
-- **Idioma:** español neutro-latinoamericano. Cálido, cercano, sin tecnicismos financieros innecesarios.
-
-## 9. Entregables que esperamos de ti
-
-1. **Mapa de flujo (flow diagram):** todas las pantallas del Tier 0, ramas (ej. ingreso fijo vs. variable; con dolor "deuda" vs. "ahorro"), y los puntos de salida/skip.
+1. **Mapa de flujo (flow diagram):** todas las pantallas del onboarding, las ramas (ingreso fijo vs. variable; un gasto que resulta ser crédito y dispara seguimiento; los 4 casos de la pantalla de estrategia), y los puntos de salida.
 2. **Wireframes pantalla por pantalla** (móvil-first), de baja a media fidelidad, con jerarquía visual y componentes.
-3. **Copy completo de cada pantalla** (títulos, microcopy, labels, placeholders, botones, estados vacíos y de error) cumpliendo §7.
-4. **Justificación de tu corte de datos:** confirma o ajusta nuestra propuesta de Tier 0 (§5) y explica por qué cada campo se queda o se difiere.
-5. **Manejo de casos sensibles:** cómo pides el ingreso variable, cómo ofreces "saltar por ahora", cómo cierras el onboarding (transición al Dashboard / primer mensaje del coach).
-6. **Estados:** progreso, carga, error de validación, y el estado de "completado" (la primera victoria).
+3. **Copy completo de cada pantalla** (títulos, microcopy, labels, placeholders, botones, estados vacíos y de error) cumpliendo §9.
+4. **Propuesta de modalidades de entrada** (§5): dónde usar texto, selección, voz/audio o foto, y por qué.
+5. **Diseño de la pantalla de cierre / primer coaching** (§7): cómo se presenta y justifica la estrategia derivada para generar confianza.
+6. **Manejo de casos sensibles:** cómo pides el ingreso variable, cómo manejas el seguimiento de un crédito detectado, qué pasa si el usuario quiere pausar y seguir después.
+7. **Estados:** progreso, carga, error de validación, y el estado de "completado".
 
-## 10. Criterios de éxito del diseño
+## 11. Criterios de éxito del diseño
 
-- Un usuario nuevo lo completa en **≤ 2 minutos** sin sentirse interrogado.
-- Al terminar, el sistema tiene lo mínimo para que el coach abra con algo **personal y útil** (no genérico).
-- El usuario termina sintiendo **"esto me entiende y no me juzga"**, con una razón clara para volver mañana.
-- Cero preguntas que disparen vergüenza en las primeras pantallas.
+- El usuario **completa** el onboarding (no lo abandona a la mitad) y termina sintiendo *"esto me entiende y no me juzga"*.
+- Al terminar, el sistema tiene todo lo necesario para generar un plan correcto y para que el coach abra con algo **personal y útil**.
+- La pantalla de cierre logra que el usuario **confíe en la estrategia recomendada** y tenga un primer paso claro.
+- Cero momentos que disparen vergüenza.
 
-## 11. Preguntas abiertas para que tú decidas y propongas
+## 12. Preguntas abiertas para que tú decidas y propongas
 
-- ¿La motivación ("para qué") se captura como pregunta abierta de texto, como chips seleccionables, o ambas?
-- ¿Conviene presentar al coach como personaje desde la primera pantalla (se presenta, da la bienvenida) o aparece después?
-- ¿Cómo se siente más natural el ingreso variable: rango (mín/típico/máx), "piso confiable", o un ejemplo de los últimos 3 meses?
-- ¿Vale la pena un micro-momento de "diagnóstico instantáneo" al final (un reflejo simple basado en lo poco que respondió) para entregar valor inmediato?
+- ¿La motivación ("para qué") se captura como pregunta abierta de texto, audio, chips seleccionables, o una mezcla?
+- ¿El coach se presenta como personaje desde la primera pantalla, o aparece después?
+- ¿Cómo se siente más natural el ingreso variable: rango (mín/típico/máx), "piso confiable", o un ejemplo de los últimos meses?
+- ¿Conviene capturar los gastos recurrentes por dictado/audio (uno tras otro) en vez de un formulario campo por campo?
+- ¿Cómo manejar elegantemente al usuario que quiere "saltar por ahora" sin romper el compromiso que el producto requiere?
 
 --- FIN DEL PROMPT ---
 
@@ -142,8 +166,8 @@ Derivados de la Entrevista Motivacional (Miller & Rollnick) y la psicología del
 
 ## Anexo (interno, no parte del prompt al diseñador)
 
-- Fuente de los principios de tono y los datos: [`specs/research/metodologias-coaching-financiero.md`](../research/metodologias-coaching-financiero.md).
-- Detector de huecos que justifica diferir datos: `Finanzas::Interactors::DetectCompletenessState` y `AgentPreflight`.
-- Modelos relevantes: `IncomeSource`, `Debt`, `RecurringObligation`, `FinancialContext`.
-- Wizards ya existentes en web que pueden reutilizarse para los Tiers 1/2 (no para el onboarding Tier 0): `IncomeSetupWizard`, `BudgetWizard`.
-- Próximo paso tras aprobar flujo + wireframes: implementar como `OnboardingPage` en la web, persistiendo Tier 0 vía los endpoints existentes (`/income_sources`, `/financial_context`) y disparando el primer turno del coach.
+- Fuente de los principios de tono, las fórmulas y el árbol de estrategia: [`specs/research/metodologias-coaching-financiero.md`](../research/metodologias-coaching-financiero.md) (ver §4.3 "Postura por fase financiera" y §3 "No-Negociables").
+- Detector de huecos que el coach usa para pedir lo que falta después del onboarding: `Finanzas::Interactors::DetectCompletenessState` y `AgentPreflight`.
+- Modelos relevantes: `IncomeSource` (clasificación base/variable/seasonal/one_time, cadencia), `Debt` (tipo, saldo, cuota, tasa), `RecurringObligation` (los de subcategoría `creditos` requieren un `Debt` asociado — de ahí la detección de §6.1), `FinancialContext` (fase + estrategia: lo que deriva §7).
+- Wizards ya existentes en web que pueden inspirar componentes: `IncomeSetupWizard`, `BudgetWizard`.
+- Próximo paso tras aprobar flujo + wireframes: implementar como `OnboardingPage` en la web, persistiendo los datos vía los endpoints existentes (`/income_sources`, `/recurring_obligations`, `/debts`, `/financial_context`), corriendo la derivación de estrategia y disparando el primer turno del coach.
