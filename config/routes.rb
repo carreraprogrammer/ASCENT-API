@@ -132,7 +132,8 @@ Rails.application.routes.draw do
       post "admin/impersonate",  to: "admin#impersonate"
 
       # Agent internals — solo service account, sin X-Account-Id
-      get "agent/accounts/active", to: "agent#active_accounts"
+      get  "agent/accounts/active",     to: "agent#active_accounts"
+      post "agent/gmail/renew_watches", to: "agent#renew_watches"
 
       # Telegram (sin autenticación JWT — Telegram llama directamente)
       post "telegram/webhook", to: "telegram#webhook"

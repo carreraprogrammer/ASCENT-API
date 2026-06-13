@@ -127,11 +127,57 @@ module Api
 
       private
 
+      # No usamos `redirect_to` a un esquema custom (daniel15k://): los navegadores
+      # externos / Custom Tabs no siguen un 302 hacia un esquema custom sin un gesto
+      # del usuario, así que el wizard quedaba "estancado" tras finalizar aunque la
+      # conexión ya estuviera hecha. En su lugar servimos una página HTML que dispara
+      # el deep link por JS al cargar y deja un botón de respaldo para volver a la app.
       def redirect_to_app(status:, reason: nil)
         deep_link = ENV.fetch("APP_DEEP_LINK_BASE", "daniel15k://auth/gmail")
         query     = { status: status }
         query[:reason] = reason if reason.present?
-        redirect_to "#{deep_link}?#{query.to_query}", allow_other_host: true
+        target = "#{deep_link}?#{query.to_query}"
+
+        render html: deep_link_page(target, status: status).html_safe, content_type: "text/html"
+      end
+
+      def deep_link_page(target, status:)
+        ok       = status == "connected"
+        title    = ok ? "Gmail conectado" : "No se pudo conectar Gmail"
+        message  = ok ? "Listo. Volviendo a la app…" : "Hubo un problema. Volvé a la app e intentá de nuevo."
+        href     = CGI.escapeHTML(target)
+        js_url   = target.to_json
+
+        <<~HTML
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>#{CGI.escapeHTML(title)}</title>
+            <style>
+              body { font-family: -apple-system, system-ui, sans-serif; background: #0f172a; color: #f8fafc;
+                     display: flex; min-height: 100vh; margin: 0; align-items: center; justify-content: center; text-align: center; }
+              .card { padding: 2rem; max-width: 22rem; }
+              h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
+              p { color: #cbd5e1; margin: 0 0 1.5rem; }
+              a.btn { display: inline-block; background: #22c55e; color: #052e16; text-decoration: none;
+                      font-weight: 600; padding: .75rem 1.5rem; border-radius: .75rem; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>#{CGI.escapeHTML(title)}</h1>
+              <p>#{CGI.escapeHTML(message)}</p>
+              <a class="btn" href="#{href}">Volver a la aplicación</a>
+            </div>
+            <script>
+              // Intenta abrir el deep link inmediatamente; el botón es el respaldo.
+              window.location.replace(#{js_url});
+            </script>
+          </body>
+          </html>
+        HTML
       end
     end
   end
