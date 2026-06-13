@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_07_000000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_13_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -108,6 +108,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_07_000000) do
     t.datetime "updated_at", null: false
     t.bigint "account_id"
     t.integer "subcategory_id"
+    t.index ["account_id", "category_id", "month", "year"], name: "index_budgets_on_account_category_month_year_no_subcat", unique: true, where: "(subcategory_id IS NULL)"
     t.index ["account_id", "subcategory_id", "month", "year"], name: "index_budgets_on_account_subcategory_month_year", unique: true, where: "(subcategory_id IS NOT NULL)"
     t.index ["account_id"], name: "index_budgets_on_account_id"
     t.index ["category_id"], name: "index_budgets_on_category_id"
@@ -197,6 +198,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_07_000000) do
     t.string "gmail_address"
     t.string "gmail_history_id"
     t.datetime "gmail_watch_expires_at"
+    t.datetime "reconnect_required_at"
     t.index ["account_id"], name: "index_email_connections_on_account_id", unique: true
     t.index ["gmail_address"], name: "index_email_connections_on_gmail_address", unique: true, where: "(gmail_address IS NOT NULL)"
   end

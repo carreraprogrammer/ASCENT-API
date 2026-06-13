@@ -25,9 +25,10 @@ module Api
         if conn
           render json: {
             data: {
-              connected:   true,
-              provider:    "gmail",
-              bank_senders: conn.bank_senders_list
+              connected:       true,
+              provider:        "gmail",
+              bank_senders:    conn.bank_senders_list,
+              needs_reconnect: conn.needs_reconnect?
             }
           }
         else
