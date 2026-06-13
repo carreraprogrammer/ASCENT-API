@@ -22,6 +22,15 @@ module Api
         }
       end
 
+      # POST /api/v1/agent/gmail/renew_watches
+      # Renueva los gmail.watch() próximos a expirar (< 2 días). El scheduler del
+      # Brain lo invoca a diario: sin esto el watch expira cada ~7 días y el push
+      # de Gmail muere en silencio hasta que el usuario reconecta a mano.
+      def renew_watches
+        result = GmailWatchRenewalJob.perform_now
+        render json: { data: result }
+      end
+
       private
 
       def authenticate_service_token!
