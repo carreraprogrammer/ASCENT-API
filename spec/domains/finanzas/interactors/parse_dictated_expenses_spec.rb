@@ -51,6 +51,17 @@ RSpec.describe Finanzas::Interactors::ParseDictatedExpenses do
     end
   end
 
+  it "parses line-based OCR text from a photo of an extract" do
+    ocr = "Arriendo        1.200.000\nNetflix          44.000\nCuota tarjeta   350.000\n"
+    result = described_class.new.call(transcript: ocr)
+    names = result.map { |e| e[:name].downcase }
+
+    expect(result.map { |e| e[:amount] }).to include(1_200_000, 44_000, 350_000)
+    expect(names).to include(a_string_matching(/arriendo/), a_string_matching(/netflix/))
+    tarjeta = result.find { |e| e[:name].downcase.include?("tarjeta") }
+    expect(tarjeta[:is_credit]).to be(true)
+  end
+
   it "ignores segments without an amount" do
     result = described_class.new.call(transcript: "Netflix y Spotify")
     expect(result).to be_empty
