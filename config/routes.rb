@@ -51,6 +51,9 @@ Rails.application.routes.draw do
       get   "financial_context", to: "financial_contexts#show"
       patch "financial_context", to: "financial_contexts#update"
 
+      # Onboarding — parsing de gastos dictados (voz) / extractos (foto)
+      post  "onboarding/parse_expenses", to: "onboarding#parse_expenses"
+
       resources :debts,                only: [ :index, :create, :update, :destroy ] do
         collection do
           post :apply_interest
