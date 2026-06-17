@@ -187,6 +187,39 @@ namespace :accounts do
     puts "✓ Password actualizado para #{user.email}"
   end
 
+  desc "Resetea el onboarding de una cuenta de PRUEBA: borra sus datos financieros para volver a verlo (no toca usuario/account/delegation). Uso: rails 'accounts:reset_onboarding[email]'"
+  task :reset_onboarding, [ :email ] => :environment do |_, args|
+    email = args[:email].to_s.strip.downcase
+    abort "Uso: rails 'accounts:reset_onboarding[email@ejemplo.com]'" if email.empty?
+
+    protected_emails = %w[carreraprogrammer@gmail.com superadmin@boilerplate.dev].freeze
+    if protected_emails.include?(email)
+      abort "ERROR: '#{email}' es una cuenta protegida. Usá una cuenta de PRUEBA para probar el onboarding."
+    end
+
+    user = User.find_by(email: email)
+    abort "ERROR: No existe ningún usuario con el email '#{email}'." unless user
+
+    account = Account.find_by(owner_user: user)
+    abort "ERROR: No existe ninguna cuenta para el usuario '#{email}'." unless account
+
+    ActiveRecord::Base.transaction do
+      %w[
+        Transaction MonthlyFinancialPlan Budget RecurringObligation Debt
+        IncomeSource SinkingFund PlannedExpense SavingsGoal FinancialContext
+      ].each do |model_name|
+        model = model_name.safe_constantize
+        next unless model && model.column_names.include?("account_id")
+
+        count = model.where(account_id: account.id).delete_all
+        puts "  Borrado: #{count} #{model_name}" if count.positive?
+      end
+    end
+
+    puts "✓ Onboarding reseteado para #{email}."
+    puts "  En el dispositivo, abrí /onboarding/reset (dev/superadmin) para volver a verlo."
+  end
+
   desc "Borra todos los datos de una cuenta (uso: limpieza, smoke tests). Uso: rails 'accounts:delete[email]'"
   task :delete, [ :email ] => :environment do |_, args|
     email = args[:email].to_s.strip.downcase
