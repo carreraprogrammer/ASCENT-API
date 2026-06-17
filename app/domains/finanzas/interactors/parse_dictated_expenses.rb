@@ -36,11 +36,12 @@ module Finanzas
       private
 
       def segments(text)
-        # Split on commas and the connector " y " when it precedes a verb/article
-        # that signals a new item ("…, y le mando…"). Keep "Netflix y Spotify" intact.
+        # Split on commas, newlines (OCR of an extract is line-based) and the
+        # connector " y " when it precedes a verb/article that signals a new item
+        # ("…, y le mando…"). Keep "Netflix y Spotify" intact.
         text
           .gsub(/\s+y\s+(le|al|la|el|los|las|mi|mis|pago|también|tambien)\b/i, ",\\1 ")
-          .split(/[,;]|\.\s+|\band\b/i)
+          .split(/[,;\n\r]|\.\s+/)
           .map(&:strip)
           .reject(&:blank?)
       end
