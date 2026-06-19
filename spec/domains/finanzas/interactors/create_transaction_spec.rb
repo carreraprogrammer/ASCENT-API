@@ -26,10 +26,21 @@ RSpec.describe Finanzas::Interactors::CreateTransaction do
     expect(result.month).to eq(3)
   end
 
+  it "normalizes a DD/MM/YYYY date to ISO so the UI can group/sort it" do
+    result = interactor.call(user_id: user.id, account_id: account_id, date: "19/06/2026", concept: "Cuota crédito", amount: 10_000)
+    expect(result.date).to eq("2026-06-19")
+  end
+
+  it "normalizes a DD/MM date to ISO using the current year" do
+    result = interactor.call(user_id: user.id, account_id: account_id, date: "07/02", concept: "Prueba DDMM", amount: 10_000)
+    expect(result.date).to match(/\A\d{4}-02-07\z/)
+  end
+
   it "sets year/month from an ISO YYYY-MM-DD date" do
     result = interactor.call(user_id: user.id, account_id: account_id, date: "2026-04-20", concept: "Prueba ISO", amount: 10_000)
     expect(result.year).to eq(2026)
     expect(result.month).to eq(4)
+    expect(result.date).to eq("2026-04-20")
   end
 
   it "raises InvalidTransaction when amount is negative" do
