@@ -222,15 +222,20 @@ module Finanzas
       # format (ISO, DD/MM/YYYY, DD/MM), falls back to ISO using the already-resolved year/month.
       def normalize_date(date_str, year, month)
         str = date_str.to_s
-        return str if str.match?(DATE_ISO) || str.match?(DATE_DDMMYYYY) || str.match?(DATE_DDMM)
+        return str if str.match?(DATE_ISO)
 
-        colombia_now = Time.now.utc - 5 * 3600
-        day = colombia_now.day
-        normalized = "#{year}-#{month.to_s.rjust(2, '0')}-#{day.to_s.rjust(2, '0')}"
-        Rails.logger.warn(
-          "[CreateTransaction#normalize_date] invalid date format raw=#{str.inspect}, normalized to #{normalized}"
-        )
-        normalized
+        # DD/MM/YYYY y DD/MM comparten el día en la primera posición. El year/month ya
+        # vienen resueltos por parse_date, así que solo necesitamos el día del string.
+        day = if str.match?(DATE_DDMMYYYY) || str.match?(DATE_DDMM)
+          str.split("/").first.to_i
+        else
+          Rails.logger.warn(
+            "[CreateTransaction#normalize_date] invalid date format raw=#{str.inspect}, falling back to today"
+          )
+          (Time.now.utc - 5 * 3600).day
+        end
+
+        "#{year}-#{month.to_s.rjust(2, '0')}-#{day.to_s.rjust(2, '0')}"
       end
 
       # Accepts DD/MM, DD/MM/YYYY, or YYYY-MM-DD — derives year/month for denormalized columns
