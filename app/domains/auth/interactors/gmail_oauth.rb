@@ -142,10 +142,21 @@ module Auth
         # es el nudge inmediato si el usuario está activo. Solo avisa una vez por
         # caída para no spamear en cada reintento diario.
         def flag_reconnect_required(conn, reason: nil)
-          return if conn.reconnect_required_at.present?
+          already_flagged = conn.reconnect_required_at.present?
+          unless already_flagged
+            conn.update_column(:reconnect_required_at, Time.current)
+            Rails.logger.warn("[GmailOauth] account=#{conn.account_id} requiere reconexión: #{reason}")
+          end
 
-          conn.update_column(:reconnect_required_at, Time.current)
-          Rails.logger.warn("[GmailOauth] account=#{conn.account_id} requiere reconexión: #{reason}")
+          # Aviso resiliente: el refresh falla en cada intento de lectura (cada push /
+          # nocturno) mientras el token esté revocado. En vez de avisar una sola vez
+          # (y que el usuario se lo pierda), garantizamos que SIEMPRE haya una tarjeta
+          # de reconexión pendiente: si la anterior ya fue consumida, emitimos otra.
+          pending = AgentUiEvent
+            .where(account_id: conn.account_id, event_type: "show_card", consumed_at: nil)
+            .where("payload ->> 'action' = ?", "reconnect_gmail")
+            .exists?
+          return if pending
 
           AgentUiEvent.create!(
             account_id: conn.account_id,

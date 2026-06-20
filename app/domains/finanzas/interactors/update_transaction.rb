@@ -1,6 +1,10 @@
 module Finanzas
   module Interactors
     class UpdateTransaction
+      DATE_DDMM     = %r{\A\d{2}/\d{2}\z}.freeze
+      DATE_DDMMYYYY = %r{\A\d{2}/\d{2}/\d{4}\z}.freeze
+      DATE_ISO      = %r{\A\d{4}-\d{2}-\d{2}\z}.freeze
+
       def initialize(repo: Finanzas::Repositories::TransactionRepository.new)
         @repo = repo
       end
@@ -15,11 +19,15 @@ module Finanzas
                                   :debt_id, :recurring_obligation_id, :income_source_id,
                                   :sinking_fund_id, :covers_period_month, :covers_period_year)
 
+        # El front envía la fecha en DD/MM/YYYY (display local). Si no la normalizamos
+        # a ISO, el string queda en un formato que la UI no puede agrupar/ordenar y la
+        # transacción "desaparece" de hoy. Mismo criterio que CreateTransaction.
         if permitted[:date].present?
-          parsed = Date.parse(permitted[:date].to_s) rescue nil
-          if parsed
-            permitted[:year]  = parsed.year
-            permitted[:month] = parsed.month
+          iso, y, m = normalize_date(permitted[:date].to_s)
+          if iso
+            permitted[:date]  = iso
+            permitted[:year]  = y
+            permitted[:month] = m
           end
         end
 
@@ -72,6 +80,28 @@ module Finanzas
         end
 
         updated
+      end
+
+      private
+
+      # Devuelve [iso_date, year, month] a partir de DD/MM/YYYY, DD/MM o ISO.
+      # Si no reconoce el formato intenta Date.parse; si tampoco, [nil, nil, nil]
+      # (deja la fecha sin tocar).
+      def normalize_date(str)
+        if str.match?(DATE_ISO)
+          parts = str.split("-")
+          [ str, parts[0].to_i, parts[1].to_i ]
+        elsif str.match?(DATE_DDMMYYYY)
+          d, m, y = str.split("/")
+          [ "#{y}-#{m}-#{d}", y.to_i, m.to_i ]
+        elsif str.match?(DATE_DDMM)
+          d, m = str.split("/")
+          y = (Time.now.utc - 5 * 3600).year
+          [ "#{y}-#{m}-#{d}", y, m.to_i ]
+        else
+          parsed = Date.parse(str) rescue nil
+          parsed ? [ parsed.strftime("%Y-%m-%d"), parsed.year, parsed.month ] : [ nil, nil, nil ]
+        end
       end
 
     end
