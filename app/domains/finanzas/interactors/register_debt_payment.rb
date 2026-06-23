@@ -40,7 +40,8 @@ module Finanzas
             metadata: payment_metadata(metadata, debt, recurring_obligation, previous_balance, new_balance),
             payment_source: payment_source,
             debt_id: debt.id,
-            recurring_obligation_id: recurring_obligation&.id
+            recurring_obligation_id: recurring_obligation&.id,
+            skip_debt_balance: true
           )
 
           debt.update!(current_balance: new_balance)
