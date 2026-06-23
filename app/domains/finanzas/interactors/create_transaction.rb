@@ -23,7 +23,8 @@ module Finanzas
                  payment_source: nil, credit_card_status: nil,
                  debt_id: nil, recurring_obligation_id: nil,
                  income_source_id: nil, sinking_fund_id: nil,
-                 covers_period_month: nil, covers_period_year: nil)
+                 covers_period_month: nil, covers_period_year: nil,
+                 skip_debt_balance: false)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
 
         metadata = (metadata || {}).to_h.stringify_keys
@@ -82,6 +83,12 @@ module Finanzas
           sinking_fund_id: sinking_fund_id,
           structural_match: structural_match
         )
+        resolved_debt_id = resolve_debt_id(
+          account_id: account_id,
+          transaction_type: transaction_type,
+          debt_id: debt_id,
+          recurring_obligation_id: resolved_recurring_obligation_id
+        )
         resolved_payment_source = payment_source.presence || infer_payment_source(
           transaction_type: transaction_type,
           concept: concept,
@@ -107,7 +114,7 @@ module Finanzas
             month: month,
             payment_source: resolved_payment_source,
             credit_card_status: nil,
-            debt_id: debt_id,
+            debt_id: resolved_debt_id,
             recurring_obligation_id: resolved_recurring_obligation_id,
             income_source_id: resolved_income_source_id,
             sinking_fund_id: resolved_sinking_fund_id,
@@ -117,6 +124,12 @@ module Finanzas
 
         if transaction_type == "expense" && status == "confirmed"
           txn.structural_match = structural_match
+          # Un pago ligado a una deuda baja el saldo. El modelo Debt marca paid_off y
+          # desactiva la obligación recurrente solo cuando el saldo llega a 0.
+          # skip_debt_balance=true cuando viene de RegisterDebtPayment (ya lo aplica él).
+          unless skip_debt_balance
+            apply_debt_payment(account_id: account_id, debt_id: resolved_debt_id, amount: amount.to_i)
+          end
         end
 
         if status == "confirmed"
@@ -160,10 +173,40 @@ module Finanzas
           return obligation.id
         end
 
-        return nil unless structural_match&.dig(:match_type) == "recurring"
+        return nil unless %w[recurring debt].include?(structural_match&.dig(:match_type))
         return nil unless structural_match[:confidence] == "high"
 
         structural_match[:match_id]
+      end
+
+      # Deriva la deuda asociada: del debt_id explícito, o de la obligación recurrente
+      # resuelta cuando su origen es una Debt (cuota de crédito).
+      def resolve_debt_id(account_id:, transaction_type:, debt_id:, recurring_obligation_id:)
+        return debt_id if debt_id.present?
+        return nil unless transaction_type == "expense"
+        return nil if recurring_obligation_id.blank?
+
+        obligation = ::RecurringObligation.where(account_id: account_id).find_by(id: recurring_obligation_id)
+        return nil unless obligation&.source_type == "Debt"
+
+        obligation.source_id
+      end
+
+      # Reduce el saldo de la deuda por el monto del pago (sin bajar de 0). El modelo
+      # Debt dispara auto_paid_off + deactivate_obligation_if_resolved al llegar a 0.
+      # No tocamos tarjetas de crédito (saldo rotativo): se manejan por extracto.
+      def apply_debt_payment(account_id:, debt_id:, amount:)
+        return if debt_id.blank? || amount.to_i <= 0
+
+        ActiveRecord::Base.transaction do
+          debt = ::Debt.lock.where(id: debt_id, account_id: account_id).first
+          return if debt.nil? || debt.debt_type == "credit_card"
+
+          new_balance = [ debt.current_balance.to_i - amount.to_i, 0 ].max
+          debt.update!(current_balance: new_balance)
+        end
+      rescue => e
+        Rails.logger.error("[CreateTransaction] apply_debt_payment failed debt=#{debt_id}: #{e.message}")
       end
 
       def resolve_income_source_id(account_id:, transaction_type:, income_source_id:, date:, concept:, amount:)
