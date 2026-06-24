@@ -91,10 +91,9 @@ module Api
         return unless require_scope!("summary:read")
         month = params[:month] || Time.now.month
         year  = params[:year]  || Time.now.year
-        result = Finanzas::Repositories::TransactionRepository.new.balance(
-          account_id: current_account.id, month: month, year: year
-        )
-        render json: { data: result.merge(account_confirmed_balance: current_account.confirmed_balance.to_i) }
+        repo = Finanzas::Repositories::TransactionRepository.new
+        result = repo.balance(account_id: current_account.id, month: month, year: year)
+        render json: { data: result.merge(account_confirmed_balance: repo.confirmed_balance(account_id: current_account.id)) }
       end
 
       def show

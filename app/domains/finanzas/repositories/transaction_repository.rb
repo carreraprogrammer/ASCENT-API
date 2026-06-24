@@ -41,6 +41,29 @@ module Finanzas
         records.map { |r| map_to_entity(r) }
       end
 
+      # Saldo confirmado acumulado — FUENTE DE VERDAD, derivada de las transacciones.
+      # No depende de la columna mantenida accounts.confirmed_balance (que puede
+      # desincronizarse si un write se salta el repo o por la regla de meses
+      # solo-ingreso). Definición idéntica al seed de la migración: suma
+      # (income - expense) confirmados SOLO de los meses con al menos un gasto
+      # confirmado (excluye meses solo-ingreso = saldo inicial artificial).
+      def confirmed_balance(account_id:)
+        rows = ::Transaction
+          .where(account_id: account_id, status: "confirmed")
+          .group(:year, :month, :transaction_type)
+          .sum(:amount)
+
+        months_with_expense = rows.each_with_object(Set.new) do |((year, month, type), _amount), set|
+          set << [ year, month ] if type == "expense"
+        end
+
+        rows.sum do |(year, month, type), amount|
+          next 0 unless months_with_expense.include?([ year, month ])
+
+          type == "income" ? amount.to_i : -amount.to_i
+        end
+      end
+
       def balance(account_id:, month:, year:)
         rows = ::Transaction.where(account_id: account_id, month: month.to_i, year: year.to_i)
                             .select(:amount, :transaction_type, :status, :debt_id, :sinking_fund_id)
