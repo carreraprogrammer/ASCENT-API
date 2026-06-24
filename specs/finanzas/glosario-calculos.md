@@ -1,5 +1,7 @@
 # Glosario de cálculos — fuente de verdad del lenguaje
 
+> 📋 Auditoría completa de fórmulas (ubicación exacta, respaldo bibliográfico y
+> banderas de inconsistencia 🟢🟡🟠🔴): ver **`reporte-calculos.md`**.
 > Estado: ✅ documento vivo — actualizar cuando cambie una fórmula
 > Creado: 2026-06-12
 > Regla ASCENT: la UI y el agente SIEMPRE usan el nombre plano. El término técnico
