@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_13_210000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,7 +38,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_13_210000) do
     t.datetime "updated_at", null: false
     t.integer "financial_level", default: 1, null: false
     t.string "telegram_chat_id"
-    t.bigint "confirmed_balance", default: 0, null: false
     t.index ["owner_user_id"], name: "index_accounts_on_owner_user_id"
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
   end
