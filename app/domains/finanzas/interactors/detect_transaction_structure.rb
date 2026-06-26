@@ -8,7 +8,7 @@ module Finanzas
     #   - planned_expenses       (mandatory_one_off / irregular_maintenance)
     #
     # Returns a hash:
-    #   { match_type: "debt|recurring|sinking_fund|planned_expense|none",
+    #   { match_type: "debt|recurring|savings_goal|sinking_fund|planned_expense|none",
     #     match_id:   Integer | nil,
     #     entity_name: String | nil,
     #     confidence: "high|medium|low|none" }
@@ -70,7 +70,11 @@ module Finanzas
           score        += 10 if subcat_known && subcat_match
           score        += 10 if day_known && day_match
           confidence    = recurring_confidence(concept_match, amount_match, subcat_known, subcat_match, day_known, day_match)
-          type = ob.source_type == "Debt" ? "debt" : "recurring"
+          type = case ob.source_type
+                 when "Debt"        then "debt"
+                 when "SavingsGoal" then "savings_goal"
+                 else                    "recurring"
+                 end
           matches << {
             match_type: type,
             match_id: ob.id,

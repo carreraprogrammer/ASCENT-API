@@ -155,6 +155,7 @@ module Finanzas
         ::Transaction.transaction do
           record = ::Transaction.create!(attrs)
           apply_sinking_fund_delta!(nil, record)
+          apply_savings_goal_delta!(nil, record)
         end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
@@ -168,9 +169,11 @@ module Finanzas
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
         before_sf  = sinking_fund_balance_snapshot(record)
+        before_sg  = savings_goal_balance_snapshot(record)
         ::Transaction.transaction do
           record.update!(attrs)
           apply_sinking_fund_delta!(before_sf, record)
+          apply_savings_goal_delta!(before_sg, record)
         end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
@@ -184,9 +187,11 @@ module Finanzas
         raise Finanzas::Errors::TransactionNotFound, "Transaction #{id} not found" unless record
 
         before_sf  = sinking_fund_balance_snapshot(record)
+        before_sg  = savings_goal_balance_snapshot(record)
         ::Transaction.transaction do
           record.destroy!
           apply_sinking_fund_delta!(before_sf, nil)
+          apply_savings_goal_delta!(before_sg, nil)
         end
       end
 
@@ -248,6 +253,7 @@ module Finanzas
             recurring_obligation_id: record.recurring_obligation_id,
             income_source_id: record.income_source_id,
             sinking_fund_id: record.sinking_fund_id,
+            savings_goal_id: record.savings_goal_id,
             covers_period_month: record.covers_period_month,
             covers_period_year:  record.covers_period_year,
             created_at: record.created_at,
@@ -286,6 +292,43 @@ module Finanzas
 
         fund = ::SinkingFund.lock.find(sinking_fund_id)
         fund.update!(current_balance: fund.current_balance.to_i + amount_delta)
+      end
+
+      # Espejo del auto-balance de sinking funds, para SavingsGoal. Un aporte
+      # confirmado a una meta (savings_goal_id presente) incrementa su current_amount,
+      # así la tarjeta de objetivo y la línea "objetivos" del plan reflejan el aporte
+      # sin edición manual. Un retiro/edición/borrado revierte el delta.
+      def savings_goal_balance_snapshot(record)
+        {
+          savings_goal_id:  record.savings_goal_id,
+          amount:           record.amount.to_i,
+          transaction_type: record.transaction_type,
+          status:           record.status
+        }
+      end
+
+      def apply_savings_goal_delta!(before, after)
+        subtract = savings_goal_effect(before)
+        add = savings_goal_effect(savings_goal_balance_snapshot(after)) if after
+
+        adjust_savings_goal!(subtract[:savings_goal_id], -subtract[:amount]) if subtract
+        adjust_savings_goal!(add[:savings_goal_id], add[:amount]) if add
+      end
+
+      def savings_goal_effect(snapshot)
+        return nil if snapshot.blank?
+        return nil unless snapshot[:savings_goal_id].present?
+        return nil unless snapshot[:transaction_type] == "expense"
+        return nil unless snapshot[:status] == "confirmed"
+
+        { savings_goal_id: snapshot[:savings_goal_id], amount: snapshot[:amount].to_i }
+      end
+
+      def adjust_savings_goal!(savings_goal_id, amount_delta)
+        return if amount_delta.zero?
+
+        goal = ::SavingsGoal.lock.find(savings_goal_id)
+        goal.update!(current_amount: [ goal.current_amount.to_i + amount_delta, 0 ].max)
       end
 
       def normalize_page(page)

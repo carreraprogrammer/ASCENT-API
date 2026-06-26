@@ -9,6 +9,7 @@ class Transaction < ApplicationRecord
   belongs_to :recurring_obligation, optional: true
   belongs_to :income_source, optional: true
   belongs_to :sinking_fund, optional: true
+  belongs_to :savings_goal, optional: true
 
   TYPES = %w[expense income].freeze
   SOURCES = %w[telegram gmail manual brain].freeze

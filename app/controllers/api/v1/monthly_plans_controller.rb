@@ -303,6 +303,7 @@ module Api
         spend_rows = ::Transaction
           .where(account_id: current_account.id, transaction_type: "expense")
           .where.not(category_id: nil)
+          .where(savings_goal_id: nil) # aportes a meta se contabilizan en "objetivos", no en su gaveta
           .where(
             "(covers_period_month IS NOT NULL AND covers_period_year IS NOT NULL" \
             "  AND covers_period_month = :m AND covers_period_year = :y)" \
@@ -411,7 +412,7 @@ module Api
 
         # Append savings goal obligations as synthetic rows so they appear in the
         # plan detail even though they have no subcategory_id / Budget record.
-        savings_rows = build_savings_goal_rows(elapsed, days_in)
+        savings_rows = build_savings_goal_rows(elapsed, days_in, month, year)
         category_rows += savings_rows
 
         plan.merge(
@@ -424,17 +425,20 @@ module Api
       # Returns one synthetic category row per active SavingsGoal RecurringObligation.
       # These obligations are tracked outside the Budget table so they'd otherwise
       # be invisible in the plan detail view.
-      def build_savings_goal_rows(elapsed, days_in)
+      def build_savings_goal_rows(elapsed, days_in, month, year)
         obligations = ::RecurringObligation
           .where(account_id: current_account.id, active: true, source_type: "SavingsGoal")
           .includes(:source)
 
         return [] if obligations.empty?
 
+        spent_by_goal = goal_contributions_by_goal(month, year)
+
         obligations.map do |ob|
           goal   = ob.source
           amount = ob.amount.to_i
           name   = goal&.name || ob.name
+          spent  = spent_by_goal[ob.source_id].to_i
 
           sub_row = {
             id:        nil,
@@ -442,20 +446,20 @@ module Api
             name:      ob.name,
             icon:      "trophy",
             budgeted:  amount,
-            spent:     0,
-            projected: 0,
+            spent:     spent,
+            projected: spent,
             behavior:  "savings_goal",
             primary_metric: budget_primary_metric(
               behavior: "savings_goal",
               name:     ob.name,
               budgeted: amount,
-              spent:    0,
-              projected: 0,
+              spent:    spent,
+              projected: spent,
               elapsed:  elapsed,
               days_in:  days_in
             ),
             signal_kind:   "positive",
-            signal_label:  "Comprometido",
+            signal_label:  savings_goal_label(spent, amount),
             signal_detail: "Separado antes de distribuir el presupuesto."
           }
 
@@ -465,24 +469,45 @@ module Api
             color:         "#1A9E4A",
             icon:          "trophy",
             budgeted:      amount,
-            spent:         0,
-            projected:     0,
+            spent:         spent,
+            projected:     spent,
             behavior:      "savings_goal",
             primary_metric: budget_primary_metric(
               behavior: "savings_goal",
               name:     name,
               budgeted: amount,
-              spent:    0,
-              projected: 0,
+              spent:    spent,
+              projected: spent,
               elapsed:  elapsed,
               days_in:  days_in
             ),
             signal_kind:   "positive",
-            signal_label:  "Comprometido",
+            signal_label:  savings_goal_label(spent, amount),
             signal_detail: "Este aporte está reservado antes de distribuir el resto del presupuesto.",
             subcategories: [ sub_row ]
           }
         end
+      end
+
+      # Aportes confirmados a metas en el período, por savings_goal_id. Respeta
+      # covers_period igual que el spend del resto de gavetas.
+      def goal_contributions_by_goal(month, year)
+        ::Transaction
+          .where(account_id: current_account.id, transaction_type: "expense", status: "confirmed")
+          .where.not(savings_goal_id: nil)
+          .where(
+            "(covers_period_month IS NOT NULL AND covers_period_year IS NOT NULL" \
+            "  AND covers_period_month = :m AND covers_period_year = :y)" \
+            " OR (covers_period_month IS NULL AND month = :m AND year = :y)",
+            m: month, y: year
+          )
+          .group(:savings_goal_id)
+          .sum(:amount)
+      end
+
+      def savings_goal_label(spent, budgeted)
+        return "Comprometido" if spent <= 0
+        spent >= budgeted ? "Aporte cumplido" : "Aporte en curso"
       end
 
       def build_category_signal(category:, budgeted:, spent:, subcategories:)

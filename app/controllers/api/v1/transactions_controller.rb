@@ -220,7 +220,7 @@ module Api
           :date, :concept, :product, :amount, :transaction_type,
           :category_id, :subcategory_id, :category_code, :subcategory_code,
           :source, :status, :payment_source,
-          :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id,
+          :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, :savings_goal_id,
           :covers_period_month, :covers_period_year,
           metadata: {}
         ).to_h.symbolize_keys
@@ -233,7 +233,7 @@ module Api
             :date, :concept, :product, :amount, :transaction_type,
             :category_id, :subcategory_id, :category_code, :subcategory_code,
             :source, :status, :payment_source,
-            :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id,
+            :debt_id, :recurring_obligation_id, :income_source_id, :sinking_fund_id, :savings_goal_id,
             :covers_period_month, :covers_period_year,
             metadata: {}
           ).to_h.symbolize_keys
@@ -246,7 +246,7 @@ module Api
           :status, :category_id, :subcategory_id, :category_code, :subcategory_code,
           :concept, :product, :amount, :date, :source, :clarification_resolved_at,
           :payment_source, :debt_id, :recurring_obligation_id,
-          :income_source_id, :sinking_fund_id,
+          :income_source_id, :sinking_fund_id, :savings_goal_id,
           :covers_period_month, :covers_period_year,
           metadata: {}
         ).to_h.symbolize_keys
