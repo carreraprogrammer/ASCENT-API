@@ -72,6 +72,43 @@ RSpec.describe "Summary API" do
       expect(data["overflow_status"]["suggested_destination"]["debt_id"]).to eq(debt.id)
     end
 
+    it "recognizes overflow already deployed to debt and savings instead of nagging to redeploy it" do
+      investment_cat = create(:category, user: user, category_type: "investment", name: "Inversión")
+
+      # Abono extra a deuda (por encima del mínimo base de 1.0M) — debt_id presente.
+      create(
+        :transaction,
+        user: user, account: user.default_account,
+        date: Date.new(2026, 4, 19), year: 2026, month: 4,
+        amount: 2_500_000, transaction_type: "expense", status: "confirmed",
+        source: "manual", concept: "Abono extra crédito", debt: debt
+      )
+      # Aporte al colchón — categoría investment.
+      create(
+        :transaction,
+        user: user, account: user.default_account,
+        date: Date.new(2026, 4, 20), year: 2026, month: 4,
+        amount: 1_500_000, transaction_type: "expense", status: "confirmed",
+        source: "manual", concept: "Aporte fondo de emergencia", category: investment_cat
+      )
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      overflow = JSON.parse(response.body)["overflow_status"]
+
+      expect(overflow["realized_overflow"]).to eq(2_900_000)
+      # Solo cuenta lo que va por encima del mínimo de deuda base (2.5M - 1.0M = 1.5M).
+      expect(overflow["overflow_assigned_breakdown"]["to_debt"]).to eq(1_500_000)
+      expect(overflow["overflow_assigned_breakdown"]["to_savings"]).to eq(1_500_000)
+      # 1.5M + 1.5M = 3.0M cubre los 2.9M de overflow → todo asignado.
+      expect(overflow["overflow_assigned"]).to eq(2_900_000)
+      expect(overflow["overflow_remaining_to_assign"]).to eq(0)
+      expect(overflow["status"]).to eq("deployed")
+      expect(overflow["suggested_action"]).to include("ya")
+      expect(overflow["suggested_action"]).not_to include("debería ir")
+    end
+
     it "blocks overflow recommendations when liquidity is already committed" do
       create(
         :transaction,
