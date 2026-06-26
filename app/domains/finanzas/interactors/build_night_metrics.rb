@@ -318,13 +318,25 @@ module Finanzas
           )
           .pluck(:amount, :date, :year)
           .filter_map do |amount, date_str, yr|
-            next unless date_str.present?
-            day, mon = date_str.to_s.split("/").map(&:to_i)
-            next unless day&.positive? && mon&.positive?
-            parsed = Date.new(yr, mon, day) rescue nil
+            parsed = parse_burn_date(date_str, yr)
             next unless parsed
             { amount: amount.to_i, date: parsed }
           end
+      end
+
+      # El campo `date` se guarda en ISO (YYYY-MM-DD) desde CreateTransaction, pero
+      # registros antiguos pueden venir en DD/MM. Soporta ambos para no descartar
+      # transacciones (lo que dejaba el ritmo diario pegado en el fallback de 30k).
+      def parse_burn_date(date_str, year)
+        return nil unless date_str.present?
+        str = date_str.to_s
+        if str.match?(/\A\d{4}-\d{2}-\d{2}/)
+          Date.parse(str) rescue nil
+        else
+          day, mon = str.split("/").map(&:to_i)
+          return nil unless day&.positive? && mon&.positive?
+          Date.new(year, mon, day) rescue nil
+        end
       end
     end
   end
