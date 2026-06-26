@@ -182,5 +182,26 @@ RSpec.describe Finanzas::Interactors::BuildNightMetrics do
         expect(result[:daily_burn]).to be_a(Integer)
       end
     end
+
+    # Regresión: CreateTransaction guarda `date` en ISO (YYYY-MM-DD). El parser del
+    # ritmo diario solo manejaba DD/MM, descartaba todas las txns y el burn quedaba
+    # pegado en el fallback de 30_000.
+    context "con gastos necessary en formato ISO y suficiente historia" do
+      let!(:necessary_txns) do
+        # 20 días de gasto necesario dentro de la ventana de 30 días, formato ISO.
+        (1..20).map do |day|
+          create(:transaction, account: account, transaction_type: "expense",
+                 status: "confirmed", amount: 50_000, month: 5, year: 2026,
+                 date: format("2026-05-%02d", day), category: cat_necessary)
+        end
+      end
+
+      it "calcula el burn desde las transacciones, no usa el fallback de 30k" do
+        result = call
+        # 20 txns * 50_000 = 1_000_000 / 30 días ≈ 33_333
+        expect(result[:daily_burn]).to be_within(1).of(33_333)
+        expect(result[:daily_burn]).not_to eq(30_000)
+      end
+    end
   end
 end
