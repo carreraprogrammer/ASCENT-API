@@ -22,7 +22,7 @@ module Finanzas
                  source: "manual", status: "confirmed", metadata: {},
                  payment_source: nil, credit_card_status: nil,
                  debt_id: nil, recurring_obligation_id: nil,
-                 income_source_id: nil, sinking_fund_id: nil,
+                 income_source_id: nil, sinking_fund_id: nil, savings_goal_id: nil,
                  covers_period_month: nil, covers_period_year: nil,
                  skip_debt_balance: false)
         raise Finanzas::Errors::InvalidTransaction, "Amount must be positive" if amount.to_i <= 0
@@ -83,6 +83,12 @@ module Finanzas
           sinking_fund_id: sinking_fund_id,
           structural_match: structural_match
         )
+        resolved_savings_goal_id = resolve_savings_goal_id(
+          account_id: account_id,
+          transaction_type: transaction_type,
+          savings_goal_id: savings_goal_id,
+          structural_match: structural_match
+        )
         resolved_debt_id = resolve_debt_id(
           account_id: account_id,
           transaction_type: transaction_type,
@@ -118,6 +124,7 @@ module Finanzas
             recurring_obligation_id: resolved_recurring_obligation_id,
             income_source_id: resolved_income_source_id,
             sinking_fund_id: resolved_sinking_fund_id,
+            savings_goal_id: resolved_savings_goal_id,
             covers_period_month: covers_period_month,
             covers_period_year: covers_period_year
           )
@@ -246,6 +253,28 @@ module Finanzas
         return nil unless structural_match[:confidence] == "high"
 
         structural_match[:match_id]
+      end
+
+      # Deriva la meta asociada: del savings_goal_id explícito, o de la obligación
+      # recurrente detectada cuando su origen es un SavingsGoal (aporte a meta).
+      # El repo incrementa current_amount de la meta al confirmarse el aporte.
+      def resolve_savings_goal_id(account_id:, transaction_type:, savings_goal_id:, structural_match:)
+        return nil unless transaction_type == "expense"
+
+        if savings_goal_id.present?
+          goal = ::SavingsGoal.where(account_id: account_id, status: "active").find_by(id: savings_goal_id)
+          raise Finanzas::Errors::InvalidTransaction, "Savings goal #{savings_goal_id} not found" unless goal
+
+          return goal.id
+        end
+
+        return nil unless structural_match&.dig(:match_type) == "savings_goal"
+        return nil unless structural_match[:confidence] == "high"
+
+        obligation = ::RecurringObligation.where(account_id: account_id).find_by(id: structural_match[:match_id])
+        return nil unless obligation&.source_type == "SavingsGoal"
+
+        obligation.source_id
       end
 
       def detect_structure(account_id, concept, amount, subcategory_id, date)

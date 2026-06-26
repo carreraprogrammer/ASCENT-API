@@ -461,7 +461,10 @@ module Api
         to_debt = scope.where.not(debt_id: nil).sum(:amount).to_i
         to_savings = scope
           .where(debt_id: nil)
-          .where("transactions.sinking_fund_id IS NOT NULL OR categories.category_type = ?", "investment")
+          .where(
+            "transactions.savings_goal_id IS NOT NULL OR transactions.sinking_fund_id IS NOT NULL " \
+            "OR categories.category_type = ?", "investment"
+          )
           .sum(:amount).to_i
 
         { to_debt: to_debt, to_savings: to_savings, total: to_debt + to_savings }

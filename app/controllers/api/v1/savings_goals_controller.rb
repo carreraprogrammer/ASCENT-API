@@ -44,7 +44,41 @@ module Api
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
       end
 
+      # POST /api/v1/savings_goals/:id/contributions
+      def contributions
+        return unless require_scope!("budgets:update")
+        return unless require_scope!("transactions:create")
+
+        result = Finanzas::Interactors::RegisterGoalContribution.new.call(
+          user_id: current_owner_user_id,
+          account_id: current_account.id,
+          savings_goal_id: params[:id],
+          **contribution_params
+        )
+
+        render json: {
+          data: {
+            transaction: Finanzas::Presenters::TransactionPresenter.resource(result[:transaction]),
+            goal: result[:goal],
+            previous_amount: result[:previous_amount],
+            current_amount: result[:current_amount],
+            applied_amount: result[:applied_amount]
+          }
+        }, status: :created
+      rescue ActiveRecord::RecordNotFound => e
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      rescue Finanzas::Errors::InvalidTransaction => e
+        render_unprocessable(e.message)
+      end
+
       private
+
+      def contribution_params
+        params.permit(
+          :date, :amount, :concept, :product, :category_id, :subcategory_id,
+          :source, :status, :payment_source, metadata: {}
+        ).to_h.symbolize_keys
+      end
 
       def savings_goal_params
         params.permit(

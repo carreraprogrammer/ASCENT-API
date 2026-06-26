@@ -36,6 +36,7 @@ module Finanzas
               recurring_obligation_id: transaction.recurring_obligation_id,
               income_source_id: transaction.income_source_id,
               sinking_fund_id: transaction.sinking_fund_id,
+              savings_goal_id: transaction.savings_goal_id,
               structural_match: transaction.structural_match,
               covers_period_month: transaction.covers_period_month,
               covers_period_year:  transaction.covers_period_year,
@@ -60,6 +61,9 @@ module Finanzas
               },
               sinking_fund: {
                 data: transaction.sinking_fund_id ? { id: transaction.sinking_fund_id.to_s, type: "sinking_funds" } : nil
+              },
+              savings_goal: {
+                data: transaction.savings_goal_id ? { id: transaction.savings_goal_id.to_s, type: "savings_goals" } : nil
               }
             }
         }
