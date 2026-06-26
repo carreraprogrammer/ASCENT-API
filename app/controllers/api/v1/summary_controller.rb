@@ -61,7 +61,8 @@ module Api
         overflow = build_overflow_status(
                      plan, balance, ctx, debts,
                      income_sources, realized_income_by_source,
-                     carryover_from_previous_month
+                     carryover_from_previous_month,
+                     account_id, month, year
                    )
 
         render json: {
@@ -374,7 +375,10 @@ module Api
         debts,
         income_sources = [],
         realized_income_by_source = {},
-        carryover_from_previous_month = 0
+        carryover_from_previous_month = 0,
+        account_id = nil,
+        month = nil,
+        year = nil
       )
         return nil unless plan
 
@@ -396,6 +400,27 @@ module Api
         ].max
         target = overflow_target_for(plan, ctx, debts)
 
+        # YNAB regla 1 — "asigná cada peso". El ingreso que no cabe en la base
+        # (prima, bono, freelance extra) no es sobregasto: es plata por asignar.
+        # Si el usuario ya la mandó a deuda o al colchón, eso es asignación
+        # cumplida, no un castigo. Hacemos el overflow simétrico: medimos cuánto
+        # del extra YA se desplegó a prioridades para no pedir mover algo dos veces.
+        #
+        # Solo cuenta lo que va POR ENCIMA de lo que el plan base ya destina a esa
+        # prioridad (los mínimos de deuda son base, no overflow). Sin esto, alguien
+        # que solo paga sus mínimos parecería haber asignado su extra sin moverlo.
+        deployment = account_id ?
+          overflow_deployment_for(account_id, month, year) :
+          { to_debt: 0, to_savings: 0, total: 0 }
+        base_debt_allocation = plan[:debt_minimums_total].to_i
+        assigned_breakdown = {
+          to_debt:    [ deployment[:to_debt] - base_debt_allocation, 0 ].max,
+          to_savings: deployment[:to_savings]
+        }
+        assignable_total             = assigned_breakdown[:to_debt] + assigned_breakdown[:to_savings]
+        overflow_assigned            = [ assignable_total, realized_overflow ].min
+        overflow_remaining_to_assign = [ realized_overflow - overflow_assigned, 0 ].max
+
         {
           rule:                              plan[:overflow_rule],
           rule_detail:                       plan[:overflow_rule_detail] || {},
@@ -405,20 +430,48 @@ module Api
           realized_expected_variable_income: realized_expected_variable_income,
           realized_overflow:                 realized_overflow,
           remaining_expected_overflow:       remaining_expected_overflow,
-          status:                            overflow_status(realized_overflow),
+          deployed_to_priorities:            deployment,
+          overflow_assigned:                 overflow_assigned,
+          overflow_assigned_breakdown:       assigned_breakdown,
+          overflow_remaining_to_assign:      overflow_remaining_to_assign,
+          status:                            overflow_status(realized_overflow, overflow_remaining_to_assign),
           suggested_destination:             target,
           suggested_action:                  overflow_action(
             plan,
             realized_overflow,
             target,
             realized_expected_variable_income,
-            remaining_expected_overflow
+            remaining_expected_overflow,
+            assigned_breakdown,
+            overflow_assigned,
+            overflow_remaining_to_assign
           )
         }
       end
 
-      def overflow_status(realized_overflow)
-        realized_overflow.positive? ? "available" : "waiting"
+      # Cuánto del ingreso extra del mes ya fue asignado a prioridades reales:
+      # abono a deuda (debt_id) y aporte a ahorro/construcción (sinking_fund o
+      # categoría investment). Reutiliza las señales de agencia que ya existen;
+      # no introduce un eje contable nuevo (ver principios.md §1).
+      def overflow_deployment_for(account_id, month, year)
+        scope = ::Transaction
+          .where(account_id: account_id, transaction_type: "expense", status: "confirmed", month: month, year: year)
+          .left_joins(:category)
+
+        to_debt = scope.where.not(debt_id: nil).sum(:amount).to_i
+        to_savings = scope
+          .where(debt_id: nil)
+          .where("transactions.sinking_fund_id IS NOT NULL OR categories.category_type = ?", "investment")
+          .sum(:amount).to_i
+
+        { to_debt: to_debt, to_savings: to_savings, total: to_debt + to_savings }
+      end
+
+      def overflow_status(realized_overflow, remaining_to_assign = nil)
+        return "waiting" unless realized_overflow.positive?
+        return "available" if remaining_to_assign.nil?
+
+        remaining_to_assign.positive? ? "available" : "deployed"
       end
 
       def build_context_summary(ctx, plan, debts)
@@ -465,7 +518,10 @@ module Api
         realized_overflow,
         target,
         realized_expected_variable_income = 0,
-        remaining_expected_overflow = 0
+        remaining_expected_overflow = 0,
+        deployment = { to_debt: 0, to_savings: 0, total: 0 },
+        overflow_assigned = 0,
+        overflow_remaining_to_assign = nil
       )
         if realized_overflow <= 0
           if realized_expected_variable_income.positive?
@@ -479,6 +535,19 @@ module Api
           return "Todavía no hay ingreso extra confirmado sobre la base del plan."
         end
 
+        remaining = overflow_remaining_to_assign.nil? ? realized_overflow : overflow_remaining_to_assign
+
+        # Ya asignó todo el extra a prioridades: es asignación cumplida, no castigo.
+        if overflow_assigned.positive? && remaining <= 0
+          return "Entraron #{format_cop(realized_overflow)} por encima de tu base y ya los asignaste #{overflow_deployment_phrase(deployment)}. No queda nada por mover: cada peso extra tiene destino."
+        end
+
+        # Asignó una parte: reconocer lo hecho y nombrar solo lo que falta.
+        if overflow_assigned.positive?
+          return "Entraron #{format_cop(realized_overflow)} extra; ya asignaste #{format_cop(overflow_assigned)} #{overflow_deployment_phrase(deployment)}. Quedan #{format_cop(remaining)} por asignar#{overflow_target_suffix(plan, target)}."
+        end
+
+        # Nada asignado todavía: sugerir destino según el plan.
         case plan[:overflow_rule]
         when "debt"
           debt_name = target&.dig(:debt_name) || "deuda prioritaria"
@@ -491,6 +560,24 @@ module Api
           "Entraron #{format_cop(realized_overflow)} por encima de tu base. Repartilo sin inflar el presupuesto base."
         else
           nil
+        end
+      end
+
+      def overflow_deployment_phrase(deployment)
+        parts = []
+        parts << "#{format_cop(deployment[:to_debt])} a deuda"   if deployment[:to_debt].to_i.positive?
+        parts << "#{format_cop(deployment[:to_savings])} a tu colchón/construcción" if deployment[:to_savings].to_i.positive?
+        return "a tus prioridades" if parts.empty?
+
+        "(#{parts.join(', ')})"
+      end
+
+      def overflow_target_suffix(plan, target)
+        case plan[:overflow_rule]
+        when "debt"        then " a #{target&.dig(:debt_name) || 'tu deuda prioritaria'}"
+        when "emergency_fund" then " a tu colchón"
+        when "investment"  then " a inversión"
+        else ""
         end
       end
 
