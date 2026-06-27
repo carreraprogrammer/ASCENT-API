@@ -45,6 +45,14 @@ module Api
         render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
       end
 
+      # POST /api/v1/sinking_funds/run_auto_debits — lo dispara el scheduler del Brain.
+      def run_auto_debits
+        return unless require_scope!("budgets:update")
+
+        result = Finanzas::Interactors::RunSinkingFundAutoDebits.new.call(account_id: current_account.id)
+        render json: { data: result }
+      end
+
       def withdraw
         return unless require_scope!("budgets:update")
 
@@ -72,7 +80,7 @@ module Api
       def fund_params
         params.permit(
           :name, :monthly_contribution, :target_amount, :target_date,
-          :current_balance, :budget_category, :planned_expense_id, :notes, :active
+          :current_balance, :budget_category, :planned_expense_id, :notes, :active, :auto_debit
         ).to_h.symbolize_keys
       end
 
@@ -86,6 +94,8 @@ module Api
           current_balance:      fund.current_balance,
           budget_category:      fund.budget_category,
           planned_expense_id:   fund.planned_expense_id,
+          auto_debit:           fund.auto_debit,
+          last_auto_debit_on:   fund.last_auto_debit_on,
           notes:                fund.notes,
           active:               fund.active,
           created_at:           fund.created_at,

@@ -77,13 +77,16 @@ Rails.application.routes.draw do
       end
       resources :income_sources,       only: [ :index, :create, :update, :destroy ]
       resources :recurring_obligations, only: [ :index, :create, :update, :destroy ]
-      resources :planned_expenses,     only: [ :index, :create, :update ]
+      resources :planned_expenses,     only: [ :index, :create, :update, :destroy ]
       resources :savings_goals,        only: [ :index, :create, :update, :destroy ] do
         member do
           post :contributions
         end
       end
       resources :sinking_funds, only: [ :index, :create, :update, :destroy ] do
+        collection do
+          post :run_auto_debits
+        end
         member do
           post :withdraw
         end

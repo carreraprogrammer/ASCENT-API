@@ -22,10 +22,12 @@ module Finanzas
       end
 
       def create(attrs)
+        attrs = attrs.dup
+        auto_debit = extract_auto_debit(attrs)
         record = nil
         ::PlannedExpense.transaction do
           record = ::PlannedExpense.create!(attrs)
-          ensure_sinking_fund_for(record)
+          ensure_sinking_fund_for(record, auto_debit: auto_debit)
         end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
@@ -33,19 +35,42 @@ module Finanzas
       end
 
       def update(id, attrs, account_id: nil)
+        attrs = attrs.dup
+        auto_debit = extract_auto_debit(attrs)
         scope = ::PlannedExpense.where(id: id)
         scope = scope.where(account_id: account_id) if account_id.present?
         record = scope.first
         raise ActiveRecord::RecordNotFound, "PlannedExpense #{id} not found" unless record
 
         record.update!(attrs)
-        sync_sinking_fund_for(record)
+        sync_sinking_fund_for(record, auto_debit: auto_debit)
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
       end
 
+      # Borra el plan y, por dependent: :destroy, su bolsillo derivado.
+      def destroy(id, account_id: nil)
+        scope = ::PlannedExpense.where(id: id)
+        scope = scope.where(account_id: account_id) if account_id.present?
+        record = scope.first
+        raise ActiveRecord::RecordNotFound, "PlannedExpense #{id} not found" unless record
+
+        record.destroy!
+      end
+
       private
+
+      # auto_debit no es columna del plan; vive en el bolsillo. Lo sacamos de los
+      # attrs antes de create!/update! y lo pasamos al sinking fund. Devuelve nil
+      # si no vino en el payload (para no pisar el valor existente en update).
+      def extract_auto_debit(attrs)
+        return nil unless attrs.key?(:auto_debit) || attrs.key?("auto_debit")
+
+        raw = attrs.delete(:auto_debit)
+        raw = attrs.delete("auto_debit") if raw.nil?
+        ActiveModel::Type::Boolean.new.cast(raw)
+      end
 
       def apply_filters(scope, filters)
         filtered = scope
@@ -88,7 +113,7 @@ module Finanzas
         }
       end
 
-      def ensure_sinking_fund_for(record)
+      def ensure_sinking_fund_for(record, auto_debit: nil)
         return unless record.status == "planned"
         return if record.sinking_fund.present?
 
@@ -101,22 +126,25 @@ module Finanzas
           target_date: record.target_date,
           current_balance: 0,
           budget_category: record.category&.code,
+          auto_debit: auto_debit || false,
           active: true,
           notes: "Creado automaticamente desde gasto planeado."
         )
       end
 
-      def sync_sinking_fund_for(record)
+      def sync_sinking_fund_for(record, auto_debit: nil)
         fund = record.sinking_fund
-        return ensure_sinking_fund_for(record) if fund.blank?
+        return ensure_sinking_fund_for(record, auto_debit: auto_debit) if fund.blank?
 
-        fund.update!(
+        fund_attrs = {
           name: record.name,
           monthly_contribution: monthly_contribution_for(record),
           target_amount: record.amount_estimated,
           target_date: record.target_date,
           budget_category: record.category&.code
-        )
+        }
+        fund_attrs[:auto_debit] = auto_debit unless auto_debit.nil?
+        fund.update!(fund_attrs)
       end
 
       def monthly_contribution_for(record)
@@ -143,6 +171,8 @@ module Finanzas
           current_balance: fund.current_balance,
           budget_category: fund.budget_category,
           planned_expense_id: fund.planned_expense_id,
+          auto_debit: fund.auto_debit,
+          last_auto_debit_on: fund.last_auto_debit_on,
           active: fund.active
         }
       end
