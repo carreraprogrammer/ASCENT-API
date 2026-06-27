@@ -58,7 +58,7 @@ module Api
         render json: {
           data: {
             sinking_fund: result[:sinking_fund],
-            transaction:  Finanzas::Presenters::TransactionPresenter.present(result[:transaction])
+            transaction:  Finanzas::Presenters::TransactionPresenter.resource(result[:transaction])
           }
         }, status: :created
       rescue Finanzas::Errors::SinkingFundNotFound => e
