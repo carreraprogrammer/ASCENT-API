@@ -37,6 +37,15 @@ module Api
         render_unprocessable(e.message)
       end
 
+      def destroy
+        return unless require_scope!("budgets:update")
+
+        repo.destroy(params[:id], account_id: current_account.id)
+        head :no_content
+      rescue ActiveRecord::RecordNotFound => e
+        render json: { errors: [ { status: "404", detail: e.message } ] }, status: :not_found
+      end
+
       private
 
       def repo
@@ -46,7 +55,7 @@ module Api
       def allowed_params
         params.permit(
           :name, :amount_estimated, :target_date, :planning_type,
-          :status, :category_id, :subcategory_id, :notes
+          :status, :category_id, :subcategory_id, :notes, :auto_debit
         ).to_h.symbolize_keys
       end
 
