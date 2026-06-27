@@ -17,9 +17,13 @@ module Finanzas
         period_start = Date.new(today.year, today.month, 1)
         debited      = []
 
+        # Solo los bolsillos cuyo día de débito ya llegó este mes y que no se han
+        # debitado todavía. Como el scheduler corre a diario, cada bolsillo se debita
+        # el primer día >= su debit_day en que aún no tenga aporte este mes.
         funds = ::SinkingFund
           .where(account_id: account_id, active: true, auto_debit: true)
           .where("monthly_contribution > 0")
+          .where("debit_day <= ?", today.day)
           .where("last_auto_debit_on IS NULL OR last_auto_debit_on < ?", period_start)
 
         funds.each do |fund|

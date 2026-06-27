@@ -55,7 +55,7 @@ module Api
       def allowed_params
         params.permit(
           :name, :amount_estimated, :target_date, :planning_type,
-          :status, :category_id, :subcategory_id, :notes, :auto_debit
+          :status, :category_id, :subcategory_id, :notes, :auto_debit, :debit_day
         ).to_h.symbolize_keys
       end
 

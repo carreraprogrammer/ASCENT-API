@@ -80,7 +80,7 @@ module Api
       def fund_params
         params.permit(
           :name, :monthly_contribution, :target_amount, :target_date,
-          :current_balance, :budget_category, :planned_expense_id, :notes, :active, :auto_debit
+          :current_balance, :budget_category, :planned_expense_id, :notes, :active, :auto_debit, :debit_day
         ).to_h.symbolize_keys
       end
 
@@ -95,6 +95,7 @@ module Api
           budget_category:      fund.budget_category,
           planned_expense_id:   fund.planned_expense_id,
           auto_debit:           fund.auto_debit,
+          debit_day:            fund.debit_day,
           last_auto_debit_on:   fund.last_auto_debit_on,
           notes:                fund.notes,
           active:               fund.active,

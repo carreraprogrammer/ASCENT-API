@@ -58,4 +58,20 @@ RSpec.describe Finanzas::Interactors::RunSinkingFundAutoDebits do
     result = interactor.call(account_id: account.id, today: today)
     expect(result[:count]).to eq(0)
   end
+
+  context "with a debit_day later in the month" do
+    before { auto_fund.update!(debit_day: 15) }
+
+    it "does not debit before the debit_day" do
+      result = interactor.call(account_id: account.id, today: Date.new(2026, 6, 10))
+      expect(result[:count]).to eq(0)
+      expect(auto_fund.reload.current_balance).to eq(0)
+    end
+
+    it "debits on or after the debit_day" do
+      result = interactor.call(account_id: account.id, today: Date.new(2026, 6, 15))
+      expect(result[:count]).to eq(1)
+      expect(auto_fund.reload.current_balance).to eq(143_750)
+    end
+  end
 end
