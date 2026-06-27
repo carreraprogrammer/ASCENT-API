@@ -23,11 +23,11 @@ module Finanzas
 
       def create(attrs)
         attrs = attrs.dup
-        auto_debit = extract_auto_debit(attrs)
+        fund_opts = extract_fund_opts(attrs)
         record = nil
         ::PlannedExpense.transaction do
           record = ::PlannedExpense.create!(attrs)
-          ensure_sinking_fund_for(record, auto_debit: auto_debit)
+          ensure_sinking_fund_for(record, **fund_opts)
         end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
@@ -36,14 +36,14 @@ module Finanzas
 
       def update(id, attrs, account_id: nil)
         attrs = attrs.dup
-        auto_debit = extract_auto_debit(attrs)
+        fund_opts = extract_fund_opts(attrs)
         scope = ::PlannedExpense.where(id: id)
         scope = scope.where(account_id: account_id) if account_id.present?
         record = scope.first
         raise ActiveRecord::RecordNotFound, "PlannedExpense #{id} not found" unless record
 
         record.update!(attrs)
-        sync_sinking_fund_for(record, auto_debit: auto_debit)
+        sync_sinking_fund_for(record, **fund_opts)
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidTransaction, e.message
@@ -61,15 +61,23 @@ module Finanzas
 
       private
 
-      # auto_debit no es columna del plan; vive en el bolsillo. Lo sacamos de los
-      # attrs antes de create!/update! y lo pasamos al sinking fund. Devuelve nil
-      # si no vino en el payload (para no pisar el valor existente en update).
-      def extract_auto_debit(attrs)
-        return nil unless attrs.key?(:auto_debit) || attrs.key?("auto_debit")
-
-        raw = attrs.delete(:auto_debit)
-        raw = attrs.delete("auto_debit") if raw.nil?
-        ActiveModel::Type::Boolean.new.cast(raw)
+      # auto_debit y debit_day no son columnas del plan; viven en el bolsillo. Los
+      # sacamos de los attrs antes de create!/update! y los pasamos al sinking fund.
+      # Si una clave no vino en el payload, no se incluye (para no pisar el valor
+      # existente en update).
+      def extract_fund_opts(attrs)
+        opts = {}
+        if attrs.key?(:auto_debit) || attrs.key?("auto_debit")
+          raw = attrs.delete(:auto_debit)
+          raw = attrs.delete("auto_debit") if raw.nil?
+          opts[:auto_debit] = ActiveModel::Type::Boolean.new.cast(raw)
+        end
+        if attrs.key?(:debit_day) || attrs.key?("debit_day")
+          raw = attrs.delete(:debit_day)
+          raw = attrs.delete("debit_day") if raw.nil?
+          opts[:debit_day] = raw.to_i if raw.present?
+        end
+        opts
       end
 
       def apply_filters(scope, filters)
@@ -113,7 +121,7 @@ module Finanzas
         }
       end
 
-      def ensure_sinking_fund_for(record, auto_debit: nil)
+      def ensure_sinking_fund_for(record, auto_debit: nil, debit_day: nil)
         return unless record.status == "planned"
         return if record.sinking_fund.present?
 
@@ -127,14 +135,15 @@ module Finanzas
           current_balance: 0,
           budget_category: record.category&.code,
           auto_debit: auto_debit || false,
+          debit_day: debit_day || 1,
           active: true,
           notes: "Creado automaticamente desde gasto planeado."
         )
       end
 
-      def sync_sinking_fund_for(record, auto_debit: nil)
+      def sync_sinking_fund_for(record, auto_debit: nil, debit_day: nil)
         fund = record.sinking_fund
-        return ensure_sinking_fund_for(record, auto_debit: auto_debit) if fund.blank?
+        return ensure_sinking_fund_for(record, auto_debit: auto_debit, debit_day: debit_day) if fund.blank?
 
         fund_attrs = {
           name: record.name,
@@ -144,6 +153,7 @@ module Finanzas
           budget_category: record.category&.code
         }
         fund_attrs[:auto_debit] = auto_debit unless auto_debit.nil?
+        fund_attrs[:debit_day] = debit_day unless debit_day.nil?
         fund.update!(fund_attrs)
       end
 
@@ -172,6 +182,7 @@ module Finanzas
           budget_category: fund.budget_category,
           planned_expense_id: fund.planned_expense_id,
           auto_debit: fund.auto_debit,
+          debit_day: fund.debit_day,
           last_auto_debit_on: fund.last_auto_debit_on,
           active: fund.active
         }
