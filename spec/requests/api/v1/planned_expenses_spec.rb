@@ -113,4 +113,35 @@ RSpec.describe "Planned Expenses API" do
       expect(JSON.parse(response.body).dig("data", "sinking_fund", "target_amount")).to eq(600_000)
     end
   end
+
+  describe "DELETE /api/v1/planned_expenses/:id" do
+    let!(:planned_expense) do
+      create(:planned_expense, user: user, account: user.default_account, category: category, subcategory: subcategory)
+    end
+    let!(:fund) do
+      create(:sinking_fund, user: user, account: user.default_account, planned_expense: planned_expense)
+    end
+
+    it "deletes the plan and cascades to its sinking fund" do
+      expect do
+        delete "/api/v1/planned_expenses/#{planned_expense.id}", headers: headers
+      end.to change(PlannedExpense, :count).by(-1)
+        .and change(SinkingFund, :count).by(-1)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "unlinks (does not delete) the fund's transactions when the plan is deleted" do
+      txn = create(:transaction, user: user, account: user.default_account,
+                   sinking_fund: fund, transaction_type: "expense", status: "confirmed", amount: 50_000)
+      txn_count = Transaction.count
+
+      delete "/api/v1/planned_expenses/#{planned_expense.id}", headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      expect(SinkingFund.exists?(fund.id)).to be(false)
+      expect(Transaction.count).to eq(txn_count)
+      expect(txn.reload.sinking_fund_id).to be_nil
+    end
+  end
 end
