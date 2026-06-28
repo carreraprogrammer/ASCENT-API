@@ -48,6 +48,17 @@ RSpec.describe SinkingFund do
       expect(RecurringObligation.find_by(source_type: "SinkingFund", source_id: fund_id)).to be_nil
     end
 
+    it "destroys the obligation even when a contribution transaction is linked to it" do
+      fund = create(:sinking_fund, user: user, account: account, auto_debit: true)
+      ob = obligation_for(fund)
+      txn = create(:transaction, user: user, account: account, sinking_fund: fund,
+                   recurring_obligation: ob, transaction_type: "expense", status: "confirmed", amount: 50_000)
+
+      expect { fund.destroy! }.not_to raise_error
+      expect(RecurringObligation.exists?(ob.id)).to be(false)
+      expect(txn.reload.recurring_obligation_id).to be_nil
+    end
+
     it "associates the obligation with the plan's category when fund comes from a plan" do
       category = create(:category, user: user, category_type: "committed")
       subcategory = create(:subcategory, category: category)
