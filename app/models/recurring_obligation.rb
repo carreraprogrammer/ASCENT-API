@@ -9,6 +9,9 @@ class RecurringObligation < ApplicationRecord
   belongs_to :category,    optional: true
   belongs_to :subcategory, optional: true
   belongs_to :source, polymorphic: true, optional: true
+  # Al borrar una obligación, sus transacciones sobreviven pero se desvinculan
+  # (recurring_obligation_id -> nil), evitando que la FK bloquee el borrado.
+  has_many :transactions, dependent: :nullify
 
   BUDGET_CATEGORIES = %w[
     housing utilities groceries transportation health
