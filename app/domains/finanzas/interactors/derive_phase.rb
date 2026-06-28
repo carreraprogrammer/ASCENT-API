@@ -10,11 +10,28 @@ module Finanzas
     #   Step 4+: investing
     class DerivePhase
       def call(account_id:)
+        explain(account_id: account_id)[:phase]
+      end
+
+      # Igual que #call pero devuelve también la RAZÓN legible y los datos que la
+      # sustentan, para que la UI le explique al usuario por qué el coach dedujo
+      # esta fase (transparencia con agencia). No persiste nada.
+      def explain(account_id:)
         committed_monthly = fetch_committed_monthly(account_id)
         ef_balance        = fetch_ef_balance(account_id)
         has_active_debts  = fetch_has_active_debts(account_id)
+        ef_months         = committed_monthly.positive? ? (ef_balance.to_f / committed_monthly).round(1) : nil
 
-        derive(committed_monthly, ef_balance, has_active_debts)
+        phase = derive(committed_monthly, ef_balance, has_active_debts)
+
+        {
+          phase:             phase,
+          reason:            reason_for(phase, committed_monthly, ef_balance, has_active_debts),
+          committed_monthly: committed_monthly,
+          ef_balance:        ef_balance,
+          ef_months:         ef_months,
+          has_active_debts:  has_active_debts
+        }
       end
 
       private
@@ -34,6 +51,24 @@ module Finanzas
         end
 
         "investing"
+      end
+
+      # Razón legible (secuencia Ramsey) — el "por qué" de la fase deducida.
+      def reason_for(phase, committed_monthly, ef_balance, has_active_debts)
+        case phase
+        when "emergency_fund"
+          if committed_monthly.positive? && ef_balance < committed_monthly
+            "Tu colchón aún no cubre 1 mes de gastos fijos. La prioridad (paso 1) es un fondo de emergencia inicial antes de atacar la deuda."
+          else
+            "Ya no tienes deudas activas, pero tu colchón aún no llega a 3 meses de gastos fijos. La prioridad (paso 3) es completar el fondo de emergencia."
+          end
+        when "debt_payoff"
+          "Tienes deuda activa. Con el colchón inicial cubierto, la prioridad (paso 2) es liquidar la deuda antes de seguir creciendo el colchón."
+        when "investing"
+          "Sin deudas activas y con un colchón suficiente. La prioridad ahora es invertir y construir patrimonio."
+        else
+          "Fase derivada de tu situación financiera actual."
+        end
       end
 
       # Total active recurring obligations — proxy for monthly essential spend.

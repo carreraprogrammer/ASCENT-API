@@ -20,6 +20,7 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
       obligations: { total: 2_500_000, by_category: {} },
       debt_minimums: { total: 1_000_000 },
       sinking_funds: [],
+      goal_contribution: { amount: 0, label: nil },
       planned_expenses: [],
       budget_categories: [],
       spending_history: spending_history,
@@ -324,6 +325,30 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
       %i[income committed categories free_margin warnings month year].each do |key|
         expect(result).to have_key(key)
       end
+    end
+  end
+
+  describe "phase_explanation (deduced phase + the why)" do
+    before { stub_ctx }
+
+    it "exposes the deduced phase with a human reason and supporting data" do
+      result = interactor.call(account_id: account.id, month: month, year: year)
+
+      expect(result[:phase_explanation]).to be_a(Hash)
+      expect(result[:phase_explanation][:phase]).to be_present
+      expect(result[:phase_explanation][:reason]).to be_present
+      expect(result[:phase_explanation]).to include(:committed_monthly, :ef_balance, :has_active_debts)
+    end
+
+    it "derives the explanation phase from real data, not the stored financial_context" do
+      create(:debt, user: user, status: :active)
+      create(:recurring_obligation, user: user, amount: 1_000_000)
+      create(:savings_goal, user: user, name: "Fondo de emergencia",
+             current_amount: 1_000_000, target_amount: 6_000_000, target_date: nil)
+
+      result = interactor.call(account_id: account.id, month: month, year: year)
+      expect(result[:phase_explanation][:phase]).to eq("debt_payoff")
+      expect(result[:phase_explanation][:reason]).to match(/deuda/i)
     end
   end
 end

@@ -18,10 +18,12 @@ module Finanzas
 
       def initialize(
         ctx_builder: Finanzas::Interactors::BuildBudgetContext.new,
-        plan_repo: Finanzas::Repositories::MonthlyFinancialPlanRepository.new
+        plan_repo: Finanzas::Repositories::MonthlyFinancialPlanRepository.new,
+        phase_deriver: Finanzas::Interactors::DerivePhase.new
       )
         @ctx_builder = ctx_builder
         @plan_repo = plan_repo
+        @phase_deriver = phase_deriver
       end
 
       def call(account_id:, month:, year:, include_variable: false)
@@ -41,6 +43,10 @@ module Finanzas
 
         phase        = ctx.dig(:financial_context, :phase)
         reward_pct   = ctx.dig(:financial_context, :reward_pct).to_f
+        # Fase DEDUCIDA de la situación real (misma lógica que el plan generado),
+        # con su razón legible — para EXPLICARLE al usuario el porqué. Es un campo
+        # de transparencia adicional; no altera el cálculo existente de la propuesta.
+        phase_explanation = @phase_deriver.explain(account_id: account_id)
         surplus_target  = compute_surplus_target(phase, reward_pct, planning_income, free_margin)
         effective_margin = [ free_margin - surplus_target, 0 ].max
 
@@ -76,6 +82,7 @@ module Finanzas
           surplus_target:       surplus_target,
           surplus_target_label: surplus_target_label(phase),
           phase:                phase,
+          phase_explanation:    phase_explanation,
           has_history:          has_history,
           mode:                 has_history ? "data_driven" : "provisional",
           warnings:             build_warnings(ctx, free_margin, has_history),
