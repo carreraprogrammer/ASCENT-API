@@ -109,4 +109,30 @@ RSpec.describe Finanzas::Interactors::DerivePhase do
       expect(call).to eq("investing")
     end
   end
+
+  describe "#explain" do
+    subject(:explanation) { interactor.explain(account_id: account_id) }
+
+    before { create(:recurring_obligation, user: user, amount: 2_000_000) }
+
+    it "returns the phase, a human reason and the supporting inputs" do
+      expect(explanation[:phase]).to eq("emergency_fund")
+      expect(explanation[:reason]).to be_a(String).and(be_present)
+      expect(explanation[:committed_monthly]).to eq(2_000_000)
+      expect(explanation[:ef_balance]).to eq(0)
+      expect(explanation[:ef_months]).to eq(0.0)
+      expect(explanation[:has_active_debts]).to be(false)
+    end
+
+    it "explains debt_payoff when there is active debt and EF covers 1 month" do
+      # target_date nil → la meta no genera obligación recurrente que infle el committed.
+      create(:savings_goal, user: user, name: "Fondo de emergencia",
+             current_amount: 2_000_000, target_amount: 12_000_000, target_date: nil)
+      create(:debt, user: user, status: :active)
+
+      expect(explanation[:phase]).to eq("debt_payoff")
+      expect(explanation[:reason]).to match(/deuda/i)
+      expect(explanation[:has_active_debts]).to be(true)
+    end
+  end
 end
