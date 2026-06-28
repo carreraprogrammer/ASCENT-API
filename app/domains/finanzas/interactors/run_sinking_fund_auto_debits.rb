@@ -30,6 +30,10 @@ module Finanzas
           amount = fund.monthly_contribution.to_i
           next if amount <= 0
 
+          obligation_id = ::RecurringObligation
+            .where(source_type: "SinkingFund", source_id: fund.id, account_id: account_id)
+            .pick(:id)
+
           ActiveRecord::Base.transaction do
             @repo.create(
               user_id:         fund.user_id,
@@ -43,7 +47,8 @@ module Finanzas
               source_event_id: "auto_debit:fund_#{fund.id}:#{today.year}-#{today.month}",
               month:           today.month,
               year:            today.year,
-              sinking_fund_id: fund.id
+              sinking_fund_id: fund.id,
+              recurring_obligation_id: obligation_id
             )
             fund.update!(last_auto_debit_on: today)
           end
