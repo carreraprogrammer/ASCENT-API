@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_29_120000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_29_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -555,6 +555,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_29_120000) do
     t.integer "covers_period_month"
     t.integer "covers_period_year"
     t.bigint "savings_goal_id"
+    t.jsonb "tags", default: [], null: false
     t.index ["account_id", "covers_period_year", "covers_period_month"], name: "index_transactions_on_account_covers_period", where: "(covers_period_month IS NOT NULL)"
     t.index ["account_id", "debt_id", "year", "month"], name: "index_transactions_on_account_debt_period"
     t.index ["account_id", "income_source_id", "year", "month"], name: "index_transactions_on_account_income_source_period"
@@ -572,6 +573,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_29_120000) do
     t.index ["savings_goal_id"], name: "index_transactions_on_savings_goal_id"
     t.index ["sinking_fund_id"], name: "index_transactions_on_sinking_fund_id"
     t.index ["subcategory_id"], name: "index_transactions_on_subcategory_id"
+    t.index ["tags"], name: "index_transactions_on_tags", using: :gin
     t.index ["user_id", "status"], name: "index_transactions_on_user_id_and_status"
     t.index ["user_id", "year", "month"], name: "index_transactions_on_user_id_and_year_and_month"
     t.index ["user_id"], name: "index_transactions_on_user_id"
