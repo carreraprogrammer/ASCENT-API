@@ -84,16 +84,27 @@ Numeración alineada con RFC-0001 §15. Cada etapa: **objetivo · cambios · cri
 
 ---
 
-### Etapa 1 — Expand: introducir `agency_tier` + atributos nuevos (sin eliminar nada)
+### Etapa 1 — Expand: introducir el modelo nuevo en paralelo (sin eliminar nada) — ✅ FOUNDATION COMPLETA (2026-06-29)
 
 **Objetivo.** Que el modelo nuevo exista en paralelo al viejo y sea **derivable** del actual.
+
+**Entregado y en prod:**
+- `Category#tier` + `TIER_FOR` (traductor derivado; sin columna paralela). `flexible` aceptado como type.
+- `recurring_obligations.defended_priority` (prioridad defendida).
+- Social resuelto **sin schema nuevo**: subcategorías fusionadas en `social` bajo `flexible` (decisión de datos, se aplica en la reclasificación).
+- Deuda mínimo/aceleración: analizado, ya separado (ver abajo).
+- Harness de tests arreglado (docker-compose bind-mount + RAILS_ENV=test).
+
+**Queda para Etapa 2/3 (es behavior-changing, no foundation):** migrar los sitios de lectura
+para que consuman `tier` en vez de ramificar por `category_type` crudo. Se hace al flipear
+consumidores (Brain, presupuesto, web), no antes, porque cambia agregaciones.
 
 **Cambios.**
 - Migración: agregar `categories.agency_tier` (`committed|necessary|flexible`, nullable al inicio).
 - Backfill derivado: `committed→committed`, `necessary→necessary`, `discretionary→flexible`, `investment→flexible`, `social→flexible` (el tier; la semántica social la conserva la subcategoría, el matiz patrimonio se separa en Etapa 6).
 - Migración: `categories.is_patrimony` (boolean) para marcar lo que antes era `investment`-instrumento (se moverá en Etapa 6) y `transactions.defended_priority` (o atributo en la categoría/línea de plan) para la **prioridad defendida** (RFC-0001 §10).
 - Social: **sin eje de tags** (descartado — las subcategorías ya cumplen ese rol). Las subcategorías sociales (Regalos, Salidas, Familia, Donaciones, Amigos) se re-parentan a su tier; la semántica social la lleva la subcategoría.
-- Deuda: distinguir **mínimo (committed)** vs **aceleración (decisión)** — campo o convención en `recurring_obligations`/línea de plan (RFC-0001 §6.1).
+- Deuda: distinguir **mínimo (committed)** vs **aceleración (decisión)**. **Analizado (2026-06-29): ya está separado, no requiere schema.** El mínimo vive como obligación recurrente (creditos) y alimenta el piso comprometido (`cash_flow_runway`) y el DTI; la aceleración es excedente vía `overflow_rule`, fuera del piso. Solo hay que **respetar la distinción en el motor de presupuesto (Etapa 3)** al fondear/recortar — la estructura actual ya lo permite.
 - Código: **dual-read** — los interactores empiezan a leer `agency_tier` con fallback al `category_type` viejo (helper único `Category#tier`).
 
 **Criterio de salida.** `agency_tier` poblado para todas las categorías; un helper central traduce; nada de lectura nueva rota; tests verdes.
