@@ -200,12 +200,60 @@ Numeración alineada con RFC-0001 §15. Cada etapa: **objetivo · cambios · cri
 
 ---
 
-## 3. Estrategia de datos históricos
+## 3. Migración de datos (concreta, con inventario de producción)
 
-- **No reescribir el histórico.** Se conserva con sus códigos viejos; el helper `Category#tier` los mapea on-read. Esto preserva comparabilidad de planes cerrados y `execution_snapshot`.
-- **Fecha de corte explícita.** Marcar el momento en que el modelo nuevo entra en vigor; los reportes que crucen el corte deben advertirlo.
-- **Reclasificación asistida solo donde aporta** (Etapa 6, instrumentos vs gasto). Nunca batch automático para `investment`/`social`.
-- **Riesgo:** métricas de tendencia (burn rate, scoring) que mezclan pre/post corte pueden saltar artificialmente. **Mitigación:** segmentar series por la fecha de corte; no comparar meses cruzados sin nota.
+> Contexto: **un solo usuario en producción**, volumen chico. Por eso la migración de datos
+> NO necesita el período largo de dual-read multi-usuario: se hace una **reclasificación
+> directa, reversible, con backup previo y una lista de repaso a mano**. Un `UPDATE` masivo
+> ciego (`social`/`investment` → `flexible`) **corrompe datos** — la inspección de prod
+> abajo lo prueba.
+
+### 3.1 Inventario real (prod, 2026-06-29)
+
+| Fuente | committed | necessary | discretionary→flexible | investment | social | income | nil |
+|---|---|---|---|---|---|---|---|
+| transactions | 36 | 108 | 174 | 22 | 41 | 32 | 3 |
+| recurring_obligations | 13 | 2 | 8 | 5 | 0 | — | 4 |
+| budgets | 13 | 16 | 17 | 12 | 12 | — | 0 |
+
+Subcategorías: `investment` = {Cursos, Libros, Suplementos, Herramientas, Ahorro voluntario, Ejercicio}; `social` = {Regalos, Salidas, Familia, Donaciones, Amigos}.
+
+Hallazgo: ambos buckets están **semánticamente mezclados** (ahorro real, herramientas de trabajo y hasta una cuota de deuda viven dentro). No es un rename mecánico.
+
+### 3.2 Reglas de mapeo (decididas)
+
+| Origen | Destino | Nota |
+|---|---|---|
+| `committed` | `committed` | sin cambio |
+| `necessary` | `necessary` | sin cambio |
+| `discretionary` | `flexible` | renombrar también el **code** (`discretionary`→`flexible`); display ya es "Flexible" |
+| `income` / `unknown` | igual | resolver los 3 + 4 nil aparte |
+| `social` (Regalos, Salidas, Donaciones, Amigos) | `flexible` + tag `social` | conservar la señal relacional como tag |
+| `social` / Familia (soporte, almuerzos a mamá, envíos) | `flexible` + tag `social` | **decisión del autor**: soporte familiar = flexible (posible prioridad defendida) |
+| `investment` / Herramientas (GitHub, Claude, Railway, tokens IA) | `necessary` | **decisión del autor**: insumos de trabajo freelance |
+| `investment` / Cursos, Suplementos, Libros, Ejercicio (consumo) | `flexible` | inversión-en-sí ≠ gaveta propia |
+| `investment` / Ahorro voluntario (aporte/retiro de bolsillo, aporte fondo emergencia) | **fuera del gasto** → ahorro/Patrimonio | son movimientos de fondo, no gasto. Idealmente ni siquiera son `transactions` de gasto |
+
+### 3.3 Casos a revisar a mano (~10, no automatizar)
+
+- **"iPhone papá (cuota) — $178.000"** (hoy social/Familia) → es **cuota de deuda** → `committed`, idealmente ligada a una `Debt`.
+- **"Aporte fondo de emergencia — $1.200.000"** (hoy investment/Ahorro voluntario) → contribución a `savings_goal`/Patrimonio, **no** flexible.
+- **"Aporte a bolsillo suplementación"**, **"Retiro bolsillo ropa/impuesto"** → movimientos de `sinking_fund`, no gasto flexible.
+- **"Deuda curso de barismo"** aparece duplicada bajo `investment/Cursos` y `social/Familia` → inconsistencia de datos: dedupe/corregir.
+- **3 transactions + 4 recurring_obligations con categoría nil** → asignar tier o dejar `unknown` explícito.
+
+### 3.4 Mecanismo
+
+1. **Backup** de la BD de prod antes de tocar nada (Railway snapshot / `pg_dump`).
+2. Migración reversible (`up`/`down`) que aplica §3.2 para los casos **inequívocos** (la mayoría).
+3. Los casos de §3.3 se resuelven con un **script de repaso** que los lista y aplica el destino confirmado uno por uno (no batch).
+4. Correr en una ventana corta; verificar con `railway logs` + un par de queries de conteo post-migración.
+5. Prerrequisito de código: el `tier` debe existir y leerse (Etapa 1) **antes** de reclasificar, y los branches por `investment`/`social` (Etapa 2–4) actualizados, para que la app no quede mirando categorías que ya no existen.
+
+### 3.5 Histórico y comparabilidad
+
+- Como es reclasificación directa (no on-read), `monthly_financial_plans.category_allocations` y `execution_snapshot` históricos quedan con códigos viejos: o se migran con el mismo mapeo, o se marcan con la **fecha de corte** y se leen con tolerancia.
+- **Riesgo:** burn rate / scoring que crucen el corte pueden saltar. **Mitigación:** segmentar series por la fecha de corte; no comparar meses cruzados sin nota.
 
 ---
 
