@@ -213,6 +213,15 @@ consumidores (Brain, presupuesto, web), no antes, porque cambia agregaciones.
 
 ## 3. Migración de datos (concreta, con inventario de producción)
 
+> ✅ **EJECUTADA en prod 2026-06-29** (atómica, dry-run→apply, backup/mapa de restauración
+> guardado). Resultado: 63 transacciones reubicadas (39 social→flexible, 17 investment→
+> necessary/flexible, 3 deudas liquidadas→committed, 4 ahorro intactas), 5 recurrentes
+> (Herramientas→necessary), 24 budgets (sociales consolidados sumando colisiones). Estado
+> final: social=0; investment=solo 4 movimientos de ahorro (esperan Patrimonio/Etapa 6).
+> Pendiente menor: 3 tx + 4 recurrentes con categoría nula (pre-existentes, repaso aparte).
+> El rename de `discretionary`→`flexible` (code) y el borrado de las categorías vacías
+> investment/social ocurren en Etapa 5.
+
 > Contexto: **un solo usuario en producción**, volumen chico. Por eso la migración de datos
 > NO necesita el período largo de dual-read multi-usuario: se hace una **reclasificación
 > directa, reversible, con backup previo y una lista de repaso a mano**. Un `UPDATE` masivo
