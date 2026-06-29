@@ -1,7 +1,12 @@
 # Gastos Planeados
 
 > Estado: 🟡 CRUD implementado — integración con plan mensual pendiente
-> Última actualización: 2026-04-23
+> Última actualización: 2026-06-28
+>
+> Nota RFC-0001: `investments` aquí es la **entidad estructural** (módulo Patrimonio),
+> ya consistente con el rediseño — la distinción "una compra planeada no es inversión por
+> tener fecha" sigue vigente. El eje de presupuesto migra a 3 tiers. Ver
+> [Rediseño.md](../producto/Rediseño.md).
 
 ## Qué es
 

@@ -1,7 +1,11 @@
 # Living Budget Integration
 
 > Estado: ✅ Fases A · B · C · D · E completadas — spec cerrado
-> Última actualización: 2026-05-06
+> Última actualización: 2026-06-28
+>
+> Nota RFC-0001: las referencias a `investments` aquí son la **entidad estructural**
+> (módulo Patrimonio), consistente con el rediseño. El eje de presupuesto migra a 3 tiers
+> (Comprometido/Necesario/Flexible). Ver [Rediseño.md](../producto/Rediseño.md).
 
 ---
 
@@ -131,7 +135,7 @@ La UI puede permitir ver el monto y explicar de dónde sale, pero no modificarlo
 El wizard sí debe permitir ajustar:
 
 - categorías variables sugeridas por historial
-- topes discrecionales
+- topes flexibles (antes "discrecionales")
 - asignación de excedente
 - aportes a bolsillos
 - prioridades de ahorro

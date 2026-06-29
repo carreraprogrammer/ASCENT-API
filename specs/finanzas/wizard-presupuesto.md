@@ -1,15 +1,22 @@
 # Taxonomía Dual y Wizard de Presupuesto Mensual
 
-> Estado: 🔲 diseño aprobado — pendiente implementación
-> Última actualización: 2026-04-21
+> Estado: ⚠️ EN MIGRACIÓN A RFC-0001 — diseño pendiente de implementación
+> Última actualización: 2026-06-28
+>
+> La idea central de este spec (taxonomía dual: subcategoría funcional + categoría de
+> agencia) **sobrevive** y encaja con [Rediseño.md](../producto/Rediseño.md) (RFC-0001):
+> el tag funcional sigue, pero el eje de agencia pasa de 6 categorías a **3 tiers**
+> (Comprometido / Necesario / Flexible). `investment` → módulo Patrimonio; `social` → tag.
+> Los wireframes ASCII más abajo todavía muestran el desglose viejo de 5 categorías y se
+> rediseñarán al implementar el wizard bajo el nuevo modelo.
 
 ---
 
 ## El problema que resuelve este spec
 
-La aplicación clasifica gastos usando 7 categorías conductuales (Comprometido, Necesario, Discrecional, etc.). Este sistema es correcto y es el corazón del coaching. El problema es que el usuario no habla ese idioma.
+La aplicación clasifica gastos por **agencia** (3 tiers: Comprometido, Necesario, Flexible). Este sistema es el corazón del coaching. El problema es que el usuario no habla ese idioma.
 
-Un usuario nuevo no sabe qué es "Discrecional". Sí sabe qué es "comida" o "transporte". La app actualmente no tiene ningún puente entre el idioma del usuario y el idioma del sistema. El resultado es:
+Un usuario nuevo no sabe qué es "Flexible". Sí sabe qué es "comida" o "transporte". La app actualmente no tiene ningún puente entre el idioma del usuario y el idioma del sistema. El resultado es:
 
 1. **Barrera de entrada alta**: el usuario no entiende por qué su gasto fue clasificado donde está
 2. **Presupuesto imposible de configurar**: nadie puede decir "cuánto para Discrecional" sin saber primero qué cabe ahí
@@ -43,19 +50,19 @@ Subcategoría "iglesia"*     → Social        →  cruz morada   (* creada por 
 
 El usuario aprende el sistema mirando su feed, sin leer ningún manual.
 
-### Las 7 categorías conductuales (sin cambios)
+### Los 3 tiers de agencia
 
-El corazón del sistema no cambia. Las categorías son fijas, del sistema, no modificables por el usuario.
+El eje del sistema. Tiers fijos, del sistema, no modificables por el usuario. Todos responden la misma pregunta: *¿qué margen de maniobra tengo si mi situación empeora?*
 
-| Categoría | Código | Color | Nombre visual | Definición operativa |
+| Tier | Código | Color | Nombre visual | Pregunta operativa |
 |---|---|---|---|---|
-| Comprometido | `committed` | `#C0392B` | Granada | Obligaciones contractuales. Cancelarlas tiene consecuencia real. |
-| Necesario | `necessary` | `#D4732A` | Ámbar | Inevitable pero optimizable. |
-| Discrecional | `discretionary` | `#C9980A` | Oro | Decisión activa. El único lugar con libertad real de corte. |
-| Inversión | `investment` | `#1A9E4A` | Esmeralda | Tiene retorno futuro medible. |
-| Social | `social` | `#8A4FD8` | Amatista | Gasto en relaciones. Tiene valor pero requiere conciencia. |
-| Ingreso | `income` | `#0E96AD` | Zafiro | Entradas de dinero. |
+| Comprometido | `committed` | `#C0392B` | Granada | ¿Puedo dejar de pagarlo sin incumplir una obligación? → No |
+| Necesario | `necessary` | `#D4732A` | Ámbar | En crisis, ¿el mínimo de esta función sigue > 0? → Sí |
+| Flexible | `flexible` | `#C9980A` | Oro | ¿Puede ir a cero en crisis? → Sí |
+| Ingreso | `income` | `#0E96AD` | Zafiro | Entradas de dinero (no es un tier de gasto). |
 | Desconocido | `unknown` | `#5B7280` | Niebla | Sin clasificar. El agente resuelve en el nocturno. |
+
+`investment` y `social` ya no son categorías: `investment` → módulo Patrimonio (fuera del presupuesto); `social` → tag ortogonal. `social` puede mantener su color Amatista como tag. La **prioridad defendida** es un atributo aparte sobre gastos `flexible` (ver RFC-0001 §10).
 
 Los tokens CSS viven en `--color-committed`, `--color-necessary`, etc. Ver [BRAND.md](../../../daniel15k-web/BRAND.md).
 
@@ -85,26 +92,30 @@ Los íconos usan **Ionicons 8** (bundled con `@ionic/react`). El nombre es el id
 | Transporte | `transporte` | Necesario | `busOutline` |
 | Salud | `salud` | Necesario | `heartOutline` |
 | Celular | `celular` | Necesario | `phonePortraitOutline` |
-| Restaurantes | `restaurantes` | Discrecional | `restaurantOutline` |
-| Delivery | `delivery` | Discrecional | `fastFoodOutline` |
-| Ocio | `ocio` | Discrecional | `gameControllerOutline` |
-| Ropa | `ropa` | Discrecional | `shirtOutline` |
-| Tecnología | `tecnologia` | Discrecional | `laptopOutline` |
-| Suscripciones | `suscripciones` | Discrecional | `refreshOutline` |
-| Cursos | `cursos` | Inversión | `schoolOutline` |
-| Libros | `libros` | Inversión | `bookOutline` |
-| Suplementos | `suplementos` | Inversión | `fitnessOutline` |
-| Herramientas | `herramientas` | Inversión | `constructOutline` |
-| Ahorro voluntario | `ahorro_voluntario` | Inversión | `saveOutline` |
-| Regalos | `regalos` | Social | `giftOutline` |
-| Salidas | `salidas` | Social | `peopleOutline` |
-| Familia | `familia` | Social | `heartOutline` |
-| Donaciones | `donaciones` | Social | `handLeftOutline` |
+| Restaurantes | `restaurantes` | Flexible | `restaurantOutline` |
+| Delivery | `delivery` | Flexible | `fastFoodOutline` |
+| Ocio | `ocio` | Flexible | `gameControllerOutline` |
+| Ropa | `ropa` | Flexible | `shirtOutline` |
+| Tecnología | `tecnologia` | Flexible | `laptopOutline` |
+| Suscripciones | `suscripciones` | Flexible | `refreshOutline` |
+| Cursos | `cursos` | Flexible | `schoolOutline` |
+| Libros | `libros` | Flexible | `bookOutline` |
+| Suplementos | `suplementos` | Flexible¹ | `fitnessOutline` |
+| Herramientas | `herramientas` | Flexible | `constructOutline` |
+| Ahorro voluntario | `ahorro_voluntario` | → Patrimonio² | `saveOutline` |
+| Regalos | `regalos` | Flexible + tag `social` | `giftOutline` |
+| Salidas | `salidas` | Flexible + tag `social` | `peopleOutline` |
+| Familia | `familia` | Necesario/Flexible + tag `social`³ | `heartOutline` |
+| Donaciones | `donaciones` | Flexible + tag `social` | `handLeftOutline` |
 | Salario | `salario` | Ingreso | `briefcaseOutline` |
 | Freelance | `freelance` | Ingreso | `codeSlashOutline` |
 | Reembolso | `reembolso` | Ingreso | `returnDownBackOutline` |
 | Arriendo recibido | `arriendo_recibido` | Ingreso | `businessOutline` |
 | Otros ingresos | `otros_ingreso` | Ingreso | `addCircleOutline` |
+
+> ¹ Un suplemento médicamente prescrito cuyo mínimo en crisis es > 0 va a `necessary`; el resto es `flexible`. Aplicar la regla única, no el nombre.
+> ² Aporte a patrimonio: sale del presupuesto de flujo y va al módulo de Patrimonio (RFC-0001 §7-8).
+> ³ Apoyo familiar obligatorio/de subsistencia (familismo LatAm) puede ser `necessary` o incluso `committed` si hay compromiso real; un gasto familiar opcional es `flexible`. Siempre lleva tag `social`.
 
 ---
 
@@ -148,15 +159,13 @@ El wizard tiene **7 pasos** más un resumen final. Cada paso corresponde a una c
 
 ```
 Paso 0: INGRESO         ← ancla todo lo demás
-Paso 1: COMPROMETIDO    ← obligaciones fijas
-Paso 2: NECESARIO       ← gastos inevitables
-Paso 3: INVERSIÓN       ← intencional, antes que placer
-Paso 4: SOCIAL          ← relaciones y vínculos
-Paso 5: DISCRECIONAL    ← lo que queda libre
-Paso 6: Resumen         ← balance conductual completo
+Paso 1: COMPROMETIDO    ← obligaciones (lo que no puedo dejar de pagar)
+Paso 2: NECESARIO       ← mínimo en crisis > 0 (reducible, no eliminable)
+Paso 3: FLEXIBLE        ← lo que iría a cero en crisis (incl. lo defendido)
+Paso 4: Resumen         ← balance de agencia + Modo Emergencia
 ```
 
-Ingreso va primero porque sin saber cuánto entra, asignar montos es una ficción. Discrecional va al final porque es lo que se recorta cuando los compromisos superan el ingreso.
+Ingreso va primero porque sin saber cuánto entra, asignar montos es una ficción. El orden sigue el eje de agencia (de menor a mayor margen de maniobra). Flexible va al final porque es lo que se recorta cuando los compromisos superan el ingreso — salvo lo marcado como **prioridad defendida**. (Aportes a patrimonio ya no son un paso del presupuesto; viven en el módulo de Patrimonio.)
 
 ### 3.3 Anatomía de cada paso
 

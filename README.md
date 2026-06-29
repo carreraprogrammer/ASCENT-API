@@ -220,15 +220,15 @@ PATCH /api/v1/transactions/:id
 
 ### Categorías
 
-Las categorías están organizadas por **agencia** (no por tipo contable). Esto permite coaching conductual real: no es lo mismo que te hayas pasado en "alimentación" que en "discrecional".
+Las categorías están organizadas por **agencia** (no por tipo contable). Esto permite coaching conductual real: no es lo mismo que te hayas pasado en "alimentación" que en un gasto flexible.
 
-| Categoría | Código | Descripción |
+> ⚠️ EN MIGRACIÓN A RFC-0001: el eje pasa a **3 tiers** de agencia (la tabla muestra el modelo objetivo). `investment` → módulo Patrimonio; `social` → tag. Ver `specs/producto/Rediseño.md`. El código aún corre las 6 categorías.
+
+| Tier (objetivo) | Código | Pregunta |
 |-----------|--------|-------------|
-| Comprometido | `committed` | No negociable (arriendo, créditos, servicios fijos) |
-| Necesario | `necessary` | Puedo optimizar pero no eliminar (mercado, gasolina) |
-| Discrecional | `discretionary` | Decisión activa mía (restaurantes, ropa, ocio) |
-| Inversión | `investment` | Retorno futuro (cursos, suplementos, herramientas) |
-| Social | `social` | Relaciones (regalos, salidas con amigos) |
+| Comprometido | `committed` | ¿Puedo dejar de pagarlo sin incumplir una obligación? → No |
+| Necesario | `necessary` | En crisis, ¿el mínimo de esta función sigue > 0? → Sí (reducible) |
+| Flexible | `flexible` | ¿Puede ir a cero en crisis? → Sí (antes `discretionary`) |
 | Ingreso | `income` | Entradas de dinero |
 | Desconocido | `unknown` | IA no clasificó — requiere aclaración |
 

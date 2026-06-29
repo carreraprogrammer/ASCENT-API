@@ -1,7 +1,10 @@
 # Historial de Planes y Ejecución Mensual
 
-> Estado: 🟡 backend completo — frontend y ProposeBudget pendientes
-> Última actualización: 2026-04-25
+> Estado: 🟡 backend completo — ⚠️ nomenclatura en migración a RFC-0001
+> Última actualización: 2026-06-28
+>
+> Los ejemplos usan `discretionary`/`Discrecional`; bajo RFC-0001 ese tier se llama
+> `flexible`. Ver [Rediseño.md](../producto/Rediseño.md). El código aún usa el nombre viejo.
 
 ---
 
@@ -225,7 +228,7 @@ end
    dos de los últimos tres meses, el límite propuesto sube al promedio real en lugar del
    histórico bruto.
 2. **Generar `historical_patterns`**: lista de patrones detectados que el wizard muestra
-   al usuario ("En los últimos 3 meses gastaste 28% más de lo planeado en Discrecional").
+   al usuario ("En los últimos 3 meses gastaste 28% más de lo planeado en Flexible").
 3. **Ajustar `income_accuracy`**: si `income_actual` < `base_budget_income` en los
    últimos dos meses, agrega advertencia de sobreestimación de ingreso.
 
