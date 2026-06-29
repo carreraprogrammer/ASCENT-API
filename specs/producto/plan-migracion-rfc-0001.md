@@ -5,7 +5,7 @@
 > Acompaña a: [Rediseño.md](./Rediseño.md) (RFC-0001) y
 > [../research/categorizacion-de-gastos.md](../research/categorizacion-de-gastos.md)
 > Alcance: cómo llevar el código (API + Brain + Web + datos) del modelo actual de 6
-> categorías al modelo objetivo de 3 tiers + tag `social` + módulo Patrimonio, sin romper
+> categorías al modelo objetivo de 3 tiers (social = subcategorías bajo su tier) + módulo Patrimonio, sin romper
 > el sistema en producción ni perder historial.
 
 ---
@@ -90,9 +90,9 @@ Numeración alineada con RFC-0001 §15. Cada etapa: **objetivo · cambios · cri
 
 **Cambios.**
 - Migración: agregar `categories.agency_tier` (`committed|necessary|flexible`, nullable al inicio).
-- Backfill derivado: `committed→committed`, `necessary→necessary`, `discretionary→flexible`, `investment→flexible`, `social→flexible` (el tier; el matiz social/patrimonio va en atributos aparte).
+- Backfill derivado: `committed→committed`, `necessary→necessary`, `discretionary→flexible`, `investment→flexible`, `social→flexible` (el tier; la semántica social la conserva la subcategoría, el matiz patrimonio se separa en Etapa 6).
 - Migración: `categories.is_patrimony` (boolean) para marcar lo que antes era `investment`-instrumento (se moverá en Etapa 6) y `transactions.defended_priority` (o atributo en la categoría/línea de plan) para la **prioridad defendida** (RFC-0001 §10).
-- Tag `social`: agregar mecanismo de tags ortogonales (tabla `tags` + join, o columna `tags jsonb`); backfill `social → tag`.
+- Social: **sin eje de tags** (descartado — las subcategorías ya cumplen ese rol). Las subcategorías sociales (Regalos, Salidas, Familia, Donaciones, Amigos) se re-parentan a su tier; la semántica social la lleva la subcategoría.
 - Deuda: distinguir **mínimo (committed)** vs **aceleración (decisión)** — campo o convención en `recurring_obligations`/línea de plan (RFC-0001 §6.1).
 - Código: **dual-read** — los interactores empiezan a leer `agency_tier` con fallback al `category_type` viejo (helper único `Category#tier`).
 
@@ -150,7 +150,7 @@ Numeración alineada con RFC-0001 §15. Cada etapa: **objetivo · cambios · cri
 **Objetivo.** Que el front consuma tiers y deje de depender de `totals.{investment,social}`.
 
 **Cambios.**
-- `financeBehavior.ts`: `BehaviorTone` → 3 tiers + tag social; reescribir reglas que comparan `discretionary/investment/social`.
+- `financeBehavior.ts`: `BehaviorTone` → 3 tiers; reescribir reglas que comparan `discretionary/investment/social` (social pasa a leerse por subcategoría, no por categoría).
 - API **dual-emit**: `summary.totals` expone los nuevos agregados por tier **y** mantiene los viejos hasta que el web migre.
 - `CategoryPressureCard`, dashboard, `finance.types.ts`: render por tier; exponer prioridad defendida.
 
@@ -228,8 +228,8 @@ Hallazgo: ambos buckets están **semánticamente mezclados** (ahorro real, herra
 | `necessary` | `necessary` | sin cambio |
 | `discretionary` | `flexible` | renombrar también el **code** (`discretionary`→`flexible`); display ya es "Flexible" |
 | `income` / `unknown` | igual | resolver los 3 + 4 nil aparte |
-| `social` (Regalos, Salidas, Donaciones, Amigos) | `flexible` + tag `social` | conservar la señal relacional como tag |
-| `social` / Familia (soporte, almuerzos a mamá, envíos) | `flexible` + tag `social` | **decisión del autor**: soporte familiar = flexible (posible prioridad defendida) |
+| `social` (Regalos, Salidas, Donaciones, Amigos) | `flexible`; subcategoría se conserva | la semántica social la lleva la subcategoría (sin tag) |
+| `social` / Familia (soporte, almuerzos a mamá, envíos) | `flexible`; subcat. `familia` | **decisión del autor**: soporte familiar = flexible (posible prioridad defendida) |
 | `investment` / Herramientas (GitHub, Claude, Railway, tokens IA) | `necessary` | **decisión del autor**: insumos de trabajo freelance |
 | `investment` / Cursos, Suplementos, Libros, Ejercicio (consumo) | `flexible` | inversión-en-sí ≠ gaveta propia |
 | `investment` / Ahorro voluntario (aporte/retiro de bolsillo, aporte fondo emergencia) | **fuera del gasto** → ahorro/Patrimonio | son movimientos de fondo, no gasto. Idealmente ni siquiera son `transactions` de gasto |

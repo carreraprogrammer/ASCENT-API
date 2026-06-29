@@ -350,13 +350,9 @@ Social.
 
 No existe contradicción.
 
-Por ello se propone que Social sea tratado en el futuro como:
+Por ello Social deja de ser una categoría de agencia, pero **no se reemplaza por un eje de tags nuevo**. Sus subcategorías ya existentes (Regalos, Salidas, Familia, Donaciones, Amigos) siguen vivas y se re-parentan al tier de agencia que les corresponda (`flexible`, o `necessary`/`committed` para soporte familiar de subsistencia).
 
-* atributo
-* etiqueta
-* contexto
-
-Nunca como categoría mutuamente excluyente.
+La semántica social la lleva la **subcategoría** — que ya cumplía ese rol. Agregar un tag paralelo sería sumar un eje al corazón de la app sin necesidad. Si en el futuro se quiere un agregado "gasto relacional", se obtiene agrupando esas subcategorías, o con una marca a nivel de subcategoría — nunca como categoría mutuamente excluyente ni como tag por transacción.
 
 ---
 
@@ -788,7 +784,7 @@ Quedan pendientes las siguientes decisiones arquitectónicas.
 La reclasificación de lo viejo **no es automatizable** del todo:
 
 * Las transacciones `investment` se **bifurcan**: instrumentos de patrimonio (CDT, ETF, acciones, cripto) → módulo Patrimonio; "inversión en sí mismo" (cursos, gym, suplementos) → Flexible o Necesario según §6.1. Son destinos distintos que requieren criterio, no un mapeo 1:1.
-* Las transacciones `social` pierden su categoría y deben **re-derivar** su tier de agencia (Comprometido/Necesario/Flexible), conservando `social` solo como tag.
+* Las transacciones `social` pierden su categoría y deben **re-derivar** su tier de agencia (Comprometido/Necesario/Flexible); su subcategoría (Regalos, Salidas, Familia…) sobrevive y conserva la semántica social.
 * Decidir si se recategoriza el histórico (rompe comparabilidad pero da consistencia) o se congela el histórico bajo el modelo viejo y solo lo nuevo usa agencia (preserva series pero crea un corte). Recomendación: congelar histórico + marcar la fecha de corte.
 
 ---

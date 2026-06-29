@@ -131,7 +131,7 @@ El `SYSTEM_PROMPT` exige una lectura conductual mínima al confirmar cada transa
 - `committed` → nombrar que es carga fija / obligación
 - `necessary` → nombrar que sostiene / mantiene (reducible, no eliminable)
 - `income` → nombrar que es entrada
-- tag `social` (sobre un `flexible`/`necessary`) → nombrar que es vínculo / relacional
+- subcategoría social (Regalos, Salidas, Familia, Donaciones, Amigos) → nombrar que es vínculo / relacional
 - prioridad defendida (sobre un `flexible`) → reconocer la elección, no friccionar
 
 Regla de formato: breve, una sola respuesta final, sin narrar herramientas ni proceso de razonamiento.
@@ -145,7 +145,7 @@ El agente nocturno incluye una lectura conductual del día/mes (máximo 2 bullet
 - `flexible` alto → fricción suave (salvo lo marcado como prioridad defendida)
 - `committed` alto → señalar presión estructural
 - aporte a Patrimonio bajo → señalar falta de construcción (antes `investment`; ahora vive en el módulo de Patrimonio)
-- tag `social` visible → señalar gasto relacional
+- subcategoría social visible → señalar gasto relacional
 
 ### Lo que el agente NO hace todavía
 
