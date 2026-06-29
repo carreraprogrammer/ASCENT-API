@@ -33,6 +33,10 @@ class RecurringObligation < ApplicationRecord
   # Excludes obligations whose end_date has already passed.
   scope :active, -> { where(active: true).where("end_date IS NULL OR end_date >= ?", Date.current).order(:due_day) }
 
+  # RFC-0001 §10 — obligaciones flexibles que el usuario protege por encima del orden
+  # de fondeo por defecto. Lo consume el motor de presupuesto (Etapa 3).
+  scope :defended, -> { where(defended_priority: true) }
+
   def debt_source?
     source_type == DEBT_SOURCE_TYPE
   end

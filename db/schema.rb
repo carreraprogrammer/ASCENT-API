@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_29_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -415,6 +415,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
     t.string "source_type"
     t.bigint "source_id"
     t.date "end_date"
+    t.boolean "defended_priority", default: false, null: false
     t.index ["account_id", "active"], name: "index_recurring_obligations_on_account_id_and_active"
     t.index ["account_id", "budget_category"], name: "index_recurring_obligations_on_account_budget_category"
     t.index ["account_id"], name: "index_recurring_obligations_on_account_id"
@@ -490,6 +491,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "planned_expense_id"
+    t.boolean "auto_debit", default: false, null: false
+    t.date "last_auto_debit_on"
+    t.integer "debit_day", default: 1, null: false
     t.index ["account_id", "active"], name: "index_sinking_funds_on_account_id_and_active"
     t.index ["account_id"], name: "index_sinking_funds_on_account_id"
     t.index ["planned_expense_id"], name: "index_sinking_funds_on_planned_expense_id"
@@ -550,10 +554,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
     t.bigint "sinking_fund_id"
     t.integer "covers_period_month"
     t.integer "covers_period_year"
+    t.bigint "savings_goal_id"
     t.index ["account_id", "covers_period_year", "covers_period_month"], name: "index_transactions_on_account_covers_period", where: "(covers_period_month IS NOT NULL)"
     t.index ["account_id", "debt_id", "year", "month"], name: "index_transactions_on_account_debt_period"
     t.index ["account_id", "income_source_id", "year", "month"], name: "index_transactions_on_account_income_source_period"
     t.index ["account_id", "payment_source", "credit_card_status"], name: "index_transactions_on_account_credit_card_pending", where: "(((payment_source)::text = 'credit_card'::text) AND ((credit_card_status)::text = 'pending'::text))"
+    t.index ["account_id", "savings_goal_id", "year", "month"], name: "index_transactions_on_account_savings_goal_period"
     t.index ["account_id", "sinking_fund_id", "year", "month"], name: "index_transactions_on_account_sinking_fund_period"
     t.index ["account_id", "source", "source_event_id"], name: "idx_on_account_id_source_source_event_id_5beb8b9a55", unique: true, where: "(source_event_id IS NOT NULL)"
     t.index ["account_id", "status"], name: "index_transactions_on_account_id_and_status"
@@ -563,6 +569,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
     t.index ["debt_id"], name: "index_transactions_on_debt_id"
     t.index ["income_source_id"], name: "index_transactions_on_income_source_id"
     t.index ["recurring_obligation_id"], name: "index_transactions_on_recurring_obligation_id"
+    t.index ["savings_goal_id"], name: "index_transactions_on_savings_goal_id"
     t.index ["sinking_fund_id"], name: "index_transactions_on_sinking_fund_id"
     t.index ["subcategory_id"], name: "index_transactions_on_subcategory_id"
     t.index ["user_id", "status"], name: "index_transactions_on_user_id_and_status"
@@ -674,6 +681,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_24_150000) do
   add_foreign_key "transactions", "debts"
   add_foreign_key "transactions", "income_sources"
   add_foreign_key "transactions", "recurring_obligations"
+  add_foreign_key "transactions", "savings_goals"
   add_foreign_key "transactions", "sinking_funds"
   add_foreign_key "transactions", "subcategories"
   add_foreign_key "transactions", "users"
