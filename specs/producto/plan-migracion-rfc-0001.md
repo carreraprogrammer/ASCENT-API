@@ -228,8 +228,7 @@ Hallazgo: ambos buckets están **semánticamente mezclados** (ahorro real, herra
 | `necessary` | `necessary` | sin cambio |
 | `discretionary` | `flexible` | renombrar también el **code** (`discretionary`→`flexible`); display ya es "Flexible" |
 | `income` / `unknown` | igual | resolver los 3 + 4 nil aparte |
-| `social` (Regalos, Salidas, Donaciones, Amigos) | `flexible`; subcategoría se conserva | la semántica social la lleva la subcategoría (sin tag) |
-| `social` / Familia (soporte, almuerzos a mamá, envíos) | `flexible`; subcat. `familia` | **decisión del autor**: soporte familiar = flexible (posible prioridad defendida) |
+| `social` (Regalos, Salidas, Familia, Donaciones, Amigos) | `flexible`; **fusionadas en una sola subcategoría `social`** | **decisión del autor**: no sobre-detallar. Las 5 subcategorías sociales colapsan en una `social` bajo `flexible`; el detalle puntual ya lo da el campo descripción/concepto de la transacción. Soporte familiar = flexible (posible prioridad defendida). Excepción: la cuota del iPhone papá no es social → `committed` (§3.3). |
 | `investment` / Herramientas (GitHub, Claude, Railway, tokens IA) | `necessary` | **decisión del autor**: insumos de trabajo freelance |
 | `investment` / Cursos, Suplementos, Libros, Ejercicio (consumo) | `flexible` | inversión-en-sí ≠ gaveta propia |
 | `investment` / Ahorro voluntario (aporte/retiro de bolsillo, aporte fondo emergencia) | **fuera del gasto** → ahorro/Patrimonio | son movimientos de fondo, no gasto. Idealmente ni siquiera son `transactions` de gasto |
