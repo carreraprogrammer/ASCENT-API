@@ -6,7 +6,7 @@
 > La idea central de este spec (taxonomía dual: subcategoría funcional + categoría de
 > agencia) **sobrevive** y encaja con [Rediseño.md](../producto/Rediseño.md) (RFC-0001):
 > el tag funcional sigue, pero el eje de agencia pasa de 6 categorías a **3 tiers**
-> (Comprometido / Necesario / Flexible). `investment` → módulo Patrimonio; `social` → tag.
+> (Comprometido / Necesario / Flexible). `investment` → módulo Patrimonio; `social` → subcategorías bajo su tier.
 > Los wireframes ASCII más abajo todavía muestran el desglose viejo de 5 categorías y se
 > rediseñarán al implementar el wizard bajo el nuevo modelo.
 
@@ -62,7 +62,7 @@ El eje del sistema. Tiers fijos, del sistema, no modificables por el usuario. To
 | Ingreso | `income` | `#0E96AD` | Zafiro | Entradas de dinero (no es un tier de gasto). |
 | Desconocido | `unknown` | `#5B7280` | Niebla | Sin clasificar. El agente resuelve en el nocturno. |
 
-`investment` y `social` ya no son categorías: `investment` → módulo Patrimonio (fuera del presupuesto); `social` → tag ortogonal. `social` puede mantener su color Amatista como tag. La **prioridad defendida** es un atributo aparte sobre gastos `flexible` (ver RFC-0001 §10).
+`investment` y `social` ya no son categorías: `investment` → módulo Patrimonio (fuera del presupuesto); `social` → sus subcategorías (Regalos, Salidas, Familia, Donaciones, Amigos) se re-parentan a su tier de agencia. No se agrega un eje de tags: la semántica social ya la dan las subcategorías. La **prioridad defendida** es un atributo aparte sobre gastos `flexible` (ver RFC-0001 §10).
 
 Los tokens CSS viven en `--color-committed`, `--color-necessary`, etc. Ver [BRAND.md](../../../daniel15k-web/BRAND.md).
 
@@ -103,10 +103,10 @@ Los íconos usan **Ionicons 8** (bundled con `@ionic/react`). El nombre es el id
 | Suplementos | `suplementos` | Flexible¹ | `fitnessOutline` |
 | Herramientas | `herramientas` | Flexible | `constructOutline` |
 | Ahorro voluntario | `ahorro_voluntario` | → Patrimonio² | `saveOutline` |
-| Regalos | `regalos` | Flexible + tag `social` | `giftOutline` |
-| Salidas | `salidas` | Flexible + tag `social` | `peopleOutline` |
-| Familia | `familia` | Necesario/Flexible + tag `social`³ | `heartOutline` |
-| Donaciones | `donaciones` | Flexible + tag `social` | `handLeftOutline` |
+| Regalos | `regalos` | Flexible (subcat. social) | `giftOutline` |
+| Salidas | `salidas` | Flexible (subcat. social) | `peopleOutline` |
+| Familia | `familia` | Necesario/Flexible³ (subcat. social) | `heartOutline` |
+| Donaciones | `donaciones` | Flexible (subcat. social) | `handLeftOutline` |
 | Salario | `salario` | Ingreso | `briefcaseOutline` |
 | Freelance | `freelance` | Ingreso | `codeSlashOutline` |
 | Reembolso | `reembolso` | Ingreso | `returnDownBackOutline` |
@@ -115,7 +115,7 @@ Los íconos usan **Ionicons 8** (bundled con `@ionic/react`). El nombre es el id
 
 > ¹ Un suplemento médicamente prescrito cuyo mínimo en crisis es > 0 va a `necessary`; el resto es `flexible`. Aplicar la regla única, no el nombre.
 > ² Aporte a patrimonio: sale del presupuesto de flujo y va al módulo de Patrimonio (RFC-0001 §7-8).
-> ³ Apoyo familiar obligatorio/de subsistencia (familismo LatAm) puede ser `necessary` o incluso `committed` si hay compromiso real; un gasto familiar opcional es `flexible`. Siempre lleva tag `social`.
+> ³ Apoyo familiar obligatorio/de subsistencia (familismo LatAm) puede ser `necessary` o incluso `committed` si hay compromiso real; un gasto familiar opcional es `flexible`. Siempre en la subcategoría `familia`.
 
 ---
 

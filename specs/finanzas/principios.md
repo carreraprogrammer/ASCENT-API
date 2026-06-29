@@ -55,7 +55,7 @@ El sistema usa **3 tiers de agencia** (más `income` como entrada, no como tier 
 
 **Qué salió del eje y por qué:**
 - **Inversión** deja de ser categoría de presupuesto. Respondía otra pregunta (¿hay retorno futuro?) y era la etiqueta más abusable vía self-licensing/motivated reasoning. Pasa a un **módulo de Patrimonio** aparte (flujo de caja vs patrimonio). El gasto "en uno mismo" (cursos, gym, suplementos) se reclasifica como `flexible` o `necessary` según la regla única.
-- **Social** deja de ser categoría. Respondía por el beneficiario, no por la agencia. Pasa a ser **tag/atributo** ortogonal (un regalo puede ser `flexible` y a la vez tener tag `social`).
+- **Social** deja de ser categoría de agencia. Respondía por el beneficiario, no por la agencia. Sus **subcategorías** (Regalos, Salidas, Familia, Donaciones, Amigos) sobreviven y se re-parentan a su tier (`flexible`, o `necessary` para soporte familiar de subsistencia). La semántica social la lleva la subcategoría — **no se agrega un eje de tags** (las subcategorías ya existían para eso).
 
 **Prioridad defendida (eje ortogonal).** La agencia dice *cuán cortable es*; la prioridad dice *cuánto elijo protegerlo cuando hay con qué*. Son distintas: un gasto `flexible` puede estar marcado como intocable-por-elección (ej. un tratamiento de salud que el usuario prioriza por encima de deuda y colchón). El motor de presupuesto respeta esa marca **antes** de aplicar el orden de agencia por defecto. Ver RFC-0001 §10.
 
@@ -106,7 +106,7 @@ created_at, updated_at
 ```sql
 id, user_id (nullable — null = sistema),
 name, code, category_type,              -- OBJETIVO: committed | necessary | flexible | income
-                                        -- (investment → módulo Patrimonio; social → tag; discretionary → flexible)
+                                        -- (investment → módulo Patrimonio; social → subcategorías bajo su tier; discretionary → flexible)
 color, icon,
 is_system,                              -- true = no se puede borrar
 created_at, updated_at
@@ -130,7 +130,7 @@ Subcategorías iniciales por tier (el tipo funcional es metadato secundario):
 
 Notas de migración:
 - Las subcategorías de la vieja **Inversión** se bifurcan: instrumentos (CDT, ETF, acciones, cripto) → módulo Patrimonio; "inversión en sí mismo" (cursos, gym, suplementos) → `flexible` (o `necessary` si el mínimo en crisis es > 0).
-- **Social** (Regalos, Salidas, Familia, Donaciones) deja de ser tier → tag ortogonal; cada gasto re-deriva su tier de agencia.
+- **Social** (Regalos, Salidas, Familia, Donaciones, Amigos) deja de ser categoría → sus subcategorías se re-parentan al tier que corresponda (`flexible`/`necessary`); la semántica social la conserva la subcategoría, sin eje de tags.
 - Aceleración de deuda (abono extra snowball/avalanche) NO es `committed` — es decisión/prioridad. Solo el pago mínimo es `committed`. Ver RFC-0001 §6.1.
 
 ### transactions

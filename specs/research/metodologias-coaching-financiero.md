@@ -6,7 +6,7 @@
 >
 > Nota: las "categorías de agencia" referidas aquí (committed/necessary/discretionary/
 > investment/social) migran al modelo de **3 tiers** (Comprometido/Necesario/Flexible) de
-> [Rediseño.md](../producto/Rediseño.md). `investment` → módulo Patrimonio; `social` → tag.
+> [Rediseño.md](../producto/Rediseño.md). `investment` → módulo Patrimonio; `social` → subcategorías bajo su tier.
 > Ver también [categorizacion-de-gastos.md](./categorizacion-de-gastos.md) para el fundamento.
 
 ---
