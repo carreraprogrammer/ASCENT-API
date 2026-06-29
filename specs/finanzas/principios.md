@@ -1,7 +1,12 @@
 # Finanzas — Principios de Diseño
 
-> Estado: ✅ vigente — fuente de verdad del módulo
-> Última actualización: 2026-04-28
+> Estado: ⚠️ EN MIGRACIÓN A RFC-0001 — fuente de verdad del modelo OBJETIVO
+> Última actualización: 2026-06-28
+>
+> Este spec describe el modelo de agencia de **3 tiers** (Comprometido / Necesario /
+> Flexible) definido en [Rediseño.md](../producto/Rediseño.md) (RFC-0001). El código
+> todavía corre el modelo anterior de 6 categorías; la migración es por etapas. Donde
+> diga "objetivo" se refiere al estado post-migración, no al actualmente implementado.
 
 > El objetivo no es llevar una contabilidad perfecta. Es cambiar conductas. La diferencia es enorme: una contabilidad te dice qué pasó, el coaching te dice qué hacer diferente.
 
@@ -29,20 +34,32 @@ A futuro: accesible a cualquier persona que quiera tomar control de sus finanzas
 
 ### 1. Categorización por agencia, no por tipo contable
 
-La investigación en psicología financiera (Kahneman, Thaler — Mental Accounting) muestra que el cambio de conducta requiere que el usuario pueda distinguir entre gastos que eligió y gastos que no tenía opción. Un sistema que agrupa "arriendo" y "pizza" bajo "Vivienda/Alimentación" no genera esa distinción.
+El eje de clasificación del gasto no es funcional (vivienda/alimentación) ni contable, sino de **agencia**: cuánto margen real de maniobra tiene el usuario sobre cada gasto. Un sistema que agrupa "arriendo" y "pizza" bajo "Vivienda/Alimentación" no responde la pregunta que cambia decisiones: *¿qué puedo modificar si mi situación empeora?*
 
-El sistema usa 6 categorías de agencia:
+**Fundamento (corregido, ver `../research/categorizacion-de-gastos.md` y RFC-0001 §3):**
+el eje de agencia **no** proviene de Mental Accounting (Kahneman/Thaler) — esa atribución era post-hoc. La taxonomía es una síntesis de marcos de practicantes (Conscious Spending Plan de Ramit Sethi + values-based budgeting) y se respalda en la literatura de **control percibido / locus of control y autoeficacia financiera** (Cobb-Clark et al. 2016; Asebedo 2019), que es el mecanismo que sí predice ahorro y conducta. Advertencia clave del research brief: **la taxonomía por sí sola es un lever débil**; lo que cambia conducta es la percepción de control + la reflexión en el momento de clasificar. El eje debe diseñarse como herramienta de decisión, no como taxonomía de registro.
 
-| Categoría | Código | Definición operativa |
-|-----------|--------|----------------------|
-| **Comprometido** | `committed` | Obligaciones contractuales o cuasi-contractuales del mes. Cancelarlos tiene consecuencia real. |
-| **Necesario** | `necessary` | Gasto inevitable pero optimizable. Puedo gastar menos si me esfuerzo. |
-| **Discrecional** | `discretionary` | Decisión activa. El único lugar donde hay libertad real de corte. |
-| **Inversión** | `investment` | Tiene retorno futuro medible (no percibido). Cursos, suplementos, herramientas. |
-| **Social** | `social` | Gasto en relaciones. Tiene valor pero requiere conciencia. |
-| **Ingreso** | `income` | Entradas de dinero. |
+**La regla única.** Todas las categorías responden exactamente la misma pregunta — eso es lo que las vuelve mutuamente excluyentes y estables:
 
-Cada categoría tiene subcategorías granulares definidas por el historial real del usuario y ampliables por el agente.
+> ¿Qué margen de maniobra tengo sobre este gasto si mi situación financiera empeora significativamente?
+
+El sistema usa **3 tiers de agencia** (más `income` como entrada, no como tier de gasto):
+
+| Tier | Código | Pregunta operativa | Pertenece aquí si |
+|------|--------|--------------------|--------------------|
+| **Comprometido** | `committed` | ¿Puedo dejar de pagarlo sin incumplir una obligación legal/contractual? | NO |
+| **Necesario** | `necessary` | Si pierdo mis ingresos, ¿el mínimo de esta función sigue siendo > 0 (aunque reduzca el monto)? | SÍ |
+| **Flexible** | `flexible` | ¿Podría llevar este gasto a cero durante una crisis sin comprometer supervivencia ni obligaciones? | SÍ |
+
+(`discretionary` → renombrado a `flexible`.)
+
+**Qué salió del eje y por qué:**
+- **Inversión** deja de ser categoría de presupuesto. Respondía otra pregunta (¿hay retorno futuro?) y era la etiqueta más abusable vía self-licensing/motivated reasoning. Pasa a un **módulo de Patrimonio** aparte (flujo de caja vs patrimonio). El gasto "en uno mismo" (cursos, gym, suplementos) se reclasifica como `flexible` o `necessary` según la regla única.
+- **Social** deja de ser categoría. Respondía por el beneficiario, no por la agencia. Pasa a ser **tag/atributo** ortogonal (un regalo puede ser `flexible` y a la vez tener tag `social`).
+
+**Prioridad defendida (eje ortogonal).** La agencia dice *cuán cortable es*; la prioridad dice *cuánto elijo protegerlo cuando hay con qué*. Son distintas: un gasto `flexible` puede estar marcado como intocable-por-elección (ej. un tratamiento de salud que el usuario prioriza por encima de deuda y colchón). El motor de presupuesto respeta esa marca **antes** de aplicar el orden de agencia por defecto. Ver RFC-0001 §10.
+
+Cada tier tiene subcategorías granulares (tipo funcional) que viven como metadato secundario para reportes, no como eje principal.
 
 ### 2. El plan financiero es explícito
 
@@ -88,7 +105,8 @@ created_at, updated_at
 ### categories
 ```sql
 id, user_id (nullable — null = sistema),
-name, code, category_type,              -- committed | necessary | discretionary | investment | social | income | unknown
+name, code, category_type,              -- OBJETIVO: committed | necessary | flexible | income
+                                        -- (investment → módulo Patrimonio; social → tag; discretionary → flexible)
 color, icon,
 is_system,                              -- true = no se puede borrar
 created_at, updated_at
@@ -101,16 +119,19 @@ is_system,
 created_at, updated_at
 ```
 
-Subcategorías iniciales por categoría:
+Subcategorías iniciales por tier (el tipo funcional es metadato secundario):
 
-| Categoría | Subcategorías |
-|-----------|--------------|
-| Comprometido | Arriendo, Créditos, Seguros, Servicios públicos, Colegiaturas |
-| Necesario | Mercado, Gasolina, Transporte, Salud, Celular |
-| Discrecional | Restaurantes, Delivery, Ocio, Ropa, Tecnología, Suscripciones |
-| Inversión | Cursos, Libros, Suplementos, Herramientas, Ahorro voluntario |
-| Social | Regalos, Salidas, Familia, Donaciones |
+| Tier | Subcategorías |
+|------|--------------|
+| Comprometido | Arriendo, Créditos (pago mínimo), Seguros, Servicios públicos, Colegiaturas |
+| Necesario | Mercado, Gasolina, Transporte básico, Salud, Celular |
+| Flexible | Restaurantes, Delivery, Ocio, Ropa, Tecnología, Suscripciones, Cursos, Gym, Suplementos |
 | Ingreso | Salario, Freelance, Reembolso, Arriendo recibido, Otros |
+
+Notas de migración:
+- Las subcategorías de la vieja **Inversión** se bifurcan: instrumentos (CDT, ETF, acciones, cripto) → módulo Patrimonio; "inversión en sí mismo" (cursos, gym, suplementos) → `flexible` (o `necessary` si el mínimo en crisis es > 0).
+- **Social** (Regalos, Salidas, Familia, Donaciones) deja de ser tier → tag ortogonal; cada gasto re-deriva su tier de agencia.
+- Aceleración de deuda (abono extra snowball/avalanche) NO es `committed` — es decisión/prioridad. Solo el pago mínimo es `committed`. Ver RFC-0001 §6.1.
 
 ### transactions
 ```sql
@@ -232,7 +253,7 @@ El score 0-100 se calcula con esta fórmula ponderada:
 
 | Componente | Peso | Cómo se mide |
 |------------|------|-------------|
-| Adherencia presupuesto discrecional | 35% | gasto_real / presupuesto (invertido, menos es mejor) |
+| Adherencia presupuesto flexible | 35% | gasto_real / presupuesto (invertido, menos es mejor) |
 | Pagos comprometidos al día | 25% | pagos_realizados / pagos_esperados |
 | Aporte a metas de ahorro | 20% | aporte_real / aporte_mensual_necesario |
 | Registro completo (sin pendientes) | 10% | transacciones_confirmadas / total |

@@ -1,7 +1,14 @@
 # Módulo de Presupuesto
 
-> Estado: ✅ vigente — framework ZBB con categorías dinámicas y bolsillos
-> Última actualización: 2026-04-18
+> Estado: ⚠️ EN MIGRACIÓN A RFC-0001 — framework ZBB sobre 3 tiers de agencia
+> Última actualización: 2026-06-28
+>
+> El eje primario del presupuesto es el **tier de agencia** (Comprometido / Necesario /
+> Flexible), no el tipo funcional. Las categorías funcionales (vivienda, mercado, etc.)
+> se conservan como **metadato secundario** para reportes. La asignación ZBB y el orden
+> de fondeo siguen el tier de agencia + la prioridad defendida. Ver
+> [Rediseño.md](../producto/Rediseño.md) (RFC-0001) §10. El código aún corre el modelo
+> de 6 categorías; migración por etapas.
 
 ---
 
@@ -253,7 +260,7 @@ create_table :budget_categories do |t|
   t.references :account, null: false
   t.string  :code,        null: false   # slug único por account
   t.string  :name,        null: false   # nombre display
-  t.string  :category_type, null: false # committed | necessary | discretionary | investment
+  t.string  :category_type, null: false # OBJETIVO: committed | necessary | flexible (investment → Patrimonio; discretionary → flexible)
   t.boolean :system,      null: false, default: false  # true = no eliminable
   t.boolean :active,      null: false, default: true
   t.integer :sort_order,  null: false, default: 0
@@ -335,9 +342,9 @@ Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GE
 - Cada `planned_expense` relevante debe poder traducirse a su propio bolsillo
 - La capa de resumen final debe explicar qué viene de fuente fija, qué es sugerencia histórica y qué es editable
 - El presupuesto mide desvío, pero no debe convertir automáticamente todo `exceso` en señal negativa
-- `Créditos` puede mostrar exceso positivo si el gasto extra parece reducir deuda
-- `Inversión` puede mostrar exceso neutral si hay que revisar liquidez antes de juzgarlo
-- `Discrecional` sí debe seguir tratándose como la señal más sensible de presión sobre el plan
+- `Créditos` puede mostrar exceso positivo si el gasto extra parece reducir deuda (recordar: aceleración de deuda es decisión/prioridad, no Comprometido — ver RFC-0001 §6.1)
+- Aportes a Patrimonio (lo que antes era `Inversión`) ya no son una gaveta del presupuesto: viven en el módulo de Patrimonio, no en el flujo de caja mensual
+- `Flexible` (antes `Discrecional`) sí debe seguir tratándose como la señal más sensible de presión sobre el plan, salvo lo marcado como **prioridad defendida**
 - La UI visible debe exponer `señales positivas`, `señales neutras` y `señales de atención`; la interpretación compleja queda en reglas + IA, no en un cálculo rígido
 
 ---

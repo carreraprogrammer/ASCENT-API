@@ -1,0 +1,245 @@
+# Plan de Migración — RFC-0001 (eje de agencia de 6 categorías → 3 tiers)
+
+> Estado: 📋 plan de ejecución — pendiente de aprobación
+> Creado: 2026-06-28
+> Acompaña a: [Rediseño.md](./Rediseño.md) (RFC-0001) y
+> [../research/categorizacion-de-gastos.md](../research/categorizacion-de-gastos.md)
+> Alcance: cómo llevar el código (API + Brain + Web + datos) del modelo actual de 6
+> categorías al modelo objetivo de 3 tiers + tag `social` + módulo Patrimonio, sin romper
+> el sistema en producción ni perder historial.
+
+---
+
+## 0. Principios de la migración
+
+1. **Expand → Migrate → Contract** (parallel change). Nunca se borra una columna/valor el mismo día que se introduce el reemplazo. Primero se agrega lo nuevo, ambos coexisten, se migra lectura/escritura, y solo al final se elimina lo viejo. Cada paso es deployable y reversible por sí solo.
+2. **El código manda sobre el spec hasta que la etapa cierre.** Los specs ya describen el estado objetivo (banner "EN MIGRACIÓN"); el código va detrás por etapas. Ninguna etapa se marca "hecha" sin que código y spec coincidan para ese alcance.
+3. **Validar el mecanismo antes de pagar el costo.** El research brief (RFC-0001 §10) muestra que la taxonomía sola es un lever **nulo**; lo que mueve conducta es control percibido + reflexión. Por eso la Etapa 0 valida el mecanismo **antes** de la migración estructural, con un *gate* de métricas objetivas.
+4. **Reversibilidad obligatoria.** Toda migración de datos lleva `down`. Ya existe precedente: `db/migrate/20260520_rename_discretionary_category_to_flexible.rb` (renombró display, mantuvo code) — mismo patrón.
+5. **El histórico no se reescribe a la fuerza.** Se congela bajo el modelo viejo con fecha de corte (ver §3).
+
+---
+
+## 1. Mapa de touchpoints (lo que toca cambiar)
+
+Inventario real del código (no exhaustivo, pero son los nodos críticos):
+
+### API (`daniel15k-api`)
+| Touchpoint | Archivo | Qué hace hoy |
+|---|---|---|
+| Enum de categorías | `app/models/category.rb:10` (`TYPES`) | `committed necessary discretionary investment social income unknown` |
+| Enum de budget category | `app/models/budget_category.rb:9` (`CATEGORY_TYPES`) | `committed necessary discretionary investment` |
+| Overflow rules | `app/models/monthly_financial_plan.rb:9` | incluye `investment` |
+| Seeds | `db/seeds.rb:28,40,51` | crea Flexible(`discretionary`), Inversión, Social |
+| Clasificación heurística | `interactors/parse_dictated_expenses.rb:108-120` | hints → committed/social/discretionary/necessary |
+| Pesos del wizard | `interactors/wizard_data.rb:21-23,221` | usa `discretionary/investment/social` |
+| Burn rate por tipo | `interactors/burn_rate_calculator.rb:158-159` | rama por `discretionary/social/investment` |
+| Señales de agencia | `controllers/api/v1/summary_controller.rb:454-582` | overflow/labels usan `investment` |
+| Señales presupuesto | `controllers/api/v1/monthly_plans_controller.rb:589-699` | rama por `investment/discretionary/social` |
+| Plan por fase | `interactors/generate_monthly_financial_plan.rb:177` | `investing → "investment"` |
+| Fuente recurrente | `recurring_obligation.rb` `SOURCE_TYPES` | incluye `Investment` |
+| Meta de ahorro | `savings_goal.goal_type` | incluye `investment` |
+
+### Brain (`daniel15k-agents`)
+| Touchpoint | Archivo | Qué hace hoy |
+|---|---|---|
+| Base de conocimiento | `services/coaching_framework.py` (`categorias_agencia`) | describe 6 categorías + atribución a Thaler |
+| Prompts de clasificación | system prompts del chat/nightly | instruye clasificar en 6 categorías |
+
+### Web (`daniel15k-web`)
+| Touchpoint | Archivo | Qué hace hoy |
+|---|---|---|
+| Tipo de tono | `src/utils/financeBehavior.ts:3` (`BehaviorTone`) | 6 valores |
+| Lectura conductual | `src/utils/financeBehavior.ts:34-168` | usa `summary.totals.{discretionary,investment,social}` |
+| Tipos de API | `src/types/finance.types.ts` | `discretionary_limit`, `source_type: Investment` |
+| Cards de presión | `components/molecules/CategoryPressureCard/*` | render por categoría |
+
+### Datos
+Transacciones, `budgets`, `budget_categories`, `recurring_obligations`, `monthly_financial_plans.category_allocations` (jsonb) y `execution_snapshot` históricos referencian códigos viejos.
+
+---
+
+## 2. Las etapas
+
+Numeración alineada con RFC-0001 §15. Cada etapa: **objetivo · cambios · criterio de salida · riesgos + mitigación**.
+
+---
+
+### Etapa 0 — Mecanismo de control y reflexión (prerequisito, sin tocar taxonomía)
+
+**Objetivo.** Validar que el enfoque mueve conducta *antes* de migrar nada estructural.
+
+**Cambios.**
+- Momento "IA propone → usuario confirma/edita" en el registro de transacción (la intervención reflexiva).
+- Primera versión de **Modo Emergencia / simulación** corriendo sobre las 6 categorías actuales (mapeando committed+necessary = piso, resto = recortable).
+- Instrumentar métricas objetivas: tasa de ahorro, gasto flexible fin de mes, no solo engagement.
+
+**Criterio de salida (gate).** Señal medible (aunque sea pequeña) de que el mecanismo reduce sobregasto o sube ahorro en ~1 mes. Si es nula tras el período, **reconsiderar el alcance de la migración** (quizás la taxonomía es andamiaje y el esfuerzo va al mecanismo, no a renombrar buckets).
+
+| Riesgo | Mitigación |
+|---|---|
+| Medir engagement en vez de conducta (trampa del brief) | Definir el gate en métricas objetivas (ahorro/gasto), no DAU ni # de clasificaciones |
+| "Budgeting-app trap": mostrar "plata disponible" sube el gasto | No exponer saldo disponible como titular; usar rollover y prompts just-in-time |
+| Construir el mecanismo sobre datos viejos y tener que rehacerlo | Diseñar el Modo Emergencia leyendo una abstracción (`agency_tier` derivado, ver Etapa 1), no los códigos crudos |
+
+---
+
+### Etapa 1 — Expand: introducir `agency_tier` + atributos nuevos (sin eliminar nada)
+
+**Objetivo.** Que el modelo nuevo exista en paralelo al viejo y sea **derivable** del actual.
+
+**Cambios.**
+- Migración: agregar `categories.agency_tier` (`committed|necessary|flexible`, nullable al inicio).
+- Backfill derivado: `committed→committed`, `necessary→necessary`, `discretionary→flexible`, `investment→flexible`, `social→flexible` (el tier; el matiz social/patrimonio va en atributos aparte).
+- Migración: `categories.is_patrimony` (boolean) para marcar lo que antes era `investment`-instrumento (se moverá en Etapa 6) y `transactions.defended_priority` (o atributo en la categoría/línea de plan) para la **prioridad defendida** (RFC-0001 §10).
+- Tag `social`: agregar mecanismo de tags ortogonales (tabla `tags` + join, o columna `tags jsonb`); backfill `social → tag`.
+- Deuda: distinguir **mínimo (committed)** vs **aceleración (decisión)** — campo o convención en `recurring_obligations`/línea de plan (RFC-0001 §6.1).
+- Código: **dual-read** — los interactores empiezan a leer `agency_tier` con fallback al `category_type` viejo (helper único `Category#tier`).
+
+**Criterio de salida.** `agency_tier` poblado para todas las categorías; un helper central traduce; nada de lectura nueva rota; tests verdes.
+
+| Riesgo | Mitigación |
+|---|---|
+| Backfill incorrecto de `investment`/`social` (decisión semántica, no mecánica) | Backfill conservador a `flexible` + marcar `needs_review`; refinamiento asistido en Etapa 6, no en el backfill |
+| Dos fuentes de verdad (`category_type` vs `agency_tier`) divergen | Un solo helper `Category#tier`; prohibido leer `category_type` directo en código nuevo; lint/grep en CI |
+| `defended_priority` mal modelado (¿vive en la transacción, la categoría o la línea de plan?) | Decidir explícitamente: vive en la **línea de presupuesto/categoría del usuario**, no en cada transacción (es una postura, no un hecho puntual) |
+
+---
+
+### Etapa 2 — Migrate (Brain): el agente clasifica por agencia
+
+**Objetivo.** Que la clasificación entrante use la regla única (test de supervivencia), no las 6 categorías.
+
+**Cambios.**
+- Reescribir `coaching_framework.py::categorias_agencia` a 3 tiers + el árbol de decisión de RFC-0001 §12 + corregir la atribución (no Thaler; control percibido).
+- Actualizar prompts de chat/nightly: clasificar con la pregunta única; proponer (no imponer) y pedir confirmación (mecanismo Etapa 0).
+- API: **dual-accept** — aceptar tanto códigos viejos como `agency_tier` nuevo en el endpoint de creación/edición de transacción, normalizando internamente.
+
+**Criterio de salida.** El Brain emite tier nuevo; la API lo acepta y lo persiste como `agency_tier`; clasificación de borde (Necesario/Flexible) sigue los guardarraíles de RFC-0001 §6.1.
+
+| Riesgo | Mitigación |
+|---|---|
+| Desync: Brain emite valores que la API no entiende (o viceversa) | Contrato dual-accept durante toda la transición; tests de contrato API↔Brain |
+| El agente racionaliza "inversión en sí mismo" como categoría protegida (self-licensing) | El árbol de decisión no tiene rama "inversión"; cualquier gasto en uno mismo cae en flexible/necessary por la regla única |
+| Regresión de calidad de clasificación al cambiar de 6→3 | Set de evaluación con transacciones reales etiquetadas; comparar tasa de acierto pre/post |
+
+---
+
+### Etapa 3 — Migrate (Presupuesto): asignación por tier + prioridad defendida
+
+**Objetivo.** Que el motor de presupuesto opere sobre tiers y respete la prioridad defendida.
+
+**Cambios.**
+- `wizard_data.rb`, `generate_monthly_financial_plan.rb`, `monthly_plans_controller.rb`: ramas por tier en vez de por 6 categorías.
+- Orden de fondeo: committed → necessary → flexible, **con la prioridad defendida elevando flexibles** antes del default.
+- `budget_category.rb::CATEGORY_TYPES` → `committed|necessary|flexible` (vía dual-read primero).
+- Aceleración de deuda tratada como decisión/meta, no como committed.
+
+**Criterio de salida.** Un plan mensual se genera y confirma usando tiers; un flexible marcado como defendido se fondea antes que otros flexibles; el Modo Emergencia recorta en el orden correcto.
+
+| Riesgo | Mitigación |
+|---|---|
+| Romper planes ya confirmados (`category_allocations` jsonb con códigos viejos) | Lectura tolerante: el plan viejo se sigue interpretando vía el helper de tier; no reescribir snapshots |
+| Lógica de prioridad defendida mal priorizada (sobre-protege y asfixia el resto) | Feature flag; default conservador; tests de escenarios (defendido vs deuda vs colchón) |
+| `OVERFLOW_RULES` incluye `investment` y apunta a un destino que ya no es gaveta | Reinterpretar `investment` como "aporte a Patrimonio"; mantener el valor del enum hasta Etapa 6 |
+
+---
+
+### Etapa 4 — Migrate (Web/Dashboard): UI y lectura conductual por tier
+
+**Objetivo.** Que el front consuma tiers y deje de depender de `totals.{investment,social}`.
+
+**Cambios.**
+- `financeBehavior.ts`: `BehaviorTone` → 3 tiers + tag social; reescribir reglas que comparan `discretionary/investment/social`.
+- API **dual-emit**: `summary.totals` expone los nuevos agregados por tier **y** mantiene los viejos hasta que el web migre.
+- `CategoryPressureCard`, dashboard, `finance.types.ts`: render por tier; exponer prioridad defendida.
+
+**Criterio de salida.** Dashboard y lecturas conductuales corren sobre tiers; el web ya no lee `totals.investment/social`.
+
+| Riesgo | Mitigación |
+|---|---|
+| Quitar `totals.investment/social` rompe el dashboard antes de migrar el web | Dual-emit: la API sigue mandando los viejos hasta confirmar que el web no los usa (grep + release coordinado) |
+| App iOS empaquetada (Capacitor) desfasada del API | Versionar la respuesta o mantener compat hasta `cap sync` + release; no romper clientes viejos |
+
+---
+
+### Etapa 5 — Contract: eliminar el modelo viejo
+
+**Objetivo.** Quitar las 6 categorías una vez que nada las lee.
+
+**Cambios.**
+- `Category::TYPES` y `BudgetCategory::CATEGORY_TYPES` → solo tiers + income/unknown.
+- Eliminar `category_type` viejo (o dejarlo solo como `subcategory`/tag funcional).
+- Seeds reescritos a 3 tiers.
+- API deja de dual-emit/dual-accept; specs pierden el banner "EN MIGRACIÓN".
+
+**Criterio de salida.** Cero referencias a `discretionary` (code), `investment`/`social` como `category_type` en código vivo; tests verdes; specs sin banner.
+
+| Riesgo | Mitigación |
+|---|---|
+| Eliminar antes de que algún consumidor (Brain, web, job nocturno) haya migrado | Checklist de "cero lecturas" verificado por grep en los 3 repos antes de borrar; borrar en release separado |
+| Datos históricos con códigos viejos quedan ilegibles | No tocar histórico: el helper de tier mapea on-read; ver §3 |
+
+---
+
+### Etapa 6 — Módulo de Patrimonio (lo que era `investment`)
+
+**Objetivo.** Sacar la inversión-instrumento del flujo de caja y darle módulo propio.
+
+**Cambios.**
+- Entidad/módulo Patrimonio: portafolios, CDT/ETF/acciones/cripto, rentabilidad, riesgo (RFC-0001 §8).
+- Migrar transacciones/metas marcadas `is_patrimony` (Etapa 1) al nuevo módulo, **con confirmación del usuario** (la bifurcación instrumento vs gasto-en-sí no es automatizable).
+- `savings_goal.goal_type=investment` y `recurring_obligation` `Investment` reapuntan al módulo.
+
+**Criterio de salida.** Patrimonio separado del presupuesto; flujo de caja vs patrimonio claramente distintos.
+
+| Riesgo | Mitigación |
+|---|---|
+| Scope creep (un módulo de inversión completo es enorme) | MVP mínimo: registrar instrumento + saldo + aporte; sin proyecciones complejas al inicio |
+| Reclasificación masiva incorrecta de `investment` histórico | Flujo asistido de a poco ("¿esto era un instrumento o un gasto en ti?"), no batch ciego |
+
+---
+
+## 3. Estrategia de datos históricos
+
+- **No reescribir el histórico.** Se conserva con sus códigos viejos; el helper `Category#tier` los mapea on-read. Esto preserva comparabilidad de planes cerrados y `execution_snapshot`.
+- **Fecha de corte explícita.** Marcar el momento en que el modelo nuevo entra en vigor; los reportes que crucen el corte deben advertirlo.
+- **Reclasificación asistida solo donde aporta** (Etapa 6, instrumentos vs gasto). Nunca batch automático para `investment`/`social`.
+- **Riesgo:** métricas de tendencia (burn rate, scoring) que mezclan pre/post corte pueden saltar artificialmente. **Mitigación:** segmentar series por la fecha de corte; no comparar meses cruzados sin nota.
+
+---
+
+## 4. Riesgos transversales
+
+| Riesgo | Severidad | Mitigación |
+|---|---|---|
+| La taxonomía sola no cambia conducta (hallazgo central del brief) | Alta | Etapa 0 con gate de métricas objetivas antes de migrar |
+| Tres repos desincronizados (API/Brain/Web) durante la transición | Alta | Contratos dual-accept/dual-emit; ningún borrado sin verificar "cero lecturas" en los 3 |
+| Pérdida de comparabilidad histórica | Media | Congelar histórico + fecha de corte + mapeo on-read |
+| Prioridad defendida mal calibrada | Media | Feature flag + escenarios de prueba |
+| Self-licensing reaparece por otra vía | Media | Sin categoría "inversión"; guardarraíles del borde (RFC-0001 §6.1) |
+| Specs preexistentes en rojo (`spec/requests/api/v1/summary_spec.rb`) enmascaran regresiones | Baja | Arreglar/aislar esos specs antes de empezar Etapa 3 |
+| App iOS empaquetada desfasada | Baja | Mantener compat de API; coordinar `cap sync` + release |
+
+---
+
+## 5. Orden recomendado y reversibilidad
+
+```
+Etapa 0 (mecanismo + gate)  →  Etapa 1 (expand: agency_tier + atributos)
+   →  Etapa 2 (Brain)  →  Etapa 3 (Presupuesto)  →  Etapa 4 (Web)
+   →  Etapa 5 (contract: borrar viejo)  →  Etapa 6 (Patrimonio)
+```
+
+- Etapas 1–4 son **aditivas y reversibles** (nada se borra; se puede pausar en cualquier punto sin romper producción).
+- Etapa 5 es el único punto **destructivo**: requiere checklist de "cero lecturas" en los tres repos.
+- Etapa 6 puede arrancar en paralelo a 3–4 si hay capacidad, porque el módulo Patrimonio es independiente.
+
+## 6. Checklist de cierre (por etapa)
+
+- [ ] Código y spec coinciden para el alcance de la etapa
+- [ ] `down` de cada migración probado
+- [ ] Tests verdes (incl. contrato API↔Brain donde aplique)
+- [ ] Grep de "cero lecturas" del modelo viejo (solo Etapa 5)
+- [ ] Métrica objetiva revisada (Etapa 0 gate; y no-regresión de clasificación en Etapa 2)
+- [ ] Banner "EN MIGRACIÓN" retirado del spec correspondiente (solo al cerrar Etapa 5)

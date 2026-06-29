@@ -23,7 +23,7 @@ El componente es el verbo principal. El usuario mueve, edita, decide. El agente 
 
 | ✓ Esto sí | ✗ Esto no |
 |-----------|-----------|
-| Movés el slider de Discrecional y, abajo, el agente actualiza una sola frase: "tu colchón cae a $2.8M". | Escribís "súbeme Discrecional a $900K" y esperás a que el agente confirme y haga el cambio. |
+| Movés el slider de Flexible y, abajo, el agente actualiza una sola frase: "tu colchón cae a $2.8M". | Escribís "súbeme Flexible a $900K" y esperás a que el agente confirme y haga el cambio. |
 
 ---
 

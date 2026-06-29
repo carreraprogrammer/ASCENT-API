@@ -1,7 +1,10 @@
 # Capa Conductual
 
-> Estado: 🔲 futuro — no iniciar hasta cerrar Fases 3 y 4
-> Última actualización: 2026-04-18
+> Estado: 🔲 futuro — ⚠️ nomenclatura migrada a 3 tiers (RFC-0001)
+> Última actualización: 2026-06-28
+>
+> La lectura conductual usa los **3 tiers** (Comprometido/Necesario/Flexible) + tag
+> `social` + prioridad defendida. Ver [Rediseño.md](../producto/Rediseño.md).
 
 ## Tesis
 
@@ -62,10 +65,10 @@ Ese contrato es el puente para que la UI traduzca ids en lectura conductual.
 
 La API ya soporta, indirectamente:
 
-- lectura de gasto discrecional
+- lectura de gasto flexible
 - lectura de carga comprometida
-- lectura de inversión
-- burn rate por categoría
+- lectura de aporte a patrimonio (antes "inversión")
+- burn rate por tier
 - contexto financiero del usuario
 
 Lo que faltaba no era persistencia nueva, sino explotar bien el contrato existente.
@@ -124,25 +127,25 @@ El agente es quien ejecuta la lectura conductual. La API expone los datos — el
 
 El `SYSTEM_PROMPT` exige una lectura conductual mínima al confirmar cada transacción:
 
-- `discretionary` → nombrar que fue elegido / discrecional
-- `investment` → nombrar que construye futuro
-- `committed` → nombrar que es carga fija
-- `necessary` → nombrar que sostiene / mantiene
-- `social` → nombrar que es vínculo / social
+- `flexible` → nombrar que fue elegido / se puede cortar en crisis
+- `committed` → nombrar que es carga fija / obligación
+- `necessary` → nombrar que sostiene / mantiene (reducible, no eliminable)
 - `income` → nombrar que es entrada
+- tag `social` (sobre un `flexible`/`necessary`) → nombrar que es vínculo / relacional
+- prioridad defendida (sobre un `flexible`) → reconocer la elección, no friccionar
 
 Regla de formato: breve, una sola respuesta final, sin narrar herramientas ni proceso de razonamiento.
 
-Ejemplo válido: `✅ Registrado: $14.000 en tamales. Fue discrecional.`
+Ejemplo válido: `✅ Registrado: $14.000 en tamales. Fue flexible.`
 
 ### Comportamiento implementado en nightly
 
 El agente nocturno incluye una lectura conductual del día/mes (máximo 2 bullets):
 
-- `discretionary` alto → fricción suave
-- `investment` bajo → señalar falta de construcción
+- `flexible` alto → fricción suave (salvo lo marcado como prioridad defendida)
 - `committed` alto → señalar presión estructural
-- `social` visible → señalar gasto relacional
+- aporte a Patrimonio bajo → señalar falta de construcción (antes `investment`; ahora vive en el módulo de Patrimonio)
+- tag `social` visible → señalar gasto relacional
 
 ### Lo que el agente NO hace todavía
 

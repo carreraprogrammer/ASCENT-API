@@ -1,7 +1,11 @@
 # Cash Flow Runway — Salud Financiera de Corto Plazo
 
-> Estado: 🟡 spec activo — pendiente de implementación
-> Última actualización: 2026-05-12
+> Estado: ⚠️ EN MIGRACIÓN A RFC-0001 — spec activo, taxonomía alineada a 3 tiers
+> Última actualización: 2026-06-28
+>
+> La taxonomía de prescindibilidad se alinea con el modelo de 3 tiers de agencia
+> (Comprometido / Necesario / Flexible) de [Rediseño.md](../producto/Rediseño.md)
+> (RFC-0001). El código aún corre el modelo de 6 categorías; migración por etapas.
 
 ---
 
@@ -92,21 +96,19 @@ heroPhrase    = "Vas tranquilo hasta el día 20."
 
 ## Taxonomía de prescindibilidad
 
-El agente necesita razonar sobre qué gastos pueden reducirse en un estado `critical`. La taxonomía usa la misma estructura de `category_type` que ya existe en el sistema, añadiendo un nivel de prescindibilidad:
+El agente necesita razonar sobre qué gastos pueden reducirse en un estado `critical`. Con el modelo de 3 tiers, la prescindibilidad **es** el eje de agencia — el tier ya responde "¿se reduce o se elimina en crisis?". El Modo Emergencia de RFC-0001 opera directo sobre esto:
 
-| Nivel | Nombre | `category_type` aplicables | Ejemplos | ¿Reducible en crisis? |
-|-------|--------|---------------------------|----------|----------------------|
-| 0 | Supervivencia | `committed`, `necessary` | Mercado, transporte al trabajo, arriendo, medicamentos | No |
-| 1 | Calidad de vida | `necessary`, `investment` | Gimnasio, celular, cursos activos | Suspendible |
-| 2 | Confort | `discretionary`, `social` | Restaurantes, delivery, streaming, salidas | Sí |
+| Tier | ¿Reducible en crisis? | Orden de recorte |
+|------|----------------------|------------------|
+| `committed` | No — obligación legal/contractual | Se mantiene |
+| `necessary` | Parcial — el mínimo de la función queda > 0 | Se reduce el monto |
+| `flexible` | Total — puede ir a cero | Se elimina primero… |
 
-**Regla para `daily_necessary_burn`:** usa transacciones de los últimos 30 días con `category_type = 'necessary'`. No incluye `committed` porque esos tienen `due_day` explícito y se capturan en `committed_before_next_income`.
+…**excepto** lo marcado como **prioridad defendida**: dentro de `flexible`, lo defendido se recorta de último (es el matiz que antes intentaban capturar los niveles "calidad de vida" vs "confort"). Ver RFC-0001 §10.
 
-**Regla para prescindibilidad a nivel de subcategoría:** el agente infiere el nivel por `subcategory.code`. No se necesita un campo nuevo en la base de datos — la subcategoría ya tiene semántica suficiente. Ejemplos:
+**Regla para `daily_necessary_burn`:** usa transacciones de los últimos 30 días con `category_type = 'necessary'`. No incluye `committed` porque esos tienen `due_day` explícito y se capturan en `committed_before_next_income`. Tampoco incluye `flexible`.
 
-- `mercado`, `gasolina`, `transporte`, `salud` → Nivel 0
-- `gym`, `celular`, `cursos` → Nivel 1
-- `restaurantes`, `delivery`, `streaming`, `ocio` → Nivel 2
+**Nota de migración:** lo que antes era `investment` (gym, cursos) y `social` se re-deriva a `necessary` o `flexible` según la regla única; ya no son ejes propios de prescindibilidad.
 
 ---
 

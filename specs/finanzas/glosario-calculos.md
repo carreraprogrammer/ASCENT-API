@@ -47,7 +47,8 @@ ritmo = suma de gastos confirmados de categoría "necessary"
         de los últimos 30 días ÷ 30
 ```
 - **NO incluye** pagos comprometidos (arriendo, cuotas, suscripciones) — esos se
-  cuentan aparte como compromisos. Tampoco gasto flexible, inversión ni social.
+  cuentan aparte como compromisos. Tampoco gasto flexible (RFC-0001: el tier `flexible`
+  absorbe lo que antes era discrecional/inversión-en-sí/social).
 - Requiere ≥ 14 días de historial; si no hay, usa $30.000/día como estimado
   (`has_sufficient_history: false` → la UI debe decir "estimado").
 

@@ -1,8 +1,13 @@
 # Metodologías de Coaching Financiero — Fundamentos
 
-> Estado: ✅ documento vivo — actualizar cuando cambie el modelo de datos o la postura del agente
-> Última actualización: 2026-06-03
+> Estado: ✅ documento vivo — ⚠️ eje de categorías en migración a RFC-0001 (3 tiers)
+> Última actualización: 2026-06-28
 > Propósito: base de referencia para calcular, razonar y hablar como un coach financiero real antes de construir nueva funcionalidad encima.
+>
+> Nota: las "categorías de agencia" referidas aquí (committed/necessary/discretionary/
+> investment/social) migran al modelo de **3 tiers** (Comprometido/Necesario/Flexible) de
+> [Rediseño.md](../producto/Rediseño.md). `investment` → módulo Patrimonio; `social` → tag.
+> Ver también [categorizacion-de-gastos.md](./categorizacion-de-gastos.md) para el fundamento.
 
 ---
 
@@ -370,7 +375,7 @@ Todos parten del dinero que realmente llega a la cuenta, no del bruto ni del pro
 ### NC-2: Categorización completa como diagnóstico base
 No hay coaching posible sin saber a dónde va el dinero. Todos los frameworks lo requieren como paso 1.
 
-**En nuestro sistema:** Categorías de agencia (committed/necessary/discretionary/investment/social).
+**En nuestro sistema:** Tiers de agencia (committed/necessary/flexible). [migración RFC-0001; antes: +investment/social]
 **Regla del agente:** Si hay > 20% de transacciones sin categorizar, el diagnóstico no es confiable. Señalarlo antes de dar coaching.
 
 ---
@@ -605,7 +610,7 @@ Las consecuencias de vergüenza financiera:
 
 ### Cálculos que ya tenemos (validados)
 - ✅ `confirmed_balance` como fuente de verdad del ingreso — alineado con NC-1
-- ✅ Categorías de agencia (committed/discretionary) — alineado con NC-2, NC-4
+- ✅ Tiers de agencia (committed/necessary/flexible) — alineado con NC-2, NC-4
 - ✅ `recurring_obligations` como fuente de verdad del flujo fijo — alineado con NC-4
 - ✅ `LiquidityProjection.safe_to_deploy` — alineado con NC-7
 - ✅ `sinking_funds` como ahorro comprometido — parcialmente alineado con NC-5
