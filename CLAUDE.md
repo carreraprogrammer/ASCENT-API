@@ -10,11 +10,12 @@ All commands run inside Docker:
 # Start containers
 docker compose up -d
 
-# Run all tests
-docker compose run --rm --entrypoint /bin/bash web -lc 'bundle exec rspec'
+# Run all tests (el contenedor corre RAILS_ENV=production por defecto → forzar test;
+# docker-compose ya monta el código vivo (bind-mount .:/app))
+docker compose run --rm -e RAILS_ENV=test --entrypoint /bin/bash web -lc 'bundle exec rspec'
 
 # Run a single spec file
-docker compose run --rm --entrypoint /bin/bash web -lc 'bundle exec rspec spec/domains/finanzas/interactors/create_transaction_spec.rb'
+docker compose run --rm -e RAILS_ENV=test --entrypoint /bin/bash web -lc 'bundle exec rspec spec/domains/finanzas/interactors/create_transaction_spec.rb'
 
 # Linter
 docker compose run --rm --entrypoint /bin/bash web -lc 'bundle exec rubocop'
