@@ -142,9 +142,17 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 
 ---
 
-### Etapa 3 — Migrate (Presupuesto): asignación por tier + prioridad defendida
+### Etapa 3 — Migrate (Presupuesto): asignación por tier + prioridad defendida — 🟡 EN CURSO
 
 **Objetivo.** Que el motor de presupuesto opere sobre tiers y respete la prioridad defendida.
+
+**Progreso (2026-06-30):**
+- ✅ 3a `wizard_data.rb` — benchmarks 3 tiers; salta investment/social.
+- ✅ 3b `monthly_plans_controller.rb` — señales por tier flexible.
+- ✅ 3c `budget_category.rb` — acepta `flexible`.
+- ✅ 3d overflow `investment` — sin cambio (destino del excedente → Patrimonio, Etapa 6).
+- ⬜ 3e orden de fondeo con **prioridad defendida** (feature nueva).
+- ⬜ 3f **Modo Emergencia** (feature nueva).
 
 **Cambios.**
 - `wizard_data.rb`, `generate_monthly_financial_plan.rb`, `monthly_plans_controller.rb`: ramas por tier en vez de por 6 categorías.
