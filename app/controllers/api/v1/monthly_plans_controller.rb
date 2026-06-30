@@ -595,7 +595,7 @@ module Api
         case category&.category_type.to_s
         when "committed"
           "fixed_recurring"
-        when "necessary", "discretionary", "social"
+        when "necessary", "discretionary", "flexible", "social"
           "variable_linear"
         when "investment"
           "savings_goal"
@@ -695,8 +695,8 @@ module Api
       end
 
       def discretionary_category?(category)
-        category&.category_type == "discretionary" ||
-          %w[discretionary social dining_out personal_care].include?(category&.code)
+        %w[discretionary flexible].include?(category&.category_type) ||
+          %w[discretionary flexible social dining_out personal_care].include?(category&.code)
       end
     end
   end

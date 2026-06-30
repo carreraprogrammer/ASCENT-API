@@ -6,7 +6,8 @@ class BudgetCategory < ApplicationRecord
     debt_payoff dining_out personal_care savings_emergency
   ].freeze
 
-  CATEGORY_TYPES = %w[committed necessary discretionary investment].freeze
+  # RFC-0001: `flexible` aceptado (expand). `discretionary`/`investment` siguen hasta Etapa 5.
+  CATEGORY_TYPES = %w[committed necessary discretionary flexible investment].freeze
 
   validates :code, presence: true, uniqueness: { scope: :account_id }
   validates :name, presence: true
