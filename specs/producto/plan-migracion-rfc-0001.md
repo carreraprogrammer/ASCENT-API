@@ -170,8 +170,15 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 - `financeBehavior.ts`: `BehaviorTone` → 3 tiers; reescribir reglas que comparan `discretionary/investment/social` (social pasa a leerse por subcategoría, no por categoría).
 - API **dual-emit**: `summary.totals` expone los nuevos agregados por tier **y** mantiene los viejos hasta que el web migre.
 - `CategoryPressureCard`, dashboard, `finance.types.ts`: render por tier; exponer prioridad defendida.
+- **Colores diferenciables (BRAND.md / tokens CSS):** hoy committed (`#C0392B` rojo), necessary
+  (`#D4732A` ámbar) y discretionary/flexible (`#C9980A` oro) son los tres cálidos/rojizos → poco
+  distinguibles. Recolorear los 3 tiers con buen contraste (sugerencia semántica: committed=rojo
+  "bloqueado", necessary=ámbar "cuidado", flexible=azul/teal "libre" — reusando el verde/morado
+  liberados de investment/social). Actualizar `--color-committed/necessary/flexible` y eliminar
+  `--color-investment/social` en Etapa 5.
 
-**Criterio de salida.** Dashboard y lecturas conductuales corren sobre tiers; el web ya no lee `totals.investment/social`.
+**Criterio de salida.** Dashboard y lecturas conductuales corren sobre tiers; los 3 tiers tienen
+colores distinguibles; el web ya no lee `totals.investment/social`.
 
 | Riesgo | Mitigación |
 |---|---|
