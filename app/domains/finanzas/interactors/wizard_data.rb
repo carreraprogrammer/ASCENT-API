@@ -14,13 +14,15 @@ module Finanzas
       HISTORY_MONTHS = 3
       PLANNED_EXPENSE_TYPES = %w[mandatory_one_off irregular_maintenance].freeze
 
-      # Benchmark percentages by category_type (of total income)
+      # Benchmark percentages by tier (of total income). RFC-0001: 3 tiers.
+      # `discretionary` = "Flexible" (absorbe lo que eran investment-consumo y social);
+      # `flexible` es alias para post-rename (Etapa 5). El ahorro/inversión-instrumento
+      # NO se presupuesta como gasto → no tiene benchmark.
       BENCHMARKS = {
         "committed"     => 0.50,
-        "necessary"     => 0.15,
-        "discretionary" => 0.10,
-        "investment"    => 0.10,
-        "social"        => 0.05
+        "necessary"     => 0.20,
+        "discretionary" => 0.20,
+        "flexible"      => 0.20
       }.freeze
 
       def initialize(
@@ -164,6 +166,9 @@ module Finanzas
         categories.each do |cat|
           # Income categories don't belong in the expense budget wizard
           next if cat.category_type == "income"
+          # RFC-0001: investment/social ya no son tiers de gasto (investment = solo ahorro,
+          # va a metas/bolsillos; social ahora es subcategoría bajo flexible). No proponerlas.
+          next if %w[investment social].include?(cat.category_type)
           # Skip the "unknown" category unless it has custom (user) subcategories
           next if cat.code == "unknown" && cat.subcategories.none? { |s| !s.system? }
 
@@ -218,7 +223,7 @@ module Finanzas
         # Apply phase discount to algorithmic suggestions (history/benchmark) for
         # flexible categories — so the plan reserves margin for the user's goal.
         goal_flex_cat = phase_discount_rate > 0 &&
-                        %w[discretionary social].include?(category.category_type.to_s)
+                        %w[discretionary flexible].include?(category.category_type.to_s)
 
         category_recurring_total = recurring_by_category[category.id].to_i
         rows = []
