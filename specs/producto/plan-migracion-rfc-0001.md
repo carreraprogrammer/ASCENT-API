@@ -117,9 +117,15 @@ consumidores (Brain, presupuesto, web), no antes, porque cambia agregaciones.
 
 ---
 
-### Etapa 2 — Migrate (Brain): el agente clasifica por agencia
+### Etapa 2 — Migrate (Brain): el agente clasifica por agencia — ✅ COMPLETA (2026-06-30)
 
 **Objetivo.** Que la clasificación entrante use la regla única (test de supervivencia), no las 6 categorías.
+
+**Entregado (daniel15k-agents, en prod):** `transaction_rules` (SUBCATEGORY_REFERENCE +
+AMBIGUITY_RULES + botones), `coaching_framework.categorias_agencia` (3 tiers + árbol +
+atribución corregida), `chat_prompts` y `nightly` (lectura conductual + referencia embebida).
+Sin cambio de API: el agente usa los códigos existentes (committed/necessary/discretionary);
+herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→metas/bolsillos, no gasto.
 
 **Cambios.**
 - Reescribir `coaching_framework.py::categorias_agencia` a 3 tiers + el árbol de decisión de RFC-0001 §12 + corregir la atribución (no Thaler; control percibido).
