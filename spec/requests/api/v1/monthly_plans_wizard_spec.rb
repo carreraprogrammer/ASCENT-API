@@ -208,17 +208,20 @@ RSpec.describe "Monthly Plans Wizard API" do
         end
       end
 
-      context "with a windfall (bonus) month in the history window" do
-        let(:normal)   { 1.month.ago.to_date }
-        let(:windfall) { 2.months.ago.to_date }
+      context "with a windfall (bonus) month plus enough clean months" do
+        let(:clean_a)  { 1.month.ago.to_date }
+        let(:clean_b)  { 2.months.ago.to_date }
+        let(:windfall) { 3.months.ago.to_date }
 
         before do
           create(:income_source, user: user, account: account, expected_amount: 5_000_000)
 
-          # Normal month: modest spend, no extraordinary income.
-          create(:transaction, user: user, account: account, transaction_type: "expense", status: "confirmed",
-                 amount: 300_000, category: system_category, subcategory: subcategory,
-                 date: normal.iso8601, month: normal.month, year: normal.year)
+          # Two clean months: modest, consistent spend, no extraordinary income.
+          [ clean_a, clean_b ].each do |d|
+            create(:transaction, user: user, account: account, transaction_type: "expense", status: "confirmed",
+                   amount: 300_000, category: system_category, subcategory: subcategory,
+                   date: d.iso8601, month: d.month, year: d.year)
+          end
 
           # Windfall month: bonus income (> 1.2× expected) + inflated spend.
           create(:transaction, user: user, account: account, transaction_type: "income", status: "confirmed",
@@ -228,7 +231,7 @@ RSpec.describe "Monthly Plans Wizard API" do
                  date: windfall.iso8601, month: windfall.month, year: windfall.year)
         end
 
-        it "excludes windfall-month spending from the baseline and reports it as extraordinary income" do
+        it "uses the clean-month median (excludes the windfall spend) and reports extraordinary income" do
           get "/api/v1/monthly_plans/wizard_data", headers: headers
 
           expect(response).to have_http_status(:ok)
@@ -236,7 +239,7 @@ RSpec.describe "Monthly Plans Wizard API" do
           cat  = data["categories"].find { |c| c["code"] == "discretionary" }
           sub  = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
 
-          # Only the normal month feeds the baseline — the $900k windfall spend is ignored.
+          # Two clean months (300k) outnumber MIN_CLEAN_MONTHS → windfall's 900k ignored.
           expect(sub["suggested_amount"]).to eq(300_000)
           expect(data["meta"]["excluded_windfall_months"])
             .to include(format("%04d-%02d", windfall.year, windfall.month))

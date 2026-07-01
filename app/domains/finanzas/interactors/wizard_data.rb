@@ -23,6 +23,10 @@ module Finanzas
       # como "windfall" (prima/aguinaldo): su gasto NO alimenta el baseline recurrente
       # y su excedente se reporta como ingreso extraordinario a asignar aparte (YNAB).
       WINDFALL_INCOME_RATIO = 1.2
+      # Mínimo de meses limpios (sin prima) para confiar solo en ellos. Con menos, la
+      # mediana degeneraría a un único mes (posiblemente atípico), así que caemos a la
+      # mediana de TODOS los meses — que ya es robusta a un pico aislado.
+      MIN_CLEAN_MONTHS = 2
 
       def initialize(
         income_repo:   Finanzas::Repositories::IncomeSourceRepository.new,
@@ -415,9 +419,8 @@ module Finanzas
 
       # { [category_id, subcategory_id] => mediana_mensual } — últimos HISTORY_MONTHS.
       # Mediana (no media) de los totales mensuales: un mes atípico no infla el baseline.
-      # Se calcula sobre los meses CON actividad ("cuando gastas en esto, cuánto sueles gastar").
-      # Excluye meses windfall: su gasto está financiado por ingreso extraordinario, no
-      # representa tu presupuesto recurrente.
+      # Prefiere meses limpios (sin prima); si son < MIN_CLEAN_MONTHS cae a todos los
+      # meses para no degenerar a un único mes pico (la mediana ya descuenta un spike).
       def fetch_median_by_pair(account_id, windfall_months = Set.new)
         since = HISTORY_MONTHS.months.ago.beginning_of_month.to_date
 
@@ -428,13 +431,19 @@ module Finanzas
           .group(:category_id, :subcategory_id, :year, :month)
           .sum(:amount)
 
-        buckets = Hash.new { |h, k| h[k] = [] }
+        all_buckets   = Hash.new { |h, k| h[k] = [] }
+        clean_buckets = Hash.new { |h, k| h[k] = [] }
         monthly.each do |(cat_id, sub_id, y, m), total|
-          next if windfall_months.include?([ y, m ])
-
-          buckets[[ cat_id, sub_id ]] << total.to_i
+          key = [ cat_id, sub_id ]
+          all_buckets[key] << total.to_i
+          clean_buckets[key] << total.to_i unless windfall_months.include?([ y, m ])
         end
-        buckets.transform_values { |monthly_totals| median(monthly_totals) }
+
+        all_buckets.each_with_object({}) do |(key, all_totals), result|
+          clean = clean_buckets[key]
+          chosen = clean.size >= MIN_CLEAN_MONTHS ? clean : all_totals
+          result[key] = median(chosen)
+        end
       end
 
       # Meses (dentro de la ventana de historial) cuyo ingreso confirmado supera al
