@@ -6,6 +6,9 @@ class Category < ApplicationRecord
   has_many :subcategories, dependent: :destroy
   has_many :transactions, dependent: :nullify
   has_many :planned_expenses, dependent: :restrict_with_exception
+  # Many-to-many: subcategorías (funciones) vinculadas a este tier además de las primarias.
+  has_many :category_subcategories, dependent: :destroy
+  has_many :linked_subcategories, through: :category_subcategories, source: :subcategory
 
   # RFC-0001 — modelo final: 3 tiers de agencia (committed/necessary/discretionary="Flexible")
   # + income + unknown. `social` e `investment` eliminados: no eran tiers de agencia

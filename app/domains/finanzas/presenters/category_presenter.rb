@@ -58,11 +58,13 @@ module Finanzas
             name: row[:name],
             code: row[:code],
             icon: row[:icon],
-            category_id: row[:category_id],
-            category_type: row[:category_type],
             is_system: row[:is_system],
             user_id: row[:user_id],
-            transaction_count: row[:transaction_count]
+            transaction_count: row[:transaction_count],
+            # Categorías (tiers) a las que pertenece — para los chips de colores.
+            categories: (row[:categories] || []).map do |c|
+              { id: c[:id], category_type: c[:category_type], color: c[:color] }
+            end
           }
         }
       end

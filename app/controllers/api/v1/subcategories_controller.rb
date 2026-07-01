@@ -19,7 +19,7 @@ module Api
 
         subcategory = Finanzas::Interactors::CreateSubcategory.new.call(
           name: subcategory_params[:name],
-          category_id: subcategory_params[:category_id],
+          category_ids: category_ids_param,
           icon: subcategory_params[:icon],
           user_id: current_owner_user_id
         )
@@ -37,7 +37,7 @@ module Api
 
         subcategory = Finanzas::Interactors::UpdateSubcategory.new.call(
           id: params[:id],
-          category_id: subcategory_params[:category_id],
+          category_ids: category_ids_param,
           name: subcategory_params[:name],
           icon: subcategory_params[:icon]
         )
@@ -66,6 +66,13 @@ module Api
 
       def subcategory_params
         params.permit(:name, :category_id, :icon).to_h.symbolize_keys
+      end
+
+      # Acepta `category_ids: []` (many-to-many) o `category_id` único (compat).
+      def category_ids_param
+        ids = params[:category_ids]
+        ids = [ params[:category_id] ] if ids.blank? && params[:category_id].present?
+        Array(ids).compact
       end
     end
   end

@@ -46,21 +46,22 @@ module Finanzas
       end
 
       # Subcategorías gestionables por la cuenta (de sistema + propias del usuario),
-      # con su tier (category_type) y el conteo de transacciones de la cuenta.
+      # con las CATEGORÍAS a las que están vinculadas (para los chips) y el conteo de txns.
       def manageable_for(account_id:, user_id:)
         counts = ::Transaction.where(account_id: account_id)
                               .where.not(subcategory_id: nil)
                               .group(:subcategory_id).count
-        ::Subcategory.includes(:category)
+        ::Subcategory.includes(:linked_categories, :category)
                      .where(is_system: true)
                      .or(::Subcategory.where(user_id: user_id))
                      .order(:name)
                      .map do |r|
+          cats = r.linked_categories.presence || [ r.category ].compact
           {
             id: r.id, name: r.name, code: r.code, icon: r.icon,
-            category_id: r.category_id, category_type: r.category&.category_type,
             is_system: r.is_system, user_id: r.user_id,
-            transaction_count: counts[r.id].to_i
+            transaction_count: counts[r.id].to_i,
+            categories: cats.map { |c| { id: c.id, category_type: c.category_type, color: c.color } }
           }
         end
       end
@@ -69,14 +70,43 @@ module Finanzas
         ::Subcategory.find_by(id: id)
       end
 
-      def update_fields(id, category_id: nil, name: nil, icon: nil)
+      # Crea una subcategoría vinculada a una o más categorías (la primera = tier primario).
+      def create_with_links(name:, category_ids:, icon:, user_id:, is_system: false)
+        ids = Array(category_ids).map(&:to_i).uniq
+        raise Finanzas::Errors::InvalidSubcategory, "At least one category is required" if ids.empty?
+
+        primary = ids.first
+        code = generate_code(name, category_id: primary)
+        ActiveRecord::Base.transaction do
+          record = ::Subcategory.create!(
+            name: name, code: code, category_id: primary,
+            icon: icon, user_id: user_id, is_system: is_system
+          )
+          ids.each { |cid| ::CategorySubcategory.create!(subcategory_id: record.id, category_id: cid) }
+          map_to_entity(record)
+        end
+      rescue ActiveRecord::RecordInvalid => e
+        raise Finanzas::Errors::InvalidSubcategory, e.message
+      end
+
+      # Actualiza los vínculos (many-to-many) y/o nombre/ícono. Si se pasan category_ids,
+      # reemplaza el set de vínculos y fija el primario = primero.
+      def update_fields(id, category_ids: nil, name: nil, icon: nil)
         record = ::Subcategory.find_by(id: id)
         raise Finanzas::Errors::InvalidSubcategory, "Subcategory not found" unless record
 
-        record.category_id = category_id if category_id.present?
-        record.name = name if name.present?
-        record.icon = icon if icon.present?
-        record.save!
+        ActiveRecord::Base.transaction do
+          if category_ids.present?
+            ids = Array(category_ids).map(&:to_i).uniq
+            record.category_subcategories.where.not(category_id: ids).destroy_all
+            existing = record.category_subcategories.pluck(:category_id)
+            (ids - existing).each { |cid| ::CategorySubcategory.create!(subcategory_id: record.id, category_id: cid) }
+            record.category_id = ids.first
+          end
+          record.name = name if name.present?
+          record.icon = icon if icon.present?
+          record.save!
+        end
         map_to_entity(record)
       rescue ActiveRecord::RecordInvalid => e
         raise Finanzas::Errors::InvalidSubcategory, e.message
