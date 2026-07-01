@@ -47,6 +47,25 @@ module Finanzas
           }
         }
       end
+
+      # Recurso para la página de gestión: incluye el tier (category_type) y el conteo
+      # de transacciones. `row` es el hash de SubcategoryRepository#manageable_for.
+      def self.subcategory_management_resource(row)
+        {
+          id: row[:id].to_s,
+          type: "subcategories",
+          attributes: {
+            name: row[:name],
+            code: row[:code],
+            icon: row[:icon],
+            category_id: row[:category_id],
+            category_type: row[:category_type],
+            is_system: row[:is_system],
+            user_id: row[:user_id],
+            transaction_count: row[:transaction_count]
+          }
+        }
+      end
     end
   end
 end
