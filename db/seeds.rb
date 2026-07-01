@@ -19,42 +19,34 @@ SYSTEM_CATEGORIES = [
       { name: "Mercado",    code: "mercado",    icon: "cartOutline" },
       { name: "Gasolina",   code: "gasolina",   icon: "carOutline" },
       { name: "Transporte", code: "transporte", icon: "busOutline" },
-      { name: "Salud",      code: "salud",      icon: "heartOutline" },
-      { name: "Ejercicio",  code: "ejercicio",  icon: "barbellOutline" },
-      { name: "Celular",    code: "celular",    icon: "phonePortraitOutline" }
+      { name: "Salud",       code: "salud",       icon: "heartOutline" },
+      { name: "Ejercicio",   code: "ejercicio",   icon: "barbellOutline" },
+      { name: "Celular",     code: "celular",     icon: "phonePortraitOutline" },
+      { name: "Herramientas", code: "herramientas", icon: "constructOutline" }
     ]
   },
   {
     name: "Flexible", code: "discretionary", category_type: "discretionary",
-    color: "#C9980A", icon: "pricetagOutline",
+    color: "#14B8A6", icon: "pricetagOutline",
     subcategories: [
       { name: "Restaurantes",   code: "restaurantes",  icon: "restaurantOutline" },
       { name: "Delivery",       code: "delivery",      icon: "fastFoodOutline" },
       { name: "Ocio",           code: "ocio",          icon: "gameControllerOutline" },
       { name: "Ropa",           code: "ropa",          icon: "shirtOutline" },
       { name: "Tecnología",     code: "tecnologia",    icon: "laptopOutline" },
-      { name: "Suscripciones",  code: "suscripciones", icon: "refreshOutline" }
+      { name: "Suscripciones",  code: "suscripciones", icon: "refreshOutline" },
+      { name: "Cursos",         code: "cursos",        icon: "schoolOutline" },
+      { name: "Suplementos",    code: "suplementos",   icon: "fitnessOutline" },
+      { name: "Social",         code: "social",        icon: "peopleOutline" }
     ]
   },
   {
+    # RFC-0001: `investment` en transición — solo conserva ahorro voluntario hasta que
+    # el módulo Patrimonio (Etapa 6) absorba esos movimientos. No es un tier de gasto.
     name: "Inversión", code: "investment", category_type: "investment",
     color: "#1A9E4A", icon: "trendingUpOutline",
     subcategories: [
-      { name: "Cursos",             code: "cursos",           icon: "schoolOutline" },
-      { name: "Libros",             code: "libros",           icon: "bookOutline" },
-      { name: "Suplementos",        code: "suplementos",      icon: "fitnessOutline" },
-      { name: "Herramientas",       code: "herramientas",     icon: "constructOutline" },
       { name: "Ahorro voluntario",  code: "ahorro_voluntario", icon: "saveOutline" }
-    ]
-  },
-  {
-    name: "Social", code: "social", category_type: "social",
-    color: "#8A4FD8", icon: "peopleOutline",
-    subcategories: [
-      { name: "Regalos",    code: "regalos",    icon: "giftOutline" },
-      { name: "Salidas",    code: "salidas",    icon: "peopleOutline" },
-      { name: "Familia",    code: "familia",    icon: "heartOutline" },
-      { name: "Donaciones", code: "donaciones", icon: "handLeftOutline" }
     ]
   },
   {
