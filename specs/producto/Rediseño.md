@@ -2,7 +2,7 @@
 
 ## De la categorización contable a un modelo basado en Agencia Financiera
 
-**Versión:** 1.1
+**Versión:** 1.2
 
 **Estado:** Draft
 
@@ -10,7 +10,7 @@
 
 **Cambios v1.1 (revisión crítica anclada al research brief):**
 - §6.1 nuevo — guardarraíles de clasificación para el borde Necesario/Flexible y para deuda (mínimo vs aceleración).
-- §10 ampliado — se corrige el colapso "prioridad = orden de agencia"; se introduce la **prioridad defendida** como eje separado, y el mecanismo que de verdad cambia conducta (control percibido + reflexión).
+- §10 ampliado — el mecanismo que de verdad cambia conducta (control percibido + reflexión). (Nota v1.2: la "prioridad defendida" como eje separado se descartó luego por sobre-ingeniería — priorizar un flexible = presupuestarlo.)
 - §15 — nueva Etapa 0 (mecanismo de control/reflexión como prerequisito) y plan de migración de datos más explícito.
 - §17 — decisiones abiertas ampliadas.
 
@@ -245,7 +245,7 @@ Regla operativa:
 Casos de frontera que deben documentarse con ejemplo:
 
 * Transporte de una persona desempleada → si el mínimo para buscar trabajo/gestionar la vida sigue siendo > 0 → Necesario; si realmente puede ir a cero → Flexible.
-* Un tratamiento de salud → Necesario solo si suspenderlo tiene consecuencia médica seria e inmediata; si la vida diaria no depende de él aunque sea muy valioso → Flexible (ver §10, prioridad defendida).
+* Un tratamiento de salud → Necesario solo si suspenderlo tiene consecuencia médica seria e inmediata; si la vida diaria no depende de él aunque sea muy valioso → Flexible (y se prioriza simplemente presupuestándolo, ver §10).
 
 La prueba mental siempre es la misma: **¿el mínimo de esta función en crisis es 0 o es > 0?**
 
@@ -394,28 +394,27 @@ Mantener Comprometidos
 
 Este tipo de simulaciones no era posible con categorías tradicionales.
 
-## Prioridad defendida (eje separado de la agencia)
+## Priorizar un flexible = presupuestarlo (sin eje aparte)
 
-Aquí hay una corrección importante respecto a la primera versión.
+Corrección (2026-06-30): en versiones previas este documento proponía una "prioridad
+defendida" como eje/flag separado. **Se descartó por sobre-ingeniería.**
 
-Agencia y prioridad **no son lo mismo**, y colapsarlas rompe casos reales.
+El caso que originó el rediseño (un tratamiento de salud que el usuario quiere proteger)
+**no necesita un flag.** La priorización ya queda expresada cuando el gasto:
 
-La agencia responde: *¿qué tan cortable es este gasto en una crisis?*
+* se incluye en el **presupuesto** del mes, y/o
+* existe como **obligación recurrente**.
 
-La prioridad responde: *¿qué tanto elijo proteger este gasto cuando hay con qué?*
+Eso mismo *reserva el dinero* para ese gasto. El sistema no necesita una marca adicional para
+saber que importa: ya lo sabe porque hay plata asignada a él.
 
-Son ejes ortogonales. El caso que originó todo este rediseño lo demuestra:
+Y en una crisis real, ese tratamiento **sí se recorta** como cualquier flexible — es flexible por
+agencia. Para eso está el Modo Emergencia (recorta flexibles). No hay contradicción: priorizarlo
+cuando hay con qué = presupuestarlo; recortarlo cuando no hay = Modo Emergencia.
 
-> El tratamiento de obesidad es **Flexible** por agencia (en crisis total, se va).
-> Pero el usuario lo coloca **por encima** del abono extra a deuda y del fondo de emergencia cuando hay ingreso.
-
-Si la prioridad se deriva del tier de agencia, el sistema fondearía ese tratamiento **de último** — exactamente lo contrario de la voluntad del usuario. Por eso:
-
-* El orden de agencia es solo el **default** de fondeo y el orden de recorte en emergencia.
-* La **prioridad defendida** es una marca explícita del usuario que puede elevar un gasto Flexible por encima del default.
-* Es una decisión consciente y declarada, no una etiqueta automática — y eso es deseable: el acto de declarar "esto lo protejo" es en sí mismo un ejercicio de agencia (ver siguiente sección).
-
-Implicación de modelo: un gasto Flexible puede llevar un atributo de prioridad/intocabilidad que el motor de presupuesto respeta antes de aplicar el orden de agencia por defecto.
+Implicación de modelo: **ningún atributo nuevo.** El orden de agencia (committed → necessary →
+flexible) es el orden de fondeo por defecto y de recorte en emergencia; el presupuesto y los
+recurrentes ya codifican qué flexibles el usuario eligió sostener.
 
 ## Lo que realmente cambia la conducta (y por qué la taxonomía no basta)
 
@@ -708,10 +707,8 @@ FinancialAgency
 
 sin eliminar categorías actuales.
 
-Además del tier de agencia, esta etapa debe contemplar dos campos que el modelo viejo no tenía:
-
-* Un atributo de **prioridad defendida** (para elevar un Flexible por encima del default, §10).
-* La distinción **mínimo vs aceleración** en deuda (§6.1).
+Además del tier de agencia, considerar la distinción **mínimo vs aceleración** en deuda (§6.1).
+(La "prioridad defendida" se descartó: priorizar un flexible = presupuestarlo, §10.)
 
 ---
 
@@ -775,7 +772,6 @@ Quedan pendientes las siguientes decisiones arquitectónicas.
 * Cómo representar contexto social.
 * Cómo calcular automáticamente el costo mínimo de vida. **Nota:** ya existe media implementación — el `bare-bones` del fondo de emergencia en `specs/finanzas/metodologias-coaching-financiero.md §2.1`. El Modo Emergencia y ese cálculo son el mismo concepto; conviene unificarlos, no duplicarlos.
 * Cómo integrar patrimonio e inversiones.
-* Cómo almacenar el atributo de **prioridad defendida** y cómo lo lee el motor de presupuesto (§10).
 * Cómo modelar **mínimo vs aceleración** de deuda sin inflar Comprometido (§6.1).
 * Qué ejemplos de inclusión/exclusión fijar para el borde Necesario/Flexible (§6.1).
 

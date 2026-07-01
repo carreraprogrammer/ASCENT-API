@@ -4,7 +4,7 @@
 > Última actualización: 2026-06-28
 >
 > La lectura conductual usa los **3 tiers** (Comprometido/Necesario/Flexible) + tag
-> `social` + prioridad defendida. Ver [Rediseño.md](../producto/Rediseño.md).
+> `social` (subcat bajo flexible). Ver [Rediseño.md](../producto/Rediseño.md).
 
 ## Tesis
 
@@ -132,7 +132,6 @@ El `SYSTEM_PROMPT` exige una lectura conductual mínima al confirmar cada transa
 - `necessary` → nombrar que sostiene / mantiene (reducible, no eliminable)
 - `income` → nombrar que es entrada
 - subcategoría social (Regalos, Salidas, Familia, Donaciones, Amigos) → nombrar que es vínculo / relacional
-- prioridad defendida (sobre un `flexible`) → reconocer la elección, no friccionar
 
 Regla de formato: breve, una sola respuesta final, sin narrar herramientas ni proceso de razonamiento.
 
@@ -142,7 +141,7 @@ Ejemplo válido: `✅ Registrado: $14.000 en tamales. Fue flexible.`
 
 El agente nocturno incluye una lectura conductual del día/mes (máximo 2 bullets):
 
-- `flexible` alto → fricción suave (salvo lo marcado como prioridad defendida)
+- `flexible` alto → fricción suave
 - `committed` alto → señalar presión estructural
 - aporte a Patrimonio bajo → señalar falta de construcción (antes `investment`; ahora vive en el módulo de Patrimonio)
 - subcategoría social visible → señalar gasto relacional
