@@ -84,7 +84,7 @@ RSpec.describe Finanzas::Interactors::DetectTransactionStructure do
         subcat = create(:subcategory)
         ob = create(:recurring_obligation, user: user, account: user.default_account,
                     name: "Servicio EPM", amount: 80_000, due_day: 14,
-                    subcategory: subcat)
+                    category: subcat.category, subcategory: subcat)
 
         # No concept overlap, but amount tight + subcat + day within window
         result = call(concept: "Pago recibo", amount: 80_000, date_str: "14/05",
