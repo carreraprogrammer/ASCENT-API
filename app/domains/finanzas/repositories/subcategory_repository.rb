@@ -58,7 +58,7 @@ module Finanzas
                      .map do |r|
           cats = r.linked_categories.presence || [ r.category ].compact
           {
-            id: r.id, name: r.name, code: r.code, icon: r.icon,
+            id: r.id, name: r.name, code: r.code, icon: r.icon, description: r.description,
             is_system: r.is_system, user_id: r.user_id,
             transaction_count: counts[r.id].to_i,
             categories: cats.map { |c| { id: c.id, category_type: c.category_type, color: c.color } }
@@ -71,7 +71,7 @@ module Finanzas
       end
 
       # Crea una subcategoría vinculada a una o más categorías (la primera = tier primario).
-      def create_with_links(name:, category_ids:, icon:, user_id:, is_system: false)
+      def create_with_links(name:, category_ids:, icon:, user_id:, description: nil, is_system: false)
         ids = Array(category_ids).map(&:to_i).uniq
         raise Finanzas::Errors::InvalidSubcategory, "At least one category is required" if ids.empty?
 
@@ -80,7 +80,7 @@ module Finanzas
         ActiveRecord::Base.transaction do
           record = ::Subcategory.create!(
             name: name, code: code, category_id: primary,
-            icon: icon, user_id: user_id, is_system: is_system
+            icon: icon, description: description, user_id: user_id, is_system: is_system
           )
           ids.each { |cid| ::CategorySubcategory.create!(subcategory_id: record.id, category_id: cid) }
           map_to_entity(record)
@@ -91,7 +91,7 @@ module Finanzas
 
       # Actualiza los vínculos (many-to-many) y/o nombre/ícono. Si se pasan category_ids,
       # reemplaza el set de vínculos y fija el primario = primero.
-      def update_fields(id, category_ids: nil, name: nil, icon: nil)
+      def update_fields(id, category_ids: nil, name: nil, icon: nil, description: nil)
         record = ::Subcategory.find_by(id: id)
         raise Finanzas::Errors::InvalidSubcategory, "Subcategory not found" unless record
 
@@ -105,6 +105,7 @@ module Finanzas
           end
           record.name = name if name.present?
           record.icon = icon if icon.present?
+          record.description = description unless description.nil?
           record.save!
         end
         map_to_entity(record)
@@ -143,6 +144,7 @@ module Finanzas
           name: record.name,
           code: record.code,
           icon: record.icon,
+          description: record.description,
           is_system: record.is_system,
           created_at: record.created_at,
           updated_at: record.updated_at

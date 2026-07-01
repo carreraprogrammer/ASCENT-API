@@ -7,7 +7,7 @@ module Finanzas
         @repo = repo
       end
 
-      def call(name:, category_ids:, icon:, user_id:)
+      def call(name:, category_ids:, icon:, user_id:, description: nil)
         raise Finanzas::Errors::InvalidSubcategory, "Name is required" if name.blank?
         raise Finanzas::Errors::InvalidSubcategory, "Icon is required" if icon.blank?
 
@@ -16,7 +16,7 @@ module Finanzas
         validate_system_categories!(ids)
 
         @repo.create_with_links(
-          name: name, category_ids: ids, icon: icon, user_id: user_id, is_system: false
+          name: name, category_ids: ids, icon: icon, description: description, user_id: user_id, is_system: false
         )
       end
 

@@ -1,7 +1,7 @@
 module Finanzas
   module Entities
     class Subcategory
-      attr_reader :id, :category_id, :user_id, :name, :code, :icon, :is_system,
+      attr_reader :id, :category_id, :user_id, :name, :code, :icon, :description, :is_system,
                   :created_at, :updated_at
 
       def initialize(attrs = {})
@@ -11,6 +11,7 @@ module Finanzas
         @name        = attrs[:name]
         @code        = attrs[:code]
         @icon        = attrs[:icon]
+        @description = attrs[:description]
         @is_system   = attrs[:is_system] || false
         @created_at  = attrs[:created_at]
         @updated_at  = attrs[:updated_at]

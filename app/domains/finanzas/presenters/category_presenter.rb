@@ -41,6 +41,7 @@ module Finanzas
             name: sub.name,
             code: sub.code,
             icon: sub.icon,
+            description: sub.description,
             is_system: sub.system?,
             category_id: sub.category_id,
             user_id: sub.user_id
@@ -58,6 +59,7 @@ module Finanzas
             name: row[:name],
             code: row[:code],
             icon: row[:icon],
+            description: row[:description],
             is_system: row[:is_system],
             user_id: row[:user_id],
             transaction_count: row[:transaction_count],
