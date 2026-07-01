@@ -7,9 +7,10 @@ class Category < ApplicationRecord
   has_many :transactions, dependent: :nullify
   has_many :planned_expenses, dependent: :restrict_with_exception
 
-  # RFC-0001. `social` eliminado (categoría vacía borrada en Etapa 5). `flexible` aceptado
-  # (convive con `discretionary` hasta un eventual rename). `investment` en transición (Etapa 6).
-  TYPES = %w[committed necessary discretionary flexible investment income unknown].freeze
+  # RFC-0001 — modelo final: 3 tiers de agencia (committed/necessary/discretionary="Flexible")
+  # + income + unknown. `social` e `investment` eliminados: no eran tiers de agencia
+  # (social → subcategoría bajo flexible; inversión → OBJETIVO, modelado por savings_goals + fases).
+  TYPES = %w[committed necessary discretionary flexible income unknown].freeze
 
   # RFC-0001 — eje objetivo: 3 tiers de agencia (+ income/unknown). Durante la migración
   # el tier se DERIVA del category_type; no hay columna paralela que pueda divergir.

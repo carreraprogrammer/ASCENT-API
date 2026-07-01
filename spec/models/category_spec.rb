@@ -2,15 +2,16 @@ require "rails_helper"
 
 RSpec.describe Category, type: :model do
   describe "validations" do
-    it "acepta los category_type vigentes y el nuevo tier `flexible`" do
-      %w[committed necessary discretionary flexible investment income unknown].each do |type|
+    it "acepta los category_type vigentes (3 tiers + income/unknown)" do
+      %w[committed necessary discretionary flexible income unknown].each do |type|
         cat = build(:category, category_type: type)
         expect(cat).to be_valid, "esperaba que #{type} fuera válido"
       end
     end
 
-    it "rechaza category_type eliminados/desconocidos (social ya no es válido)" do
+    it "rechaza category_type eliminados (social/investment ya no son válidos)" do
       expect(build(:category, category_type: "social")).not_to be_valid
+      expect(build(:category, category_type: "investment")).not_to be_valid
       expect(build(:category, category_type: "nope")).not_to be_valid
     end
   end
