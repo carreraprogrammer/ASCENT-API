@@ -4,7 +4,7 @@ module Finanzas
       def all_for_account(account_id)
         records = ::Category.where(account_id: account_id)
                              .or(::Category.where(user_id: nil))
-                             .includes(:subcategories)
+                             .includes(:linked_subcategories, :subcategories)
                              .order(:category_type, :name)
         records.map { |r| map_to_entity(r) }
       end
@@ -65,7 +65,13 @@ module Finanzas
       private
 
       def map_to_entity(record)
-        subcategories = (record.association(:subcategories).loaded? ? record.subcategories : []).map do |s|
+        # RFC-0001: las subcategorías (funciones) se vinculan por el m2m
+        # category_subcategories; una función puede aparecer bajo varios tiers.
+        # Fallback defensivo a la FK primaria si la categoría aún no tiene join
+        # (subcategoría sin migrar). Evita categorías vacías en el wizard.
+        linked = record.association(:linked_subcategories).loaded? ? record.linked_subcategories : []
+        primary = record.association(:subcategories).loaded? ? record.subcategories : []
+        subcategories = (linked.presence || primary).map do |s|
           Finanzas::Entities::Subcategory.new(
             id: s.id, category_id: s.category_id, user_id: s.user_id,
             name: s.name, code: s.code, icon: s.icon, is_system: s.is_system,

@@ -28,6 +28,7 @@ class RecurringObligation < ApplicationRecord
   validate :debt_source_must_exist
   validate :debt_source_must_use_credit_subcategory
   validate :credit_subcategory_requires_debt_source
+  validate :category_must_match_subcategory_tier
   validate :end_date_not_in_past, if: -> { end_date.present? && end_date_changed? }
 
   # Excludes obligations whose end_date has already passed.
@@ -83,5 +84,19 @@ class RecurringObligation < ApplicationRecord
 
   def end_date_not_in_past
     errors.add(:end_date, "no puede ser anterior a hoy") if end_date < Date.current
+  end
+
+  # RFC-0001: la subcategoría (función) puede pertenecer a varios tiers vía el m2m
+  # category_subcategories. El tier (category) de la obligación debe ser uno de esos.
+  # Evita el caso que rompía el wizard: obligación con category=Flexible y sub=Salud
+  # (Salud solo vive en Necesario) → recurrente "huérfano" repartido a ciegas.
+  def category_must_match_subcategory_tier
+    return if category_id.blank? || subcategory.blank?
+
+    valid_ids = subcategory.linked_categories.pluck(:id)
+    valid_ids = [ subcategory.category_id ].compact if valid_ids.empty?
+    return if valid_ids.empty? || valid_ids.include?(category_id)
+
+    errors.add(:category_id, "no coincide con ningún tier de la subcategoría '#{subcategory.name}'")
   end
 end
