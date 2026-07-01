@@ -8,7 +8,7 @@ module Finanzas
         @repo = repo
       end
 
-      def call(id:, category_ids: nil, name: nil, icon: nil)
+      def call(id:, category_ids: nil, name: nil, icon: nil, description: nil)
         record = @repo.find_record(id)
         raise Finanzas::Errors::InvalidSubcategory, "Subcategory not found" unless record
 
@@ -19,7 +19,7 @@ module Finanzas
           raise Finanzas::Errors::InvalidSubcategory, "Tier must be a system category" unless categories.all?(&:is_system?)
         end
 
-        @repo.update_fields(id, category_ids: category_ids, name: name, icon: icon)
+        @repo.update_fields(id, category_ids: category_ids, name: name, icon: icon, description: description)
       end
     end
   end

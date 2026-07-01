@@ -21,6 +21,7 @@ module Api
           name: subcategory_params[:name],
           category_ids: category_ids_param,
           icon: subcategory_params[:icon],
+          description: subcategory_params[:description],
           user_id: current_owner_user_id
         )
 
@@ -39,7 +40,8 @@ module Api
           id: params[:id],
           category_ids: category_ids_param,
           name: subcategory_params[:name],
-          icon: subcategory_params[:icon]
+          icon: subcategory_params[:icon],
+          description: subcategory_params[:description]
         )
         render json: { data: Finanzas::Presenters::CategoryPresenter.subcategory_resource(subcategory) }
       rescue Finanzas::Errors::InvalidSubcategory => e
@@ -65,7 +67,7 @@ module Api
       private
 
       def subcategory_params
-        params.permit(:name, :category_id, :icon).to_h.symbolize_keys
+        params.permit(:name, :category_id, :icon, :description).to_h.symbolize_keys
       end
 
       # Acepta `category_ids: []` (many-to-many) o `category_id` único (compat).
