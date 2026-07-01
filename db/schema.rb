@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_30_130000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_01_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -131,6 +131,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_30_130000) do
     t.index ["code"], name: "index_categories_on_code"
     t.index ["user_id", "code"], name: "index_categories_on_user_id_and_code"
     t.index ["user_id"], name: "index_categories_on_user_id"
+  end
+
+  create_table "category_subcategories", force: :cascade do |t|
+    t.bigint "category_id", null: false
+    t.bigint "subcategory_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id", "subcategory_id"], name: "index_category_subcategories_on_category_id_and_subcategory_id", unique: true
+    t.index ["category_id"], name: "index_category_subcategories_on_category_id"
+    t.index ["subcategory_id"], name: "index_category_subcategories_on_subcategory_id"
   end
 
   create_table "chat_messages", force: :cascade do |t|
@@ -641,6 +651,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_30_130000) do
   add_foreign_key "budgets", "users"
   add_foreign_key "categories", "accounts"
   add_foreign_key "categories", "users"
+  add_foreign_key "category_subcategories", "categories"
+  add_foreign_key "category_subcategories", "subcategories"
   add_foreign_key "chat_messages", "accounts"
   add_foreign_key "debts", "accounts"
   add_foreign_key "debts", "users"

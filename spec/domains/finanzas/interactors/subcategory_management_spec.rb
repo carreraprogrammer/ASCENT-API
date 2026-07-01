@@ -1,22 +1,34 @@
 require "rails_helper"
 
-RSpec.describe "Gestión de subcategorías (RFC-0001)" do
+RSpec.describe "Gestión de subcategorías (RFC-0001, many-to-many)" do
   let(:user)       { create(:user) }
   let(:account)    { user.default_account }
-  let!(:necessary) { create(:category, category_type: "necessary",    code: "zz_nec",  user_id: nil, is_system: true) }
-  let!(:flexible)  { create(:category, category_type: "discretionary", code: "zz_flex", user_id: nil, is_system: true) }
+  let!(:necessary) { create(:category, category_type: "necessary",    code: "zz_nec",  color: "#D4732A", user_id: nil, is_system: true) }
+  let!(:flexible)  { create(:category, category_type: "discretionary", code: "zz_flex", color: "#14B8A6", user_id: nil, is_system: true) }
+
+  describe Finanzas::Interactors::CreateSubcategory do
+    it "crea una subcategoría vinculada a una o más categorías (chips)" do
+      sub = described_class.new.call(
+        name: "Salud", category_ids: [ necessary.id, flexible.id ], icon: "heartOutline", user_id: user.id
+      )
+      links = CategorySubcategory.where(subcategory_id: sub.id).pluck(:category_id)
+      expect(links).to contain_exactly(necessary.id, flexible.id)
+      expect(sub.category_id).to eq(necessary.id) # primaria = primera
+    end
+  end
 
   describe Finanzas::Interactors::UpdateSubcategory do
-    it "cambia el tier (category_id) de una subcategoría a cualquier tier de sistema" do
+    it "reemplaza los vínculos a categorías (una o más tiers)" do
       sub = create(:subcategory, category: necessary, code: "zz_fn", name: "F", user_id: user.id, is_system: false)
-      result = described_class.new.call(id: sub.id, category_id: flexible.id)
-      expect(result.category_id).to eq(flexible.id)
+      described_class.new.call(id: sub.id, category_ids: [ necessary.id, flexible.id ])
+      links = CategorySubcategory.where(subcategory_id: sub.id).pluck(:category_id)
+      expect(links).to contain_exactly(necessary.id, flexible.id)
     end
 
     it "rechaza un tier que no es categoría de sistema" do
       nonsys = create(:category, category_type: "necessary", code: "zz_ns", user_id: user.id, is_system: false)
       sub = create(:subcategory, category: necessary, code: "zz_fn2", name: "F", user_id: user.id, is_system: false)
-      expect { described_class.new.call(id: sub.id, category_id: nonsys.id) }
+      expect { described_class.new.call(id: sub.id, category_ids: [ nonsys.id ]) }
         .to raise_error(Finanzas::Errors::InvalidSubcategory)
     end
   end
@@ -41,12 +53,19 @@ RSpec.describe "Gestión de subcategorías (RFC-0001)" do
   end
 
   describe Finanzas::Interactors::ListSubcategories do
-    it "incluye el tier y el conteo de transacciones" do
-      sub = create(:subcategory, category: necessary, code: "zz_list", name: "L", user_id: user.id, is_system: false)
-      create(:transaction, user: user, category: necessary, subcategory: sub)
+    it "devuelve las categorías vinculadas (chips) y el conteo de transacciones" do
+      sub = Finanzas::Interactors::CreateSubcategory.new.call(
+        name: "Salud", category_ids: [ necessary.id, flexible.id ], icon: "heartOutline", user_id: user.id
+      )
+      create(:transaction, user: user, category: necessary, subcategory_id: sub.id)
 
-      row = described_class.new.call(account_id: account.id, user_id: user.id).find { |r| r[:id] == sub.id }
-      expect(row[:category_type]).to eq("necessary")
+      row = Finanzas::Interactors::ListSubcategories.new
+              .call(account_id: account.id, user_id: user.id)
+              .find { |r| r[:id] == sub.id }
+
+      tiers = row[:categories].map { |c| c[:category_type] }
+      expect(tiers).to contain_exactly("necessary", "discretionary")
+      expect(row[:categories].map { |c| c[:color] }).to include("#D4732A", "#14B8A6")
       expect(row[:transaction_count]).to eq(1)
     end
   end
