@@ -41,15 +41,6 @@ SYSTEM_CATEGORIES = [
     ]
   },
   {
-    # RFC-0001: `investment` en transición — solo conserva ahorro voluntario hasta que
-    # el módulo Patrimonio (Etapa 6) absorba esos movimientos. No es un tier de gasto.
-    name: "Inversión", code: "investment", category_type: "investment",
-    color: "#1A9E4A", icon: "trendingUpOutline",
-    subcategories: [
-      { name: "Ahorro voluntario",  code: "ahorro_voluntario", icon: "saveOutline" }
-    ]
-  },
-  {
     name: "Ingreso", code: "income", category_type: "income",
     color: "#0E96AD", icon: "cashOutline",
     subcategories: [
