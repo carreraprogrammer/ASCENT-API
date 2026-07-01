@@ -142,7 +142,7 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 
 ---
 
-### Etapa 3 — Migrate (Presupuesto): asignación por tier — 🟡 EN CURSO
+### Etapa 3 — Migrate (Presupuesto): asignación por tier — ✅ COMPLETA (2026-06-30)
 
 **Objetivo.** Que el motor de presupuesto opere sobre tiers de agencia.
 
@@ -151,7 +151,7 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 - ✅ 3b `monthly_plans_controller.rb` — señales por tier flexible.
 - ✅ 3c `budget_category.rb` — acepta `flexible`.
 - ✅ 3d overflow `investment` — sin cambio (destino del excedente → Patrimonio, Etapa 6).
-- ⬜ 3e **Modo Emergencia** (única feature nueva — simular recorte de flexibles).
+- ✅ 3e **Modo Emergencia** — `HealthMetrics#emergency_mode` (survival_floor = committed+necessary; cuttable_recurring = flexible; surplus_over_floor). Expuesto en `/health_metrics` (ya consumido por insight + nightly); el agente lo usa para "¿qué pasa si pierdo el ingreso?".
 
 > Nota: la "prioridad defendida" (un flag para elevar flexibles) **se descartó** por
 > sobre-ingeniería. Priorizar un flexible = presupuestarlo y/o tenerlo como recurrente
