@@ -173,9 +173,14 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 
 ---
 
-### Etapa 4 — Migrate (Web/Dashboard): UI y lectura conductual por tier
+### Etapa 4 — Migrate (Web/Dashboard): UI y lectura conductual por tier — ✅ COMPLETA (2026-06-30)
 
 **Objetivo.** Que el front consuma tiers y deje de depender de `totals.{investment,social}`.
+
+**Entregado (daniel15k-web, Vercel):**
+- `financeBehavior.ts`: `BehaviorTone`/`behaviorCopy`/señales a 3 tiers (+income/unknown); fuera investment/social. (No hizo falta dual-emit: `summary.totals` se computa client-side desde las transacciones ya migradas.)
+- Color **Flexible → teal `#14B8A6`** (frío) en `tokens.css` (dark+light) + BRAND.md: separa de committed(rojo)/necessary(ámbar). Tokens investment/social quedan hasta Etapa 5.
+- Typecheck `tsc` limpio. Pendiente manual del usuario: `cap sync ios` para reflejar colores en la app iOS.
 
 **Cambios.**
 - `financeBehavior.ts`: `BehaviorTone` → 3 tiers; reescribir reglas que comparan `discretionary/investment/social` (social pasa a leerse por subcategoría, no por categoría).
