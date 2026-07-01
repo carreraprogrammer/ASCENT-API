@@ -19,6 +19,10 @@ module Finanzas
     class WizardData
       HISTORY_MONTHS = 3
       PLANNED_EXPENSE_TYPES = %w[mandatory_one_off irregular_maintenance].freeze
+      # Un mes cuyo ingreso confirmado supera el recurrente por este factor se trata
+      # como "windfall" (prima/aguinaldo): su gasto NO alimenta el baseline recurrente
+      # y su excedente se reporta como ingreso extraordinario a asignar aparte (YNAB).
+      WINDFALL_INCOME_RATIO = 1.2
 
       def initialize(
         income_repo:   Finanzas::Repositories::IncomeSourceRepository.new,
@@ -40,10 +44,13 @@ module Finanzas
 
         # Señales atribuidas por par (category_id, subcategory_id) — respeta el m2m:
         # una función en dos tiers no se cuenta doble.
+        # Meses windfall (prima) — su gasto no debe fijar el baseline recurrente.
+        windfall_months = detect_windfall_months(account_id, suggested_total)
+
         recurring_by_category = fetch_recurring_by_category(account_id)
         recurring_by_pair     = fetch_recurring_by_pair(account_id)
         planned_by_pair       = fetch_planned_by_pair(account_id)
-        baseline_by_pair      = fetch_median_by_pair(account_id)
+        baseline_by_pair      = fetch_median_by_pair(account_id, windfall_months)
         confirmed_by_pair     = fetch_confirmed_budget_by_pair(account_id, month, year)
         prev_budget_by_pair   = fetch_prev_month_budget_by_pair(account_id, month, year)
         paid_by_pair          = fetch_paid_this_month_by_pair(account_id, month, year)
@@ -80,11 +87,15 @@ module Finanzas
         )
 
         allocation = compute_allocation_meta(category_rows, available_pool, goal_contribution, suggested_total)
+        allocation = allocation.merge(
+          excluded_windfall_months: windfall_months.map { |(y, m)| format("%04d-%02d", y, m) }.sort
+        )
 
         {
           income:                  income_section,
           categories:              category_rows,
           suggested_sinking_funds: build_suggested_sinking_funds(account_id),
+          extraordinary_income:    summarize_extraordinary_income(account_id, suggested_total, windfall_months),
           goal_contribution: {
             amount:     goal_contribution,
             label:      goal_contribution_label(phase),
@@ -405,7 +416,9 @@ module Finanzas
       # { [category_id, subcategory_id] => mediana_mensual } — últimos HISTORY_MONTHS.
       # Mediana (no media) de los totales mensuales: un mes atípico no infla el baseline.
       # Se calcula sobre los meses CON actividad ("cuando gastas en esto, cuánto sueles gastar").
-      def fetch_median_by_pair(account_id)
+      # Excluye meses windfall: su gasto está financiado por ingreso extraordinario, no
+      # representa tu presupuesto recurrente.
+      def fetch_median_by_pair(account_id, windfall_months = Set.new)
         since = HISTORY_MONTHS.months.ago.beginning_of_month.to_date
 
         monthly = ::Transaction
@@ -416,8 +429,55 @@ module Finanzas
           .sum(:amount)
 
         buckets = Hash.new { |h, k| h[k] = [] }
-        monthly.each { |(cat_id, sub_id, _y, _m), total| buckets[[ cat_id, sub_id ]] << total.to_i }
+        monthly.each do |(cat_id, sub_id, y, m), total|
+          next if windfall_months.include?([ y, m ])
+
+          buckets[[ cat_id, sub_id ]] << total.to_i
+        end
         buckets.transform_values { |monthly_totals| median(monthly_totals) }
+      end
+
+      # Meses (dentro de la ventana de historial) cuyo ingreso confirmado supera al
+      # recurrente esperado por WINDFALL_INCOME_RATIO. Set de [year, month].
+      def detect_windfall_months(account_id, expected_recurring_income)
+        return Set.new if expected_recurring_income.to_i <= 0
+
+        since   = HISTORY_MONTHS.months.ago.beginning_of_month.to_date
+        ceiling = expected_recurring_income * WINDFALL_INCOME_RATIO
+
+        ::Transaction
+          .where(account_id: account_id, transaction_type: "income", status: "confirmed")
+          .where("date >= ?", since)
+          .group(:year, :month)
+          .sum(:amount)
+          .select { |_ym, total| total.to_i > ceiling }
+          .keys
+          .to_set
+      end
+
+      # Ingreso extraordinario detectado en la ventana: el excedente sobre lo recurrente
+      # en meses windfall. Se reporta para asignarlo aparte (metas/deuda/bolsillos),
+      # no para inflar el presupuesto mensual (YNAB — el dinero de una vez tiene su propio job).
+      def summarize_extraordinary_income(account_id, expected_recurring_income, windfall_months)
+        return { detected_recent: 0, months: [], hint: nil } if windfall_months.empty?
+
+        since = HISTORY_MONTHS.months.ago.beginning_of_month.to_date
+        by_month = ::Transaction
+          .where(account_id: account_id, transaction_type: "income", status: "confirmed")
+          .where("date >= ?", since)
+          .group(:year, :month)
+          .sum(:amount)
+
+        detail = windfall_months.map do |(y, m)|
+          surplus = [ by_month[[ y, m ]].to_i - expected_recurring_income, 0 ].max
+          { month: format("%04d-%02d", y, m), surplus: surplus }
+        end.sort_by { |h| h[:month] }
+
+        {
+          detected_recent: detail.sum { |h| h[:surplus] },
+          months:          detail,
+          hint:            "Ingreso extraordinario (prima/aguinaldo). Asígnalo aparte a metas, deuda o bolsillos; no lo sumes al presupuesto recurrente."
+        }
       end
 
       def median(values)
