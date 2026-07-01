@@ -45,6 +45,64 @@ module Finanzas
         scope.map { |r| map_to_entity(r) }
       end
 
+      # Subcategorías gestionables por la cuenta (de sistema + propias del usuario),
+      # con su tier (category_type) y el conteo de transacciones de la cuenta.
+      def manageable_for(account_id:, user_id:)
+        counts = ::Transaction.where(account_id: account_id)
+                              .where.not(subcategory_id: nil)
+                              .group(:subcategory_id).count
+        ::Subcategory.includes(:category)
+                     .where(is_system: true)
+                     .or(::Subcategory.where(user_id: user_id))
+                     .order(:name)
+                     .map do |r|
+          {
+            id: r.id, name: r.name, code: r.code, icon: r.icon,
+            category_id: r.category_id, category_type: r.category&.category_type,
+            is_system: r.is_system, user_id: r.user_id,
+            transaction_count: counts[r.id].to_i
+          }
+        end
+      end
+
+      def find_record(id)
+        ::Subcategory.find_by(id: id)
+      end
+
+      def update_fields(id, category_id: nil, name: nil, icon: nil)
+        record = ::Subcategory.find_by(id: id)
+        raise Finanzas::Errors::InvalidSubcategory, "Subcategory not found" unless record
+
+        record.category_id = category_id if category_id.present?
+        record.name = name if name.present?
+        record.icon = icon if icon.present?
+        record.save!
+        map_to_entity(record)
+      rescue ActiveRecord::RecordInvalid => e
+        raise Finanzas::Errors::InvalidSubcategory, e.message
+      end
+
+      # Reasigna todas las referencias (transacciones, budgets, recurrentes, planned)
+      # a `reassign_to` y luego borra la subcategoría. Atómico: sin huérfanos.
+      def reassign_and_destroy(id, reassign_to:)
+        record = ::Subcategory.find_by(id: id)
+        raise Finanzas::Errors::InvalidSubcategory, "Subcategory not found" unless record
+
+        target = reassign_to.present? ? ::Subcategory.find_by(id: reassign_to) : nil
+        raise Finanzas::Errors::InvalidSubcategory, "Target subcategory not found" if reassign_to.present? && target.nil?
+        raise Finanzas::Errors::InvalidSubcategory, "Cannot reassign to itself" if target && target.id == record.id
+
+        ActiveRecord::Base.transaction do
+          if target
+            ::Transaction.where(subcategory_id: id).update_all(subcategory_id: target.id)
+            ::Budget.where(subcategory_id: id).update_all(subcategory_id: target.id)
+            ::RecurringObligation.where(subcategory_id: id).update_all(subcategory_id: target.id)
+            ::PlannedExpense.where(subcategory_id: id).update_all(subcategory_id: target.id)
+          end
+          record.destroy!
+        end
+      end
+
       private
 
       def map_to_entity(record)
