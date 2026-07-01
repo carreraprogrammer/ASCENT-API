@@ -17,6 +17,7 @@ SYSTEM_CATEGORIES = [
     color: "#D4732A", icon: "cartOutline",
     subcategories: [
       { name: "Mercado",    code: "mercado",    icon: "cartOutline" },
+      { name: "Almuerzo",   code: "almuerzo",   icon: "restaurantOutline" },
       { name: "Gasolina",   code: "gasolina",   icon: "carOutline" },
       { name: "Transporte", code: "transporte", icon: "busOutline" },
       { name: "Salud",       code: "salud",       icon: "heartOutline" },
