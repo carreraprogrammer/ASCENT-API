@@ -43,7 +43,7 @@ module Finanzas
         recurring_by_category = fetch_recurring_by_category(account_id)
         recurring_by_pair     = fetch_recurring_by_pair(account_id)
         planned_by_pair       = fetch_planned_by_pair(account_id)
-        avg_by_pair           = fetch_avg_by_pair(account_id)
+        baseline_by_pair      = fetch_median_by_pair(account_id)
         confirmed_by_pair     = fetch_confirmed_budget_by_pair(account_id, month, year)
         prev_budget_by_pair   = fetch_prev_month_budget_by_pair(account_id, month, year)
         paid_by_pair          = fetch_paid_this_month_by_pair(account_id, month, year)
@@ -73,7 +73,7 @@ module Finanzas
           recurring_by_category,
           recurring_by_pair,
           planned_by_pair,
-          avg_by_pair,
+          baseline_by_pair,
           confirmed_by_pair,
           prev_budget_by_pair,
           paid_by_pair
@@ -125,7 +125,7 @@ module Finanzas
         recurring_by_category,
         recurring_by_pair,
         planned_by_pair,
-        avg_by_pair,
+        baseline_by_pair,
         confirmed_by_pair,
         prev_budget_by_pair,
         paid_by_pair
@@ -142,7 +142,7 @@ module Finanzas
             cat,
             recurring_by_pair,
             planned_by_pair,
-            avg_by_pair,
+            baseline_by_pair,
             confirmed_by_pair,
             prev_budget_by_pair,
             paid_by_pair
@@ -172,7 +172,7 @@ module Finanzas
         category,
         recurring_by_pair,
         planned_by_pair,
-        avg_by_pair,
+        baseline_by_pair,
         confirmed_by_pair,
         prev_budget_by_pair,
         paid_by_pair
@@ -216,15 +216,15 @@ module Finanzas
               source_of_truth: "planned_expenses",
               edit_hint: "Se calcula desde gastos planeados obligatorios."
             )
-          elsif avg_by_pair.key?(key)
+          elsif baseline_by_pair.key?(key)
             build_subcategory_row(
               sub,
-              suggested_amount: avg_by_pair[key],
+              suggested_amount: baseline_by_pair[key],
               confidence: "medium",
               source: "history",
               locked: false,
               source_of_truth: "transactions",
-              edit_hint: "Estimado por tu historial reciente (últimos #{HISTORY_MONTHS} meses)."
+              edit_hint: "Mediana de tu gasto en los últimos #{HISTORY_MONTHS} meses (robusta a meses atípicos)."
             )
           elsif prev_budget_by_pair.key?(key)
             build_subcategory_row(
@@ -402,26 +402,30 @@ module Finanzas
         end
       end
 
-      # { [category_id, subcategory_id] => avg_monthly_amount } — últimos HISTORY_MONTHS.
-      def fetch_avg_by_pair(account_id)
+      # { [category_id, subcategory_id] => mediana_mensual } — últimos HISTORY_MONTHS.
+      # Mediana (no media) de los totales mensuales: un mes atípico no infla el baseline.
+      # Se calcula sobre los meses CON actividad ("cuando gastas en esto, cuánto sueles gastar").
+      def fetch_median_by_pair(account_id)
         since = HISTORY_MONTHS.months.ago.beginning_of_month.to_date
 
-        rows = ::Transaction
+        monthly = ::Transaction
           .where(account_id: account_id, transaction_type: "expense", status: "confirmed")
           .where("date >= ?", since)
           .where.not(category_id: nil).where.not(subcategory_id: nil)
-          .select(
-            "category_id",
-            "subcategory_id",
-            "SUM(amount) AS total",
-            "COUNT(DISTINCT (year * 100 + month)) AS month_count"
-          )
-          .group(:category_id, :subcategory_id)
+          .group(:category_id, :subcategory_id, :year, :month)
+          .sum(:amount)
 
-        rows.each_with_object({}) do |row, hash|
-          months = [ row.month_count.to_i, 1 ].max
-          hash[[ row.category_id, row.subcategory_id ]] = (row.total.to_f / months).round
-        end
+        buckets = Hash.new { |h, k| h[k] = [] }
+        monthly.each { |(cat_id, sub_id, _y, _m), total| buckets[[ cat_id, sub_id ]] << total.to_i }
+        buckets.transform_values { |monthly_totals| median(monthly_totals) }
+      end
+
+      def median(values)
+        return 0 if values.empty?
+
+        sorted = values.sort
+        mid = sorted.size / 2
+        sorted.size.odd? ? sorted[mid] : ((sorted[mid - 1] + sorted[mid]) / 2.0).round
       end
 
       # { [category_id, subcategory_id] => amount_limit } — presupuesto confirmado del mes.
