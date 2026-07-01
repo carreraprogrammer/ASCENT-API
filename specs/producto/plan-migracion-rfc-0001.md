@@ -1,6 +1,8 @@
 # Plan de Migración — RFC-0001 (eje de agencia de 6 categorías → 3 tiers)
 
-> Estado: 📋 plan de ejecución — pendiente de aprobación
+> Estado: ✅ MIGRACIÓN COMPLETA (2026-06-30) — 6 categorías → 3 tiers de agencia, vivo en prod
+> (API + agente + web). Etapas 0-5 hechas; Etapa 6 (Patrimonio) resultó innecesaria. Quedan
+> solo loose ends opcionales de data hygiene (ver Etapa 6). Rename discretionary→flexible descartado.
 > Creado: 2026-06-28
 > Acompaña a: [Rediseño.md](./Rediseño.md) (RFC-0001) y
 > [../research/categorizacion-de-gastos.md](../research/categorizacion-de-gastos.md)
@@ -203,23 +205,18 @@ colores distinguibles; el web ya no lee `totals.investment/social`.
 
 ---
 
-### Etapa 5 — Contract: eliminar el modelo viejo — 🟢 PARCIAL (2026-06-30)
+### Etapa 5 — Contract: eliminar el modelo viejo — ✅ COMPLETA (2026-06-30)
 
-**Objetivo.** Quitar las categorías/scaffolding muertas una vez que nada las lee.
+**Objetivo.** Quitar las categorías muertas una vez que nada las lee.
 
 **Hecho:**
-- ✅ **Categoría `social` borrada** de prod (estaba vacía: 0 txns/budgets/recurrentes; re-verificado antes de destruir). Quitada de seeds y de `Category::TYPES`. La subcat `social` fusionada bajo Flexible queda intacta (39 txns).
-- ✅ seeds a 3 tiers: herramientas→necessary, cursos/suplementos/social→discretionary, investment recortado a ahorro_voluntario, color Flexible=teal.
+- ✅ **Categoría `social` borrada** (vacía; re-verificada). La subcat `social` fusionada bajo Flexible queda intacta (39 txns).
+- ✅ **Categoría `investment` borrada** — la inversión es un OBJETIVO (savings_goals + fases), no un tier. Sus 4 movimientos de ahorro quedaron `category_id=nil`; el aporte al fondo conserva su `savings_goal`.
+- ✅ Ambas fuera de seeds y de `Category::TYPES`. **Modelo final: committed / necessary / discretionary(Flexible) / income / unknown.**
 
-**Decisión — rename `discretionary`→`flexible`: SE SALTA (recomendación aceptada).**
-Es cosmético (code `discretionary` muestra "Flexible" en todo; el helper de tier normaliza).
-El costo/riesgo es alto (cada string en 3 repos + la columna/campo `discretionary_limit` en
-API/web/plan). No vale el riesgo por cero ganancia funcional. Se deja `discretionary` como
-code permanente.
-
-**Pendiente (para Etapa 6, no ahora):** borrar la categoría `investment` — todavía tiene 4
-movimientos de ahorro + 2 budgets que espera absorber el módulo Patrimonio. Tokens CSS
-`--color-social`/`--color-investment` quedan (inofensivos).
+**Decisión — rename `discretionary`→`flexible`: SE SALTA (aceptado).** Cosmético; el code
+`discretionary` muestra "Flexible" y el helper de tier normaliza. Alto costo/riesgo (cada
+string en 3 repos + la columna `discretionary_limit`) por cero ganancia. Queda permanente.
 
 | Riesgo | Mitigación |
 |---|---|
@@ -228,21 +225,25 @@ movimientos de ahorro + 2 budgets que espera absorber el módulo Patrimonio. Tok
 
 ---
 
-### Etapa 6 — Módulo de Patrimonio (lo que era `investment`)
+### Etapa 6 — Módulo de Patrimonio — ❌ NO NECESARIA (2026-06-30)
 
-**Objetivo.** Sacar la inversión-instrumento del flujo de caja y darle módulo propio.
+**Insight del usuario que la eliminó:** la inversión es un **OBJETIVO** (como fondo de
+emergencia o pago de deuda), no un tier de agencia — y los objetivos YA los modela el
+sistema con `savings_goals` (goal_type incluye `investment`) + las fases financieras
+(`investing`/`wealth_building`) + `sinking_funds`. No hace falta un módulo Patrimonio nuevo.
 
-**Cambios.**
-- Entidad/módulo Patrimonio: portafolios, CDT/ETF/acciones/cripto, rentabilidad, riesgo (RFC-0001 §8).
-- Migrar transacciones/metas marcadas `is_patrimony` (Etapa 1) al nuevo módulo, **con confirmación del usuario** (la bifurcación instrumento vs gasto-en-sí no es automatizable).
-- `savings_goal.goal_type=investment` y `recurring_obligation` `Investment` reapuntan al módulo.
+**Qué se hizo en su lugar:** se borró la categoría `investment` (Etapa 5). Sus 4 movimientos
+de ahorro quedaron con `category_id = nil` (son movimientos de fondo, no gasto de un tier);
+el aporte al fondo de emergencia ya estaba ligado a su `savings_goal`.
 
-**Criterio de salida.** Patrimonio separado del presupuesto; flujo de caja vs patrimonio claramente distintos.
-
-| Riesgo | Mitigación |
-|---|---|
-| Scope creep (un módulo de inversión completo es enorme) | MVP mínimo: registrar instrumento + saldo + aporte; sin proyecciones complejas al inicio |
-| Reclasificación masiva incorrecta de `investment` histórico | Flujo asistido de a poco ("¿esto era un instrumento o un gasto en ti?"), no batch ciego |
+**Loose ends opcionales (data hygiene, no bloquean nada):**
+- 7 transacciones sin categoría (4 movimientos de fondo + 3 pre-existentes): idealmente
+  ligarlas a su `sinking_fund`/`savings_goal` o marcarlas como transferencia (hoy inflan
+  ligeramente expense/income). Revisión asistida, no batch.
+- Subcats redundantes acumulados bajo necessary/discretionary (ej. dos "ejercicio", "libros"
+  huérfano): cruft inofensivo (metadata secundaria).
+- Tokens CSS `--color-investment`/`--color-social` sin uso.
+- Rename code `discretionary`→`flexible`: descartado (cosmético, ver Etapa 5).
 
 ---
 
