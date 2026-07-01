@@ -30,6 +30,7 @@ module Finanzas
           base_income:                  base_income,
           ratio_gastos_fijos:           ratio_gastos_fijos(obligations, base_income),
           emergency_fund:               ef,
+          emergency_mode:               emergency_mode(obligations, base_income),
           tasa_ahorro:                  tasa_ahorro(goals, base_income),
           dti:                          dti(debts, base_income),
           age_of_money:                 age_of_money(account_id, today),
@@ -38,6 +39,34 @@ module Finanzas
       end
 
       private
+
+      # ── Modo Emergencia (RFC-0001 §3f) ──────────────────────────────────────
+      # "Si pierdo el ingreso, ¿cuál es mi piso de supervivencia y cuánto libero?".
+      # Agrupa las obligaciones recurrentes por tier de agencia (Category#tier):
+      #   survival_floor = committed + necessary (lo que hay que seguir pagando)
+      #   cuttable       = flexible (recurrentes que se pausarían en una crisis)
+      # El gasto flexible del día a día se recorta también pero no vive en obligaciones;
+      # acá se mide el piso fijo, que es lo accionable para dimensionar una emergencia.
+      def emergency_mode(obligations, base_income)
+        by_tier   = obligations.group_by { |o| o.category&.tier || "unknown" }
+        committed = tier_sum(by_tier, "committed")
+        necessary = tier_sum(by_tier, "necessary")
+        flexible  = tier_sum(by_tier, "flexible")
+        floor     = committed + necessary
+
+        {
+          survival_floor:      floor,
+          committed_monthly:   committed,
+          necessary_monthly:   necessary,
+          cuttable_recurring:  flexible,
+          base_income:         base_income,
+          surplus_over_floor:  base_income.positive? ? base_income - floor : nil
+        }
+      end
+
+      def tier_sum(by_tier, tier)
+        (by_tier[tier] || []).sum { |o| o.amount.to_i }
+      end
 
       # ── Ratio de gastos fijos (NC-4) ────────────────────────────────────────
       # Cuánto del ingreso base está comprometido en obligaciones recurrentes.
@@ -278,7 +307,7 @@ module Finanzas
       end
 
       def load_obligations(account_id)
-        ::RecurringObligation.where(account_id: account_id, active: true)
+        ::RecurringObligation.includes(:category).where(account_id: account_id, active: true)
       end
 
       def load_debts(account_id)
