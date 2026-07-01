@@ -203,17 +203,23 @@ colores distinguibles; el web ya no lee `totals.investment/social`.
 
 ---
 
-### Etapa 5 — Contract: eliminar el modelo viejo
+### Etapa 5 — Contract: eliminar el modelo viejo — 🟢 PARCIAL (2026-06-30)
 
-**Objetivo.** Quitar las 6 categorías una vez que nada las lee.
+**Objetivo.** Quitar las categorías/scaffolding muertas una vez que nada las lee.
 
-**Cambios.**
-- `Category::TYPES` y `BudgetCategory::CATEGORY_TYPES` → solo tiers + income/unknown.
-- Eliminar `category_type` viejo (o dejarlo solo como `subcategory`/tag funcional).
-- Seeds reescritos a 3 tiers.
-- API deja de dual-emit/dual-accept; specs pierden el banner "EN MIGRACIÓN".
+**Hecho:**
+- ✅ **Categoría `social` borrada** de prod (estaba vacía: 0 txns/budgets/recurrentes; re-verificado antes de destruir). Quitada de seeds y de `Category::TYPES`. La subcat `social` fusionada bajo Flexible queda intacta (39 txns).
+- ✅ seeds a 3 tiers: herramientas→necessary, cursos/suplementos/social→discretionary, investment recortado a ahorro_voluntario, color Flexible=teal.
 
-**Criterio de salida.** Cero referencias a `discretionary` (code), `investment`/`social` como `category_type` en código vivo; tests verdes; specs sin banner.
+**Decisión — rename `discretionary`→`flexible`: SE SALTA (recomendación aceptada).**
+Es cosmético (code `discretionary` muestra "Flexible" en todo; el helper de tier normaliza).
+El costo/riesgo es alto (cada string en 3 repos + la columna/campo `discretionary_limit` en
+API/web/plan). No vale el riesgo por cero ganancia funcional. Se deja `discretionary` como
+code permanente.
+
+**Pendiente (para Etapa 6, no ahora):** borrar la categoría `investment` — todavía tiene 4
+movimientos de ahorro + 2 budgets que espera absorber el módulo Patrimonio. Tokens CSS
+`--color-social`/`--color-investment` quedan (inofensivos).
 
 | Riesgo | Mitigación |
 |---|---|
