@@ -48,14 +48,15 @@ module Finanzas
         end
 
         if attrs[:subcategory_code] && !attrs[:subcategory_id]
-          category_id = attrs[:category_id]
-          subcat = if category_id
-            ::Subcategory.find_by(code: attrs[:subcategory_code], category_id: category_id)
-          else
-            ::Subcategory.find_by(code: attrs[:subcategory_code])
-          end
+          # RFC-0001 desacople: la subcategoría es una FUNCIÓN independiente del tier.
+          # Se prefiere la que esté bajo la categoría dada (compat), y si no, cualquiera con
+          # ese código (la función). NO se infiere el tier desde la subcategoría — el tier
+          # (category_id) es independiente y lo fija quien clasifica.
+          code = attrs[:subcategory_code]
+          cid  = attrs[:category_id]
+          subcat = (cid && ::Subcategory.find_by(code: code, category_id: cid)) ||
+                   ::Subcategory.find_by(code: code)
           attrs[:subcategory_id] = subcat&.id
-          attrs[:category_id] ||= subcat&.category_id
         end
 
         attrs.except(:category_code, :subcategory_code)
