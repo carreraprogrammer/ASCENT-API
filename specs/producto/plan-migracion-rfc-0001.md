@@ -247,6 +247,24 @@ el aporte al fondo de emergencia ya estaba ligado a su `savings_goal`.
 
 ---
 
+## 2.bis Desacople función ↔ tier (post-migración, 2026-06-30)
+
+Descubierto durante la limpieza: subcategoría↔categoría estaba como **one-to-many**
+(cada función forzada a un solo tier), lo que obligaba a duplicar funciones que abarcan
+tiers (ej. `salud`: medicina=necessary vs tratamiento=flexible). Modelo correcto: la
+**subcategoría es una FUNCIÓN ortogonal al tier**; el tier de una transacción lo da su `category_id`.
+
+- ✅ **D1** — `subcategories.category_id` nullable + `belongs_to :category, optional`.
+- ✅ **D2** — resolve_codes resuelve la función por código (global, sin inferir tier);
+  web `resolveTransactionCategory` toma el tier de `transaction.category` y la función de
+  la subcategoría; Brain clasifica en 2 ejes (tier + función plana); **dedupe** `salud`
+  (una sola función, usada across tiers). Verificado en prod. **Métricas por función habilitadas.**
+- ⬜ **D3 (opcional, UI)** — nil `category_id` + picker plano en web + seeds standalone.
+  No requerido para el objetivo (métricas/agente ya desacoplados); solo si se quiere asignar
+  cualquier función a cualquier tier desde el picker anidado del web.
+
+---
+
 ## 3. Migración de datos (concreta, con inventario de producción)
 
 > ✅ **EJECUTADA en prod 2026-06-29** (atómica, dry-run→apply, backup/mapa de restauración
