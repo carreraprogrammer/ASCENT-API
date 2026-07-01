@@ -90,7 +90,7 @@ Numeración alineada con RFC-0001 §15. Cada etapa: **objetivo · cambios · cri
 
 **Entregado y en prod:**
 - `Category#tier` + `TIER_FOR` (traductor derivado; sin columna paralela). `flexible` aceptado como type.
-- `recurring_obligations.defended_priority` (prioridad defendida).
+- ~~`recurring_obligations.defended_priority`~~ — agregada y luego **revertida** (sobre-ingeniería: priorizar un flexible = presupuestarlo, ver Etapa 3).
 - Social resuelto **sin schema nuevo**: subcategorías fusionadas en `social` bajo `flexible` (decisión de datos, se aplica en la reclasificación).
 - Deuda mínimo/aceleración: analizado, ya separado (ver abajo).
 - Harness de tests arreglado (docker-compose bind-mount + RAILS_ENV=test).
@@ -102,7 +102,7 @@ consumidores (Brain, presupuesto, web), no antes, porque cambia agregaciones.
 **Cambios.**
 - Migración: agregar `categories.agency_tier` (`committed|necessary|flexible`, nullable al inicio).
 - Backfill derivado: `committed→committed`, `necessary→necessary`, `discretionary→flexible`, `investment→flexible`, `social→flexible` (el tier; la semántica social la conserva la subcategoría, el matiz patrimonio se separa en Etapa 6).
-- Migración: `categories.is_patrimony` (boolean) para marcar lo que antes era `investment`-instrumento (se moverá en Etapa 6) y `transactions.defended_priority` (o atributo en la categoría/línea de plan) para la **prioridad defendida** (RFC-0001 §10).
+- Migración: `categories.is_patrimony` (boolean) para marcar lo que antes era `investment`-instrumento (se moverá en Etapa 6). (La "prioridad defendida" se descartó — no se agrega ningún atributo para eso.)
 - Social: **sin eje de tags** (descartado — las subcategorías ya cumplen ese rol). Las subcategorías sociales (Regalos, Salidas, Familia, Donaciones, Amigos) se re-parentan a su tier; la semántica social la lleva la subcategoría.
 - Deuda: distinguir **mínimo (committed)** vs **aceleración (decisión)**. **Analizado (2026-06-29): ya está separado, no requiere schema.** El mínimo vive como obligación recurrente (creditos) y alimenta el piso comprometido (`cash_flow_runway`) y el DTI; la aceleración es excedente vía `overflow_rule`, fuera del piso. Solo hay que **respetar la distinción en el motor de presupuesto (Etapa 3)** al fondear/recortar — la estructura actual ya lo permite.
 - Código: **dual-read** — los interactores empiezan a leer `agency_tier` con fallback al `category_type` viejo (helper único `Category#tier`).
@@ -113,7 +113,7 @@ consumidores (Brain, presupuesto, web), no antes, porque cambia agregaciones.
 |---|---|
 | Backfill incorrecto de `investment`/`social` (decisión semántica, no mecánica) | Backfill conservador a `flexible` + marcar `needs_review`; refinamiento asistido en Etapa 6, no en el backfill |
 | Dos fuentes de verdad (`category_type` vs `agency_tier`) divergen | Un solo helper `Category#tier`; prohibido leer `category_type` directo en código nuevo; lint/grep en CI |
-| `defended_priority` mal modelado (¿vive en la transacción, la categoría o la línea de plan?) | Decidir explícitamente: vive en la **línea de presupuesto/categoría del usuario**, no en cada transacción (es una postura, no un hecho puntual) |
+| (resuelto) ¿dónde modelar la "prioridad defendida"? | Se descartó el atributo: priorizar un flexible = presupuestarlo / hacerlo recurrente. Sin campo nuevo. |
 
 ---
 
@@ -142,30 +142,33 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 
 ---
 
-### Etapa 3 — Migrate (Presupuesto): asignación por tier + prioridad defendida — 🟡 EN CURSO
+### Etapa 3 — Migrate (Presupuesto): asignación por tier — 🟡 EN CURSO
 
-**Objetivo.** Que el motor de presupuesto opere sobre tiers y respete la prioridad defendida.
+**Objetivo.** Que el motor de presupuesto opere sobre tiers de agencia.
 
 **Progreso (2026-06-30):**
 - ✅ 3a `wizard_data.rb` — benchmarks 3 tiers; salta investment/social.
 - ✅ 3b `monthly_plans_controller.rb` — señales por tier flexible.
 - ✅ 3c `budget_category.rb` — acepta `flexible`.
 - ✅ 3d overflow `investment` — sin cambio (destino del excedente → Patrimonio, Etapa 6).
-- ⬜ 3e orden de fondeo con **prioridad defendida** (feature nueva).
-- ⬜ 3f **Modo Emergencia** (feature nueva).
+- ⬜ 3e **Modo Emergencia** (única feature nueva — simular recorte de flexibles).
+
+> Nota: la "prioridad defendida" (un flag para elevar flexibles) **se descartó** por
+> sobre-ingeniería. Priorizar un flexible = presupuestarlo y/o tenerlo como recurrente
+> (eso reserva el dinero). En emergencia se recorta como cualquier flexible. La columna
+> `recurring_obligations.defended_priority` agregada en Etapa 1 fue revertida.
 
 **Cambios.**
 - `wizard_data.rb`, `generate_monthly_financial_plan.rb`, `monthly_plans_controller.rb`: ramas por tier en vez de por 6 categorías.
-- Orden de fondeo: committed → necessary → flexible, **con la prioridad defendida elevando flexibles** antes del default.
+- Orden de fondeo: committed → necessary → flexible.
 - `budget_category.rb::CATEGORY_TYPES` → `committed|necessary|flexible` (vía dual-read primero).
 - Aceleración de deuda tratada como decisión/meta, no como committed.
 
-**Criterio de salida.** Un plan mensual se genera y confirma usando tiers; un flexible marcado como defendido se fondea antes que otros flexibles; el Modo Emergencia recorta en el orden correcto.
+**Criterio de salida.** Un plan mensual se genera y confirma usando tiers; el Modo Emergencia recorta flexibles en el orden correcto.
 
 | Riesgo | Mitigación |
 |---|---|
 | Romper planes ya confirmados (`category_allocations` jsonb con códigos viejos) | Lectura tolerante: el plan viejo se sigue interpretando vía el helper de tier; no reescribir snapshots |
-| Lógica de prioridad defendida mal priorizada (sobre-protege y asfixia el resto) | Feature flag; default conservador; tests de escenarios (defendido vs deuda vs colchón) |
 | `OVERFLOW_RULES` incluye `investment` y apunta a un destino que ya no es gaveta | Reinterpretar `investment` como "aporte a Patrimonio"; mantener el valor del enum hasta Etapa 6 |
 
 ---
@@ -177,7 +180,7 @@ herramientas→necessary, cursos/suplementos/social→discretionary; ahorro→me
 **Cambios.**
 - `financeBehavior.ts`: `BehaviorTone` → 3 tiers; reescribir reglas que comparan `discretionary/investment/social` (social pasa a leerse por subcategoría, no por categoría).
 - API **dual-emit**: `summary.totals` expone los nuevos agregados por tier **y** mantiene los viejos hasta que el web migre.
-- `CategoryPressureCard`, dashboard, `finance.types.ts`: render por tier; exponer prioridad defendida.
+- `CategoryPressureCard`, dashboard, `finance.types.ts`: render por tier.
 - **Colores diferenciables (BRAND.md / tokens CSS):** hoy committed (`#C0392B` rojo), necessary
   (`#D4732A` ámbar) y discretionary/flexible (`#C9980A` oro) son los tres cálidos/rojizos → poco
   distinguibles. Recolorear los 3 tiers con buen contraste (sugerencia semántica: committed=rojo
@@ -269,7 +272,7 @@ Hallazgo: ambos buckets están **semánticamente mezclados** (ahorro real, herra
 | `necessary` | `necessary` | sin cambio |
 | `discretionary` | `flexible` | renombrar también el **code** (`discretionary`→`flexible`); display ya es "Flexible" |
 | `income` / `unknown` | igual | resolver los 3 + 4 nil aparte |
-| `social` (Regalos, Salidas, Familia, Donaciones, Amigos) | `flexible`; **fusionadas en una sola subcategoría `social`** | **decisión del autor**: no sobre-detallar. Las 5 subcategorías sociales colapsan en una `social` bajo `flexible`; el detalle puntual ya lo da el campo descripción/concepto de la transacción. Soporte familiar = flexible (posible prioridad defendida). Excepción: la cuota del iPhone papá no es social → `committed` (§3.3). |
+| `social` (Regalos, Salidas, Familia, Donaciones, Amigos) | `flexible`; **fusionadas en una sola subcategoría `social`** | **decisión del autor**: no sobre-detallar. Las 5 subcategorías sociales colapsan en una `social` bajo `flexible`; el detalle puntual ya lo da el campo descripción/concepto de la transacción. Soporte familiar = flexible. Excepción: la cuota del iPhone papá no es social → `committed` (§3.3). |
 | `investment` / Herramientas (GitHub, Claude, Railway, tokens IA) | `necessary` | **decisión del autor**: insumos de trabajo freelance |
 | `investment` / Cursos, Suplementos, Libros, Ejercicio (consumo) | `flexible` | inversión-en-sí ≠ gaveta propia |
 | `investment` / Ahorro voluntario (aporte/retiro de bolsillo, aporte fondo emergencia) | **fuera del gasto** → ahorro/Patrimonio | son movimientos de fondo, no gasto. Idealmente ni siquiera son `transactions` de gasto |
@@ -304,7 +307,6 @@ Hallazgo: ambos buckets están **semánticamente mezclados** (ahorro real, herra
 | La taxonomía sola no cambia conducta (hallazgo central del brief) | Alta | Etapa 0 con gate de métricas objetivas antes de migrar |
 | Tres repos desincronizados (API/Brain/Web) durante la transición | Alta | Contratos dual-accept/dual-emit; ningún borrado sin verificar "cero lecturas" en los 3 |
 | Pérdida de comparabilidad histórica | Media | Congelar histórico + fecha de corte + mapeo on-read |
-| Prioridad defendida mal calibrada | Media | Feature flag + escenarios de prueba |
 | Self-licensing reaparece por otra vía | Media | Sin categoría "inversión"; guardarraíles del borde (RFC-0001 §6.1) |
 | Specs preexistentes en rojo (`spec/requests/api/v1/summary_spec.rb`) enmascaran regresiones | Baja | Arreglar/aislar esos specs antes de empezar Etapa 3 |
 | App iOS empaquetada desfasada | Baja | Mantener compat de API; coordinar `cap sync` + release |

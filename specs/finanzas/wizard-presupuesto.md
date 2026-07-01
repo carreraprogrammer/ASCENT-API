@@ -62,7 +62,7 @@ El eje del sistema. Tiers fijos, del sistema, no modificables por el usuario. To
 | Ingreso | `income` | `#0E96AD` | Zafiro | Entradas de dinero (no es un tier de gasto). |
 | Desconocido | `unknown` | `#5B7280` | Niebla | Sin clasificar. El agente resuelve en el nocturno. |
 
-`investment` y `social` ya no son categorías: `investment` → módulo Patrimonio (fuera del presupuesto); `social` → sus subcategorías (Regalos, Salidas, Familia, Donaciones, Amigos) se re-parentan a su tier de agencia. No se agrega un eje de tags: la semántica social ya la dan las subcategorías. La **prioridad defendida** es un atributo aparte sobre gastos `flexible` (ver RFC-0001 §10).
+`investment` y `social` ya no son categorías: `investment` → módulo Patrimonio (fuera del presupuesto); `social` → sus subcategorías (Regalos, Salidas, Familia, Donaciones, Amigos) se re-parentan a su tier de agencia. No se agrega un eje de tags: la semántica social ya la dan las subcategorías. (Priorizar un flexible = presupuestarlo; no hay flag de "prioridad defendida" — ver RFC-0001 §10.)
 
 Los tokens CSS viven en `--color-committed`, `--color-necessary`, etc. Ver [BRAND.md](../../../daniel15k-web/BRAND.md).
 
@@ -161,11 +161,11 @@ El wizard tiene **7 pasos** más un resumen final. Cada paso corresponde a una c
 Paso 0: INGRESO         ← ancla todo lo demás
 Paso 1: COMPROMETIDO    ← obligaciones (lo que no puedo dejar de pagar)
 Paso 2: NECESARIO       ← mínimo en crisis > 0 (reducible, no eliminable)
-Paso 3: FLEXIBLE        ← lo que iría a cero en crisis (incl. lo defendido)
+Paso 3: FLEXIBLE        ← lo que iría a cero en crisis
 Paso 4: Resumen         ← balance de agencia + Modo Emergencia
 ```
 
-Ingreso va primero porque sin saber cuánto entra, asignar montos es una ficción. El orden sigue el eje de agencia (de menor a mayor margen de maniobra). Flexible va al final porque es lo que se recorta cuando los compromisos superan el ingreso — salvo lo marcado como **prioridad defendida**. (Aportes a patrimonio ya no son un paso del presupuesto; viven en el módulo de Patrimonio.)
+Ingreso va primero porque sin saber cuánto entra, asignar montos es una ficción. El orden sigue el eje de agencia (de menor a mayor margen de maniobra). Flexible va al final porque es lo que se recorta cuando los compromisos superan el ingreso. (Aportes a patrimonio ya no son un paso del presupuesto; viven en el módulo de Patrimonio.)
 
 ### 3.3 Anatomía de cada paso
 

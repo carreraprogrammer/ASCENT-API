@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_29_140000) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_30_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -415,7 +415,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_29_140000) do
     t.string "source_type"
     t.bigint "source_id"
     t.date "end_date"
-    t.boolean "defended_priority", default: false, null: false
     t.index ["account_id", "active"], name: "index_recurring_obligations_on_account_id_and_active"
     t.index ["account_id", "budget_category"], name: "index_recurring_obligations_on_account_budget_category"
     t.index ["account_id"], name: "index_recurring_obligations_on_account_id"

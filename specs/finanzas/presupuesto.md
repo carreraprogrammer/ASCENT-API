@@ -6,7 +6,7 @@
 > El eje primario del presupuesto es el **tier de agencia** (Comprometido / Necesario /
 > Flexible), no el tipo funcional. Las categorías funcionales (vivienda, mercado, etc.)
 > se conservan como **metadato secundario** para reportes. La asignación ZBB y el orden
-> de fondeo siguen el tier de agencia + la prioridad defendida. Ver
+> de fondeo siguen el tier de agencia. Ver
 > [Rediseño.md](../producto/Rediseño.md) (RFC-0001) §10. El código aún corre el modelo
 > de 6 categorías; migración por etapas.
 
@@ -344,7 +344,7 @@ Migraciones + `budget_category` en obligations + `actionable` polimórfico + `GE
 - El presupuesto mide desvío, pero no debe convertir automáticamente todo `exceso` en señal negativa
 - `Créditos` puede mostrar exceso positivo si el gasto extra parece reducir deuda (recordar: aceleración de deuda es decisión/prioridad, no Comprometido — ver RFC-0001 §6.1)
 - Aportes a Patrimonio (lo que antes era `Inversión`) ya no son una gaveta del presupuesto: viven en el módulo de Patrimonio, no en el flujo de caja mensual
-- `Flexible` (antes `Discrecional`) sí debe seguir tratándose como la señal más sensible de presión sobre el plan, salvo lo marcado como **prioridad defendida**
+- `Flexible` (antes `Discrecional`) sí debe seguir tratándose como la señal más sensible de presión sobre el plan
 - La UI visible debe exponer `señales positivas`, `señales neutras` y `señales de atención`; la interpretación compleja queda en reglas + IA, no en un cálculo rígido
 
 ---

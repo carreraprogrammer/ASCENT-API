@@ -102,9 +102,9 @@ El agente necesita razonar sobre qué gastos pueden reducirse en un estado `crit
 |------|----------------------|------------------|
 | `committed` | No — obligación legal/contractual | Se mantiene |
 | `necessary` | Parcial — el mínimo de la función queda > 0 | Se reduce el monto |
-| `flexible` | Total — puede ir a cero | Se elimina primero… |
+| `flexible` | Total — puede ir a cero | Se elimina primero |
 
-…**excepto** lo marcado como **prioridad defendida**: dentro de `flexible`, lo defendido se recorta de último (es el matiz que antes intentaban capturar los niveles "calidad de vida" vs "confort"). Ver RFC-0001 §10.
+Todos los flexibles se recortan en emergencia (incluso uno valioso como un tratamiento de salud: es flexible por agencia). No hay excepción de "prioridad defendida" — esa idea se descartó (priorizar un flexible = presupuestarlo). Ver RFC-0001 §10.
 
 **Regla para `daily_necessary_burn`:** usa transacciones de los últimos 30 días con `category_type = 'necessary'`. No incluye `committed` porque esos tienen `due_day` explícito y se capturan en `committed_before_next_income`. Tampoco incluye `flexible`.
 
