@@ -250,6 +250,29 @@ RSpec.describe "Monthly Plans Wizard API" do
           expect(data["extraordinary_income"]["detected_recent"]).to eq(3_000_000) # 8M − 5M expected
         end
       end
+      context "with a phantom subcategory (budgeted for months, never spent)" do
+        before do
+          [ 1, 2 ].each do |ago|
+            d = ago.months.ago.to_date
+            create(:budget, user: user, account: account,
+                   category: system_category, subcategory: subcategory,
+                   amount_limit: 120_000, month: d.month, year: d.year)
+          end
+          # no confirmed expense transactions for this subcategory → phantom
+        end
+
+        it "flags the subcategory with a ghost signal" do
+          get "/api/v1/monthly_plans/wizard_data", headers: headers
+
+          expect(response).to have_http_status(:ok)
+          data = JSON.parse(response.body)["data"]
+          cat  = data["categories"].find { |c| c["code"] == "discretionary" }
+          sub  = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
+
+          expect(sub["ghost"]).not_to be_nil
+          expect(sub["ghost"]["months_budgeted"]).to be >= 2
+        end
+      end
     end
   end
 
