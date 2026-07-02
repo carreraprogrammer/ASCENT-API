@@ -27,6 +27,10 @@ module Finanzas
       # mediana degeneraría a un único mes (posiblemente atípico), así que caemos a la
       # mediana de TODOS los meses — que ya es robusta a un pico aislado.
       MIN_CLEAN_MONTHS = 2
+      # Fantasma: subcategoría presupuestada GHOST_MIN_BUDGETED+ meses en la ventana
+      # GHOST_LOOKBACK con $0 de gasto real. La guardia pregunta si mantenerla.
+      GHOST_LOOKBACK_MONTHS = 4
+      GHOST_MIN_BUDGETED = 2
 
       def initialize(
         income_repo:   Finanzas::Repositories::IncomeSourceRepository.new,
@@ -58,6 +62,7 @@ module Finanzas
         confirmed_by_pair     = fetch_confirmed_budget_by_pair(account_id, month, year)
         prev_budget_by_pair   = fetch_prev_month_budget_by_pair(account_id, month, year)
         paid_by_pair          = fetch_paid_this_month_by_pair(account_id, month, year)
+        ghost_pairs           = fetch_ghost_pairs(account_id)
 
         fin_ctx = @ctx_repo.find_by_account(account_id) || {}
         phase   = Finanzas::Interactors::DerivePhase.new.call(account_id: account_id)
@@ -87,7 +92,8 @@ module Finanzas
           baseline_by_pair,
           confirmed_by_pair,
           prev_budget_by_pair,
-          paid_by_pair
+          paid_by_pair,
+          ghost_pairs
         )
 
         allocation = compute_allocation_meta(category_rows, available_pool, goal_contribution, suggested_total)
@@ -143,7 +149,8 @@ module Finanzas
         baseline_by_pair,
         confirmed_by_pair,
         prev_budget_by_pair,
-        paid_by_pair
+        paid_by_pair,
+        ghost_pairs
       )
         rows = []
 
@@ -160,7 +167,8 @@ module Finanzas
             baseline_by_pair,
             confirmed_by_pair,
             prev_budget_by_pair,
-            paid_by_pair
+            paid_by_pair,
+            ghost_pairs
           )
 
           # Recurrente atribuido a este tier pero no reclamado por ninguna de sus
@@ -190,7 +198,8 @@ module Finanzas
         baseline_by_pair,
         confirmed_by_pair,
         prev_budget_by_pair,
-        paid_by_pair
+        paid_by_pair,
+        ghost_pairs
       )
         category.subcategories.map do |sub|
           key       = [ category.id, sub.id ]
@@ -235,7 +244,18 @@ module Finanzas
             # ZBB: la categoría arranca en $0 — el monto es una DECISIÓN del usuario,
             # nunca un prellenado. El historial y el plan anterior se exponen solo como
             # REFERENCIA ("destinaste $X · gastaste $Y"), no como el número.
-            ref = baseline_by_pair[key]
+            ref   = baseline_by_pair[key]
+            extra = {
+              reference: {
+                budgeted: prev_budget_by_pair[key],       # lo que destinaste el mes pasado
+                spent:    ref && ref[:spent],             # gasto típico (mediana limpia)
+                atypical: ref ? ref[:atypical] : false    # la referencia se apoya en un mes de prima
+              }
+            }
+            # Guardia anti-fantasma: presupuestada varios meses con $0 de gasto.
+            if ghost_pairs[key]
+              extra[:ghost] = { months_budgeted: ghost_pairs[key], last_budgeted: prev_budget_by_pair[key] }
+            end
             build_subcategory_row(
               sub,
               suggested_amount: 0,
@@ -244,13 +264,7 @@ module Finanzas
               locked: false,
               source_of_truth: "user",
               edit_hint: "Decide cuánto destinar este mes.",
-              extra: {
-                reference: {
-                  budgeted: prev_budget_by_pair[key],       # lo que destinaste el mes pasado
-                  spent:    ref && ref[:spent],             # gasto típico (mediana limpia)
-                  atypical: ref ? ref[:atypical] : false    # la referencia se apoya en un mes de prima
-                }
-              }
+              extra: extra
             )
           end
         end
@@ -480,6 +494,35 @@ module Finanzas
           months:          detail,
           hint:            "Ingreso extraordinario (prima/aguinaldo). Asígnalo aparte a metas, deuda o bolsillos; no lo sumes al presupuesto recurrente."
         }
+      end
+
+      # { [category_id, subcategory_id] => nº_meses_presupuestados } para pares que se
+      # presupuestaron >= GHOST_MIN_BUDGETED meses en la ventana con $0 de gasto real.
+      def fetch_ghost_pairs(account_id)
+        since  = GHOST_LOOKBACK_MONTHS.months.ago.beginning_of_month.to_date
+        cutoff = since.year * 100 + since.month
+
+        budgeted = ::Budget
+          .where(account_id: account_id)
+          .where("(year * 100 + month) >= ?", cutoff)
+          .where("amount_limit > 0")
+          .where.not(category_id: nil).where.not(subcategory_id: nil)
+          .group(:category_id, :subcategory_id)
+          .count("DISTINCT (year * 100 + month)")
+
+        spent = ::Transaction
+          .where(account_id: account_id, transaction_type: "expense", status: "confirmed")
+          .where("date >= ?", since)
+          .where.not(category_id: nil).where.not(subcategory_id: nil)
+          .group(:category_id, :subcategory_id)
+          .sum(:amount)
+
+        budgeted.each_with_object({}) do |((cat_id, sub_id), months), result|
+          next if months < GHOST_MIN_BUDGETED
+          next if spent[[ cat_id, sub_id ]].to_i > 0
+
+          result[[ cat_id, sub_id ]] = months
+        end
       end
 
       def median(values)
