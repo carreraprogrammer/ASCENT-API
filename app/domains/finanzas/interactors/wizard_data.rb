@@ -231,35 +231,26 @@ module Finanzas
               source_of_truth: "planned_expenses",
               edit_hint: "Se calcula desde gastos planeados obligatorios."
             )
-          elsif baseline_by_pair.key?(key)
-            build_subcategory_row(
-              sub,
-              suggested_amount: baseline_by_pair[key],
-              confidence: "medium",
-              source: "history",
-              locked: false,
-              source_of_truth: "transactions",
-              edit_hint: "Mediana de tu gasto en los últimos #{HISTORY_MONTHS} meses (robusta a meses atípicos)."
-            )
-          elsif prev_budget_by_pair.key?(key)
-            build_subcategory_row(
-              sub,
-              suggested_amount: prev_budget_by_pair[key],
-              confidence: "medium",
-              source: "prev_plan",
-              locked: false,
-              source_of_truth: "budgets",
-              edit_hint: "Monto del plan del mes anterior (sin historial nuevo). Ajusta si cambió."
-            )
           else
+            # ZBB: la categoría arranca en $0 — el monto es una DECISIÓN del usuario,
+            # nunca un prellenado. El historial y el plan anterior se exponen solo como
+            # REFERENCIA ("destinaste $X · gastaste $Y"), no como el número.
+            ref = baseline_by_pair[key]
             build_subcategory_row(
               sub,
               suggested_amount: 0,
-              confidence: "low",
-              source: "none",
+              confidence: "none",
+              source: "user_decision",
               locked: false,
-              source_of_truth: "none",
-              edit_hint: "Sin historial ni fuente fija; define un monto si aplica."
+              source_of_truth: "user",
+              edit_hint: "Decide cuánto destinar este mes.",
+              extra: {
+                reference: {
+                  budgeted: prev_budget_by_pair[key],       # lo que destinaste el mes pasado
+                  spent:    ref && ref[:spent],             # gasto típico (mediana limpia)
+                  atypical: ref ? ref[:atypical] : false    # la referencia se apoya en un mes de prima
+                }
+              }
             )
           end
         end
@@ -417,10 +408,11 @@ module Finanzas
         end
       end
 
-      # { [category_id, subcategory_id] => mediana_mensual } — últimos HISTORY_MONTHS.
-      # Mediana (no media) de los totales mensuales: un mes atípico no infla el baseline.
-      # Prefiere meses limpios (sin prima); si son < MIN_CLEAN_MONTHS cae a todos los
-      # meses para no degenerar a un único mes pico (la mediana ya descuenta un spike).
+      # { [category_id, subcategory_id] => { spent:, atypical: } } — referencia de gasto.
+      # Mediana (no media) de los totales mensuales: un mes atípico no infla la referencia.
+      # Prefiere meses limpios (sin prima); si son < MIN_CLEAN_MONTHS cae a todos los meses
+      # para no degenerar a un único mes pico — y marca `atypical` para avisar que la
+      # referencia se apoya en un mes de prima.
       def fetch_median_by_pair(account_id, windfall_months = Set.new)
         since = HISTORY_MONTHS.months.ago.beginning_of_month.to_date
 
@@ -440,9 +432,10 @@ module Finanzas
         end
 
         all_buckets.each_with_object({}) do |(key, all_totals), result|
-          clean = clean_buckets[key]
-          chosen = clean.size >= MIN_CLEAN_MONTHS ? clean : all_totals
-          result[key] = median(chosen)
+          clean       = clean_buckets[key]
+          enough      = clean.size >= MIN_CLEAN_MONTHS
+          chosen      = enough ? clean : all_totals
+          result[key] = { spent: median(chosen), atypical: !enough && all_totals.size > clean.size }
         end
       end
 

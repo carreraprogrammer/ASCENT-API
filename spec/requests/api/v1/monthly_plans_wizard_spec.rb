@@ -88,7 +88,7 @@ RSpec.describe "Monthly Plans Wizard API" do
           end
         end
 
-        it "assigns confidence 'medium' to subcategories with history" do
+        it "starts at $0 and exposes the history only as a spent reference (ZBB)" do
           get "/api/v1/monthly_plans/wizard_data", headers: headers
 
           expect(response).to have_http_status(:ok)
@@ -97,7 +97,9 @@ RSpec.describe "Monthly Plans Wizard API" do
           expect(cat).not_to be_nil
           sub = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
           expect(sub).not_to be_nil
-          expect(sub["confidence"]).to eq("medium")
+          expect(sub["suggested_amount"]).to eq(0)
+          expect(sub["source"]).to eq("user_decision")
+          expect(sub["reference"]["spent"]).to eq(100_000) # mediana limpia, no prellenado
         end
       end
 
@@ -114,7 +116,7 @@ RSpec.describe "Monthly Plans Wizard API" do
                  year: prev.year)
         end
 
-        it "carries forward the previous month budget with confidence 'medium' and source 'prev_plan'" do
+        it "starts at $0 and exposes the previous budget only as a 'budgeted' reference (ZBB)" do
           get "/api/v1/monthly_plans/wizard_data", headers: headers
 
           expect(response).to have_http_status(:ok)
@@ -122,9 +124,9 @@ RSpec.describe "Monthly Plans Wizard API" do
           cat  = data["categories"].find { |c| c["code"] == "discretionary" }
           sub  = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
 
-          expect(sub["suggested_amount"]).to eq(450_000)
-          expect(sub["confidence"]).to eq("medium")
-          expect(sub["source"]).to eq("prev_plan")
+          expect(sub["suggested_amount"]).to eq(0)
+          expect(sub["source"]).to eq("user_decision")
+          expect(sub["reference"]["budgeted"]).to eq(450_000)
         end
       end
 
@@ -194,7 +196,7 @@ RSpec.describe "Monthly Plans Wizard API" do
       end
 
       context "with no transaction history" do
-        it "assigns confidence 'low' and suggested_amount >= 0 to subcategories" do
+        it "starts the subcategory at $0 as a user decision, with an empty reference" do
           get "/api/v1/monthly_plans/wizard_data", headers: headers
 
           expect(response).to have_http_status(:ok)
@@ -203,8 +205,9 @@ RSpec.describe "Monthly Plans Wizard API" do
           expect(cat).not_to be_nil
           sub = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
           expect(sub).not_to be_nil
-          expect(sub["confidence"]).to eq("low")
-          expect(sub["suggested_amount"]).to be >= 0
+          expect(sub["suggested_amount"]).to eq(0)
+          expect(sub["source"]).to eq("user_decision")
+          expect(sub["reference"]["spent"]).to be_nil
         end
       end
 
@@ -231,7 +234,7 @@ RSpec.describe "Monthly Plans Wizard API" do
                  date: windfall.iso8601, month: windfall.month, year: windfall.year)
         end
 
-        it "uses the clean-month median (excludes the windfall spend) and reports extraordinary income" do
+        it "uses the clean-month median as the spent reference (excludes windfall) and reports extraordinary income" do
           get "/api/v1/monthly_plans/wizard_data", headers: headers
 
           expect(response).to have_http_status(:ok)
@@ -239,8 +242,9 @@ RSpec.describe "Monthly Plans Wizard API" do
           cat  = data["categories"].find { |c| c["code"] == "discretionary" }
           sub  = cat["subcategories"].find { |s| s["code"] == "restaurantes" }
 
-          # Two clean months (300k) outnumber MIN_CLEAN_MONTHS → windfall's 900k ignored.
-          expect(sub["suggested_amount"]).to eq(300_000)
+          # Amount stays $0 (user decides); reference.spent = clean median, windfall ignored.
+          expect(sub["suggested_amount"]).to eq(0)
+          expect(sub["reference"]["spent"]).to eq(300_000)
           expect(data["meta"]["excluded_windfall_months"])
             .to include(format("%04d-%02d", windfall.year, windfall.month))
           expect(data["extraordinary_income"]["detected_recent"]).to eq(3_000_000) # 8M − 5M expected
