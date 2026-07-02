@@ -534,9 +534,12 @@ module Finanzas
       end
 
       # { [category_id, subcategory_id] => amount_limit } — presupuesto confirmado del mes.
+      # Solo montos > 0: un budget en $0 es indistinguible de "sin decidir" y no debe
+      # bloquear la rama de decisión del usuario (ni tapar la guardia anti-fantasma).
       def fetch_confirmed_budget_by_pair(account_id, month, year)
         ::Budget
           .where(account_id: account_id, month: month, year: year)
+          .where("amount_limit > 0")
           .where.not(category_id: nil).where.not(subcategory_id: nil)
           .pluck(:category_id, :subcategory_id, :amount_limit)
           .each_with_object({}) { |(cid, sid, amt), h| h[[ cid, sid ]] = amt }
@@ -547,6 +550,7 @@ module Finanzas
         prev = Date.new(year, month, 1).prev_month
         ::Budget
           .where(account_id: account_id, month: prev.month, year: prev.year)
+          .where("amount_limit > 0")
           .where.not(category_id: nil).where.not(subcategory_id: nil)
           .pluck(:category_id, :subcategory_id, :amount_limit)
           .each_with_object({}) { |(cid, sid, amt), h| h[[ cid, sid ]] = amt }
