@@ -220,7 +220,8 @@ string en 3 repos + la columna `discretionary_limit`) por cero ganancia. Queda p
 
 | Riesgo | Mitigación |
 |---|---|
-| Eliminar antes de que algún consumidor (Brain, web, job nocturno) haya migrado | Checklist de "cero lecturas" verificado por grep en los 3 repos antes de borrar; borrar en release separado |
+| Eliminar antes de que algún consumidor (Brain, web, job nocturno) haya migrado | Checklist de "cero lecturas" verificado por grep en l
+os 3 repos antes de borrar; borrar en release separado |
 | Datos históricos con códigos viejos quedan ilegibles | No tocar histórico: el helper de tier mapea on-read; ver §3 |
 
 ---
