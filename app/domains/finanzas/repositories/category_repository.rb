@@ -59,6 +59,15 @@ module Finanzas
           attrs[:subcategory_id] = subcat&.id
         end
 
+        # Toda transacción necesita un TIER (category) para presupuestarse y aparecer en
+        # el dashboard. Si no se pasó category explícita, se usa el tier primario de la
+        # función como default (sobreescribible con category_code/category_id). Cubre
+        # tanto el path por código como el que pasa subcategory_id directo. Sin esto la
+        # transacción queda con category_id nil y no cuenta en el presupuesto.
+        if attrs[:category_id].blank? && attrs[:subcategory_id].present?
+          attrs[:category_id] = ::Subcategory.where(id: attrs[:subcategory_id]).pick(:category_id)
+        end
+
         attrs.except(:category_code, :subcategory_code)
       end
 

@@ -19,10 +19,13 @@ RSpec.describe Finanzas::Repositories::CategoryRepository do
       expect(attrs[:subcategory_id]).to eq(fn_salud.id) # función = salud (global, aunque esté bajo necessary)
     end
 
-    it "NO infiere el tier desde la subcategoría" do
+    it "usa el tier primario de la función como default cuando no se pasa category" do
+      # Toda transacción necesita un tier para presupuestarse; el default es el tier
+      # primario de la función (sobreescribible con category_code). Sin esto la
+      # transacción quedaba con category_id nil y no contaba en el presupuesto.
       attrs = repo.resolve_codes({ subcategory_code: "zz_fn_salud" }, account_id: account.id)
       expect(attrs[:subcategory_id]).to eq(fn_salud.id)
-      expect(attrs[:category_id]).to be_nil
+      expect(attrs[:category_id]).to eq(tier_nec.id)
     end
   end
 end
