@@ -21,7 +21,6 @@ SYSTEM_CATEGORIES = [
       { name: "Gasolina",   code: "gasolina",   icon: "carOutline" },
       { name: "Transporte", code: "transporte", icon: "busOutline" },
       { name: "Salud",       code: "salud",       icon: "heartOutline" },
-      { name: "Ejercicio",   code: "ejercicio",   icon: "barbellOutline" },
       { name: "Celular",     code: "celular",     icon: "phonePortraitOutline" },
       { name: "Herramientas", code: "herramientas", icon: "constructOutline" }
     ]
@@ -38,6 +37,7 @@ SYSTEM_CATEGORIES = [
       { name: "Suscripciones",  code: "suscripciones", icon: "refreshOutline" },
       { name: "Cursos",         code: "cursos",        icon: "schoolOutline" },
       { name: "Suplementos",    code: "suplementos",   icon: "fitnessOutline" },
+      { name: "Ejercicio",      code: "ejercicio",     icon: "barbellOutline" },
       { name: "Social",         code: "social",        icon: "peopleOutline" }
     ]
   },
