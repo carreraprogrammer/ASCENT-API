@@ -56,20 +56,28 @@ module Finanzas
           # Without concept signal we require a tight amount match to avoid noise.
           effective_tolerance = concept_match ? RECURRING_AMOUNT_TOLERANCE_LOOSE : RECURRING_AMOUNT_TOLERANCE_TIGHT
           amount_match = within_pct?(ob.amount, amount, effective_tolerance)
+          amount_exact = ob.amount.to_i == amount
 
           next unless concept_match || amount_match
 
-          subcat_known  = subcategory_id.present? && ob.subcategory_id.present?
+          # La subcategoría es señal POSITIVA-only: si coincide suma confianza; si choca
+          # se ignora (no veta). El auto-categorizador del banco adivina la gaveta y un
+          # error suyo no debe matar un match de monto+día (caso PILA: subcat 9 vs 3).
+          subcat_agrees = subcategory_id.present? && ob.subcategory_id.present? &&
+                          ob.subcategory_id == subcategory_id
           day_known     = day.present? && ob.due_day.present?
-          subcat_match  = !subcat_known || ob.subcategory_id == subcategory_id
-          day_match     = !day_known || (ob.due_day - day).abs <= DUE_DAY_WINDOW
+          day_match     = day_known && (ob.due_day - day).abs <= DUE_DAY_WINDOW
           score         = 0
           score        += 40 if concept_match
+          score        += 25 if amount_exact
           score        += 20 if amount_match && within_pct?(ob.amount, amount, RECURRING_AMOUNT_TOLERANCE_TIGHT)
           score        += 10 if amount_match
-          score        += 10 if subcat_known && subcat_match
-          score        += 10 if day_known && day_match
-          confidence    = recurring_confidence(concept_match, amount_match, subcat_known, subcat_match, day_known, day_match)
+          score        += 10 if subcat_agrees
+          score        += 10 if day_match
+          confidence    = recurring_confidence(
+            concept_match: concept_match, amount_match: amount_match,
+            amount_exact: amount_exact, subcat_agrees: subcat_agrees, day_match: day_match
+          )
           type = case ob.source_type
                  when "Debt"        then "debt"
                  when "SavingsGoal" then "savings_goal"
@@ -87,10 +95,14 @@ module Finanzas
         best = matches.max_by { |match| [ confidence_rank(match[:confidence]), match[:score] ] }
         return no_match unless best
 
+        # Un empate en la cima (misma confianza + score) es ambiguo: no auto-vinculamos
+        # ni siquiera en high, porque con el auto-link por monto exacto dos obligaciones
+        # de igual monto/día podrían colisionar y linkear la equivocada (y en deudas eso
+        # mueve saldos).
         tied_best = matches.count do |match|
           match[:confidence] == best[:confidence] && match[:score] == best[:score]
         end
-        return no_match if tied_best > 1 && best[:confidence] != "high"
+        return no_match if tied_best > 1
 
         best.except(:score)
       end
@@ -180,16 +192,22 @@ module Finanzas
         shared.size >= 1 && shared.any? { |w| w.length >= 4 }
       end
 
-      def recurring_confidence(concept_match, amount_match, subcat_known, subcat_match, day_known, day_match)
+      def recurring_confidence(concept_match:, amount_match:, amount_exact:, subcat_agrees:, day_match:)
         # Concept + amount within loose tolerance → auto-link (FX, discounts, estimates).
         return "high" if concept_match && amount_match
-        # Concept + two confirmed structural signals → high even if amount differs.
-        return "high" if concept_match && (subcat_known && subcat_match) && (day_known && day_match)
-        # Pure numeric path (no concept): amount must be tight + two structural signals.
-        return "high" if subcat_known && day_known && subcat_match && day_match && amount_match
-        # Concept alone: promising but needs human/agent confirmation.
+        # Concept + confirmed structure → high even if amount differs.
+        return "high" if concept_match && subcat_agrees && day_match
+        # Monto EXACTO al peso, anclado por día o subcategoría → auto-link sin concepto.
+        # El extracto bancario casi nunca cruza textualmente con el nombre de la obligación
+        # ("Pago Planilla Unica…" vs "PILA Freelance"), pero un monto idéntico al peso en la
+        # ventana de vencimiento es evidencia fuerte.
+        return "high" if amount_exact && (day_match || subcat_agrees)
+        # Monto dentro de tolerancia + una señal estructural confirmada.
+        return "high" if amount_match && subcat_agrees && day_match
+        # Señales sueltas: prometedoras pero piden confirmación humana/del agente.
         return "medium" if concept_match
-        return "medium" if amount_match && ((subcat_known && subcat_match) || (day_known && day_match))
+        return "medium" if amount_match && (subcat_agrees || day_match)
+        return "medium" if amount_exact
 
         "low"
       end
