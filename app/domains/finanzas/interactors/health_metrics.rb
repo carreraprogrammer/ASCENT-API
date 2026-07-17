@@ -112,10 +112,14 @@ module Finanzas
 
         months = bare_bones > 0 ? (ef_balance.to_f / bare_bones).round(2) : 0
 
+        seed_target = Finanzas::Interactors::DerivePhase::SEED_EMERGENCY_FUND
+
         {
           balance:         ef_balance,
           bare_bones_monthly: bare_bones,
           months_covered:  months,
+          seed_target:     seed_target,
+          gap_to_seed:     [ seed_target - ef_balance, 0 ].max,
           target_1m:       target_1m,
           target_3m:       target_3m,
           target_6m:       target_6m,
@@ -162,43 +166,50 @@ module Finanzas
       # ── Prioridad de coaching (NC-3 + metodologías §4.3) ────────────────────
       # Fuente única de verdad para "¿a dónde va el excedente?". Los agentes
       # NUNCA deciden esto por su cuenta — consumen esta directiva tal cual.
-      # Secuencia: fondo starter (1 mes) → deuda → fondo completo (3m) → invertir.
+      # Secuencia: (con deuda) semilla $4M → deuda ; (sin deuda) fondo completo 3m → invertir.
+      # El semilla SOLO se interpone cuando hay deuda; sin deuda se va directo al fondo completo.
       def coaching_priority(ef, debts)
+        ef_balance   = ef[:balance].to_i
         months       = ef[:months_covered].to_f
         active_debts = debts.to_a # load_debts ya filtra status: active
 
-        if months < 1
-          {
-            code:      "emergency_fund_starter",
-            directive: "Todo excedente va al fondo de emergencia hasta cubrir 1 mes " \
-                       "(faltan #{ef[:gap_to_1m]} COP). No sugerir abonos extra a deuda " \
-                       "(solo mínimos) ni inversión.",
-            reason:    "Fondo cubre #{months} meses (< 1 mes starter). NC-3: ningún marco " \
-                       "recomienda atacar deuda o invertir sin colchón mínimo."
-          }
-        elsif active_debts.any?
-          {
+        if active_debts.any?
+          if ef_balance < Finanzas::Interactors::DerivePhase::SEED_EMERGENCY_FUND
+            return {
+              code:      "emergency_fund_starter",
+              directive: "Con deuda activa, todo excedente va al fondo de emergencia hasta el " \
+                         "fondo inicial (faltan #{ef[:gap_to_seed]} COP) antes de atacar la deuda. " \
+                         "No sugerir abonos extra a deuda (solo mínimos) ni inversión.",
+              reason:    "Hay deuda activa y el fondo inicial (~$1.000 USD) aún no está cubierto. " \
+                         "NC-3: no atacar deuda sin un colchón semilla."
+            }
+          end
+
+          return {
             code:      "debt_payoff",
-            directive: "Fondo starter cubierto. El excedente ataca la deuda según la " \
+            directive: "Fondo semilla cubierto. El excedente ataca la deuda según la " \
                        "estrategia del usuario (snowball/avalanche). Mantener mínimos y " \
-                       "no crecer el fondo más allá de 1 mes mientras haya deuda activa.",
-            reason:    "Fondo cubre #{months} meses y hay #{active_debts.size} deuda(s) activa(s)."
+                       "no crecer el fondo mientras haya deuda activa.",
+            reason:    "Fondo semilla cubierto y hay #{active_debts.size} deuda(s) activa(s)."
           }
-        elsif months < 3
-          {
+        end
+
+        # Sin deuda: completar el fondo de emergencia directamente (el semilla ya lo alimenta).
+        if months < 3
+          return {
             code:      "complete_emergency_fund",
             directive: "Sin deudas activas. El excedente completa el fondo de emergencia " \
                        "hasta 3 meses (faltan #{ef[:gap_to_3m]} COP).",
-            reason:    "Fondo cubre #{months} meses (< 3 meses suficientes) y no hay deuda."
-          }
-        else
-          {
-            code:      "invest",
-            directive: "Fondo suficiente y sin deudas. El excedente puede ir a inversión — " \
-                       "sin recomendar instrumentos específicos (no somos asesores).",
-            reason:    "Fondo cubre #{months} meses (≥ 3) y no hay deuda activa."
+            reason:    "Sin deuda; el fondo cubre #{months} meses (< 3 suficientes)."
           }
         end
+
+        {
+          code:      "invest",
+          directive: "Fondo suficiente y sin deudas. El excedente puede ir a inversión — " \
+                     "sin recomendar instrumentos específicos (no somos asesores).",
+          reason:    "Fondo cubre #{months} meses (≥ 3) y no hay deuda activa."
+        }
       end
 
       # ── DTI — Debt-to-Income ratio (NC-6) ───────────────────────────────────

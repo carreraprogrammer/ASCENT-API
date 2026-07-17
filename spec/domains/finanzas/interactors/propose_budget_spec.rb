@@ -343,8 +343,9 @@ RSpec.describe Finanzas::Interactors::ProposeBudget do
     it "derives the explanation phase from real data, not the stored financial_context" do
       create(:debt, user: user, status: :active)
       create(:recurring_obligation, user: user, amount: 1_000_000)
+      # EF ≥ fondo semilla ($4M) → paso 1 cubierto, la fase real avanza a debt_payoff.
       create(:savings_goal, user: user, name: "Fondo de emergencia",
-             current_amount: 1_000_000, target_amount: 6_000_000, target_date: nil)
+             current_amount: 4_000_000, target_amount: 6_000_000, target_date: nil)
 
       result = interactor.call(account_id: account.id, month: month, year: year)
       expect(result[:phase_explanation][:phase]).to eq("debt_payoff")

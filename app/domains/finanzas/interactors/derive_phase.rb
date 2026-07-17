@@ -4,11 +4,15 @@ module Finanzas
     # Never reads FinancialContext.phase — derives from real financial data.
     #
     # Order:
-    #   Step 1: 1-month emergency fund
+    #   Step 1: seed emergency fund (fixed ~$1,000 USD, NOT one month of expenses)
     #   Step 2: Debt snowball (all active debts cleared)
     #   Step 3: 3-month emergency fund
     #   Step 4+: investing
     class DerivePhase
+      # Baby Step 1 (Ramsey): fondo inicial FIJO y simbólico, no un mes de gastos.
+      # ~$1.000 USD ≈ $4.000.000 COP. Umbral estable (no atado al tipo de cambio del día).
+      # Fuente de verdad del monto semilla para todo el dominio (lo referencia HealthMetrics).
+      SEED_EMERGENCY_FUND = 4_000_000
       def call(account_id:)
         explain(account_id: account_id)[:phase]
       end
@@ -37,16 +41,19 @@ module Finanzas
       private
 
       def derive(committed_monthly, ef_balance, has_active_debts)
-        if committed_monthly > 0
-          # Step 1: 1-month emergency fund not yet reached
-          return "emergency_fund" if ef_balance < committed_monthly
+        if has_active_debts
+          # Step 1: colchón semilla FIJO antes de atacar la deuda. Solo aplica CON deuda:
+          # es el buffer para no re-endeudarse en una emergencia mientras se paga agresivo.
+          return "emergency_fund" if ef_balance < SEED_EMERGENCY_FUND
+
+          # Step 2: liquidar toda la deuda
+          return "debt_payoff"
         end
 
-        # Step 2: clear all debts before growing the EF further
-        return "debt_payoff" if has_active_debts
-
+        # Sin deuda: se va directo al fondo de emergencia completo (el semilla es solo
+        # la primera parte del mismo fondo, no un bolsillo aparte).
         if committed_monthly > 0
-          # Step 3: grow emergency fund to 3 months
+          # Step 3: fondo de emergencia de 3 meses de gastos esenciales
           return "emergency_fund" if ef_balance < 3 * committed_monthly
         end
 
@@ -57,10 +64,10 @@ module Finanzas
       def reason_for(phase, committed_monthly, ef_balance, has_active_debts)
         case phase
         when "emergency_fund"
-          if committed_monthly.positive? && ef_balance < committed_monthly
-            "Tu colchón aún no cubre 1 mes de gastos fijos. La prioridad (paso 1) es un fondo de emergencia inicial antes de atacar la deuda."
+          if has_active_debts && ef_balance < SEED_EMERGENCY_FUND
+            "Con deuda activa, la prioridad (paso 1) es un colchón semilla de $#{SEED_EMERGENCY_FUND.to_s.reverse.scan(/\d{1,3}/).join('.').reverse} (~$1.000 USD) antes de atacar la deuda de forma agresiva."
           else
-            "Ya no tienes deudas activas, pero tu colchón aún no llega a 3 meses de gastos fijos. La prioridad (paso 3) es completar el fondo de emergencia."
+            "Tu colchón aún no cubre 3 meses de gastos fijos. La prioridad es construir tu fondo de emergencia."
           end
         when "debt_payoff"
           "Tienes deuda activa. Con el colchón inicial cubierto, la prioridad (paso 2) es liquidar la deuda antes de seguir creciendo el colchón."
