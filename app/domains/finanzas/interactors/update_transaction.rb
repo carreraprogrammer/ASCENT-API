@@ -17,7 +17,8 @@ module Finanzas
                                   :product, :amount, :date, :source, :metadata,
                                   :clarification_resolved_at, :payment_source,
                                   :debt_id, :recurring_obligation_id, :income_source_id,
-                                  :sinking_fund_id, :covers_period_month, :covers_period_year)
+                                  :sinking_fund_id, :savings_goal_id,
+                                  :covers_period_month, :covers_period_year)
 
         # El front envía la fecha en DD/MM/YYYY (display local). Si no la normalizamos
         # a ISO, el string queda en un formato que la UI no puede agrupar/ordenar y la
@@ -53,6 +54,11 @@ module Finanzas
         if permitted[:sinking_fund_id].present?
           fund = ::SinkingFund.active.where(account_id: account_id).find_by(id: permitted[:sinking_fund_id])
           raise Finanzas::Errors::InvalidTransaction, "Sinking fund #{permitted[:sinking_fund_id]} not found" unless fund
+        end
+
+        if permitted[:savings_goal_id].present?
+          goal = ::SavingsGoal.where(account_id: account_id, status: "active").find_by(id: permitted[:savings_goal_id])
+          raise Finanzas::Errors::InvalidTransaction, "Savings goal #{permitted[:savings_goal_id]} not found" unless goal
         end
 
         # Auto-confirm pending transactions when the user explicitly sets both category and subcategory

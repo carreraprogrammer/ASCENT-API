@@ -81,12 +81,14 @@ module Finanzas
           account_id: account_id,
           transaction_type: transaction_type,
           sinking_fund_id: sinking_fund_id,
+          recurring_obligation_id: resolved_recurring_obligation_id,
           structural_match: structural_match
         )
         resolved_savings_goal_id = resolve_savings_goal_id(
           account_id: account_id,
           transaction_type: transaction_type,
           savings_goal_id: savings_goal_id,
+          recurring_obligation_id: resolved_recurring_obligation_id,
           structural_match: structural_match
         )
         resolved_debt_id = resolve_debt_id(
@@ -239,7 +241,7 @@ module Finanzas
         nil
       end
 
-      def resolve_sinking_fund_id(account_id:, transaction_type:, sinking_fund_id:, structural_match:)
+      def resolve_sinking_fund_id(account_id:, transaction_type:, sinking_fund_id:, recurring_obligation_id:, structural_match:)
         return nil unless transaction_type == "expense"
 
         if sinking_fund_id.present?
@@ -248,6 +250,12 @@ module Finanzas
 
           return fund.id
         end
+
+        # Deriva el bolsillo desde la obligación recurrente resuelta cuando su origen
+        # es un SinkingFund con débito automático (el "Aporte: {bolsillo}"). Espejo de
+        # resolve_debt_id: el auto-balance del repo solo fondea el bolsillo con sinking_fund_id.
+        derived = derive_source_id_from_obligation(account_id, recurring_obligation_id, "SinkingFund")
+        return derived if derived
 
         return nil unless structural_match&.dig(:match_type) == "sinking_fund"
         return nil unless structural_match[:confidence] == "high"
@@ -258,7 +266,7 @@ module Finanzas
       # Deriva la meta asociada: del savings_goal_id explícito, o de la obligación
       # recurrente detectada cuando su origen es un SavingsGoal (aporte a meta).
       # El repo incrementa current_amount de la meta al confirmarse el aporte.
-      def resolve_savings_goal_id(account_id:, transaction_type:, savings_goal_id:, structural_match:)
+      def resolve_savings_goal_id(account_id:, transaction_type:, savings_goal_id:, recurring_obligation_id:, structural_match:)
         return nil unless transaction_type == "expense"
 
         if savings_goal_id.present?
@@ -268,11 +276,26 @@ module Finanzas
           return goal.id
         end
 
+        # Deriva la meta desde la obligación recurrente resuelta cuando su origen es un
+        # SavingsGoal (el "Aporte a {meta}"), igual que resolve_debt_id para deudas. Sin
+        # esto un aporte que llega con recurring_obligation_id pero concepto no-textual
+        # (ej. "Transferencia a una llave") queda ligado a la obligación pero nunca
+        # incrementa current_amount de la meta.
+        derived = derive_source_id_from_obligation(account_id, recurring_obligation_id, "SavingsGoal")
+        return derived if derived
+
         return nil unless structural_match&.dig(:match_type) == "savings_goal"
         return nil unless structural_match[:confidence] == "high"
 
-        obligation = ::RecurringObligation.where(account_id: account_id).find_by(id: structural_match[:match_id])
-        return nil unless obligation&.source_type == "SavingsGoal"
+        derive_source_id_from_obligation(account_id, structural_match[:match_id], "SavingsGoal")
+      end
+
+      # Devuelve source_id de la obligación recurrente si existe y su origen coincide.
+      def derive_source_id_from_obligation(account_id, obligation_id, source_type)
+        return nil if obligation_id.blank?
+
+        obligation = ::RecurringObligation.where(account_id: account_id).find_by(id: obligation_id)
+        return nil unless obligation&.source_type == source_type
 
         obligation.source_id
       end
