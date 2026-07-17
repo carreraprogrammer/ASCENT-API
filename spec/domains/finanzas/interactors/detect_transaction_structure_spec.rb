@@ -59,13 +59,33 @@ RSpec.describe Finanzas::Interactors::DetectTransactionStructure do
       end
     end
 
-    context "no concept match, tight amount only" do
-      it "returns low confidence" do
+    context "no concept match, exact amount only (no date/subcategory)" do
+      it "returns medium confidence — exact amount alone is a suggestion, not auto-link" do
         create(:recurring_obligation, user: user, account: user.default_account,
                name: "Arriendo", amount: 2_200_000, due_day: 5)
 
+        # Sin fecha ni subcategoría no podemos anclar el día → no llega a high,
+        # pero un monto idéntico al peso es evidencia suficiente para sugerir.
         result = call(concept: "Transferencia banco", amount: 2_200_000)
-        expect(result[:confidence]).to eq("low")
+        expect(result[:confidence]).to eq("medium")
+      end
+    end
+
+    context "no concept match, exact amount + due day within window" do
+      it "returns high confidence — auto-links (caso PILA)" do
+        subcat = create(:subcategory)
+        ob = create(:recurring_obligation, user: user, account: user.default_account,
+                    name: "PILA Freelance", amount: 534_200, due_day: 21,
+                    category: subcat.category, subcategory: subcat)
+
+        # El extracto ("Pago Planilla Unica…") no cruza con "PILA Freelance" y el
+        # auto-categorizador puso otra subcategoría, pero el monto es exacto y el día
+        # cae en ventana → high. La subcategoría que choca ya no veta.
+        other = create(:subcategory)
+        result = call(concept: "Pago Planilla Unica Internet - PSE APORTES EN LINEA",
+                      amount: 534_200, date_str: "17/07", subcategory_id: other.id)
+        expect(result[:confidence]).to eq("high")
+        expect(result[:match_id]).to eq(ob.id)
       end
     end
 
