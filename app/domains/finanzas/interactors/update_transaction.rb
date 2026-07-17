@@ -49,6 +49,18 @@ module Finanzas
         if permitted[:recurring_obligation_id].present?
           obligation = ::RecurringObligation.active.where(account_id: account_id).find_by(id: permitted[:recurring_obligation_id])
           raise Finanzas::Errors::InvalidTransaction, "Recurring obligation #{permitted[:recurring_obligation_id]} not found" unless obligation
+
+          # Al vincular la transacción a mano con una obligación respaldada por una meta o
+          # bolsillo (el "Aporte a {meta}" / "Aporte: {bolsillo}"), deriva su destino real
+          # para que el auto-balance del repo fondee el saldo. Espejo de CreateTransaction:
+          # sin esto el vínculo queda inerte (recurring_obligation_id puesto, saldo intacto).
+          # Solo si el front no lo mandó explícito (respeta un unlink deliberado).
+          case obligation.source_type
+          when "SavingsGoal"
+            permitted[:savings_goal_id] = obligation.source_id unless permitted.key?(:savings_goal_id)
+          when "SinkingFund"
+            permitted[:sinking_fund_id] = obligation.source_id unless permitted.key?(:sinking_fund_id)
+          end
         end
 
         if permitted[:sinking_fund_id].present?
