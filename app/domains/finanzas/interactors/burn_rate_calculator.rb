@@ -98,7 +98,10 @@ module Finanzas
           .includes(:subcategory)
           .where(account_id: account_id, transaction_type: "expense")
           .where(status: %w[confirmed pending])
+          # Aportes a bolsillo y a meta NO son gasto de gaveta (RFC-0001): se contabilizan
+          # en objetivos/bolsillos, no en el burn rate. Mismo criterio que build_current_plan_response.
           .where(sinking_fund_id: nil)
+          .where(savings_goal_id: nil)
           .select { |transaction| transaction_applies_to_period?(transaction, period) }
       end
 

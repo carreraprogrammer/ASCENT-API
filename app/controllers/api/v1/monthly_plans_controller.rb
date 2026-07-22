@@ -303,7 +303,10 @@ module Api
         spend_rows = ::Transaction
           .where(account_id: current_account.id, transaction_type: "expense")
           .where.not(category_id: nil)
-          .where(savings_goal_id: nil) # aportes a meta se contabilizan en "objetivos", no en su gaveta
+          # Aportes a meta y a bolsillo se contabilizan en "objetivos"/bolsillos, no en su gaveta
+          # (RFC-0001). Mismo criterio que BurnRateCalculator para que dashboard y presupuesto coincidan.
+          .where(savings_goal_id: nil)
+          .where(sinking_fund_id: nil)
           .where(
             "(covers_period_month IS NOT NULL AND covers_period_year IS NOT NULL" \
             "  AND covers_period_month = :m AND covers_period_year = :y)" \
