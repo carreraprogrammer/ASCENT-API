@@ -310,7 +310,7 @@ Hallazgo: ambos buckets están **semánticamente mezclados** (ahorro real, herra
 
 ### 3.3 Casos a revisar a mano (~10, no automatizar)
 
-- **"Préstamo familiar (cuota) — $178.000"** (hoy social/Familia) → es **cuota de deuda** → `committed`, idealmente ligada a una `Debt`.
+- **"Cuota préstamo familiar"** (hoy social/Familia) → es **cuota de deuda** → `committed`, idealmente ligada a una `Debt`.
 - **"Aporte fondo de emergencia — $1.200.000"** (hoy investment/Ahorro voluntario) → contribución a `savings_goal`/Patrimonio, **no** flexible.
 - **"Aporte a bolsillo suplementación"**, **"Retiro bolsillo ropa/impuesto"** → movimientos de `sinking_fund`, no gasto flexible.
 - **"Deuda curso de barismo"** aparece duplicada bajo `investment/Cursos` y `social/Familia` → inconsistencia de datos: dedupe/corregir.

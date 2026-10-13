@@ -319,7 +319,7 @@ GET  /api/v1/debts
 POST /api/v1/debts
 
 {
-  "name": "Préstamo Personal",
+  "name": "Préstamo personal",
   "current_balance": 5196000,
   "monthly_payment": 866000,
   "interest_rate": 2.1,
@@ -487,7 +487,7 @@ PATCH /api/v1/financial_context
 {
   "phase": "debt_payoff",
   "strategy": "snowball",
-  "notes": "Prioridad: liquidar Préstamo Personal antes de diciembre"
+  "notes": "Prioridad: liquidar el préstamo personal antes de diciembre"
 }
 ```
 

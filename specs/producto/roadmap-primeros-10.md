@@ -232,7 +232,7 @@ No legal compleja — suficiente con una pantalla dentro de la app que diga clar
 ### 2.4 Borrado de cuenta ✅
 
 - ✅ Task `rails accounts:delete[email]` que borra todos los datos del usuario
-- ✅ Protección: no borra cuentas de admin hardcodeadas (`carreraprogrammer@gmail.com`)
+- ✅ Protección: no borra cuentas protegidas (configuradas por entorno: `OWNER_EMAIL` / `SUPER_USER_EMAIL`)
 
 ---
 

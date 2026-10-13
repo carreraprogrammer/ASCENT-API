@@ -1,3 +1,12 @@
+# Cuentas que las tasks destructivas nunca tocan. El dueño/super usuario se
+# configura por entorno (OWNER_EMAIL / SUPER_USER_EMAIL).
+def protected_account_emails
+  [ ENV["OWNER_EMAIL"], ENV["SUPER_USER_EMAIL"], "superadmin@boilerplate.dev" ]
+    .map { |e| e.to_s.strip.downcase }
+    .reject(&:empty?)
+    .uniq
+end
+
 # lib/tasks/accounts.rake
 #
 # Provisioning manual de cuentas para los primeros usuarios.
@@ -192,8 +201,7 @@ namespace :accounts do
     email = args[:email].to_s.strip.downcase
     abort "Uso: rails 'accounts:reset_onboarding[email@ejemplo.com]'" if email.empty?
 
-    protected_emails = %w[carreraprogrammer@gmail.com superadmin@boilerplate.dev].freeze
-    if protected_emails.include?(email)
+    if protected_account_emails.include?(email)
       abort "ERROR: '#{email}' es una cuenta protegida. Usá una cuenta de PRUEBA para probar el onboarding."
     end
 
@@ -225,8 +233,7 @@ namespace :accounts do
     email = args[:email].to_s.strip.downcase
     abort "Uso: rails 'accounts:delete[email@ejemplo.com]'" if email.empty?
 
-    PROTECTED_EMAILS = %w[carreraprogrammer@gmail.com superadmin@boilerplate.dev].freeze
-    if PROTECTED_EMAILS.include?(email)
+    if protected_account_emails.include?(email)
       abort "ERROR: No se puede borrar la cuenta protegida '#{email}'."
     end
 

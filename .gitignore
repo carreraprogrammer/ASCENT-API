@@ -30,3 +30,12 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# Secrets y configuración local — nunca versionar
+.claude/
+.env
+.env.*
+!.env.example
+config/master.key
+*.pem
+*.key

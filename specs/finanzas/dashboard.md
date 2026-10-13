@@ -15,7 +15,7 @@
 
 El dashboard actual tiene dos fallas críticas:
 
-1. **Cash flow ciego** — El sistema puede recomendar abonar dinero a deuda sin considerar que hay obligaciones del próximo ciclo que cubrir. Ejemplo: "tienes $4M de surplus, págalos al Préstamo Personal" cuando hay $5M de obligaciones el 15 del mes siguiente y solo llegan $3M de ingreso temprano. El usuario queda sin flujo de caja.
+1. **Cash flow ciego** — El sistema puede recomendar abonar dinero a deuda sin considerar que hay obligaciones del próximo ciclo que cubrir. Ejemplo: "tienes $4M de surplus, págalos al préstamo personal" cuando hay $5M de obligaciones el 15 del mes siguiente y solo llegan $3M de ingreso temprano. El usuario queda sin flujo de caja.
 
 2. **Métricas confusas** — El hero card mostraba `-$2,458,138 disponible` usando solo el ingreso base como denominador, ignorando el ingreso variable confirmado. Al mismo tiempo mostraba overflow disponible. Contradicción directa.
 

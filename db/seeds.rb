@@ -177,7 +177,8 @@ end
 # El super usuario (dueño de la cuenta) arranca con bypass_readiness: true y
 # nivel 5 para poder testear todos los estados del sistema sin perder datos.
 
-SUPER_USER_EMAIL = "carreraprogrammer@gmail.com".freeze
+# Se configura por entorno (SUPER_USER_EMAIL); sin la variable, este bloque se omite.
+SUPER_USER_EMAIL = ENV.fetch("SUPER_USER_EMAIL", "").strip.downcase.freeze
 
 GAMIFICATION_FEATURES = %w[
   nightly_review
@@ -194,7 +195,7 @@ GAMIFICATION_FEATURES = %w[
   simulaciones
 ].freeze
 
-super_user = User.find_by(email: SUPER_USER_EMAIL)
+super_user = SUPER_USER_EMAIL.empty? ? nil : User.find_by(email: SUPER_USER_EMAIL)
 
 if super_user
   account = Account.find_by(owner_user: super_user)
@@ -221,5 +222,5 @@ if super_user
     puts "Skipped gamification seed: no account found for #{SUPER_USER_EMAIL}"
   end
 else
-  puts "Skipped gamification seed: user #{SUPER_USER_EMAIL} not found"
+  puts "Skipped gamification seed: super user not found (set SUPER_USER_EMAIL)"
 end
