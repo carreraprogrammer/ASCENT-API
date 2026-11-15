@@ -25,7 +25,7 @@ RSpec.describe "Continuar con The Cyborg Way" do
   end
 
   it "links the existing account that has the same verified email" do
-    existing = User.create!(email: "owner@example.com", name: "Owner", confirmed_at: Time.current)
+    existing = User.create!(email: "owner@example.com", name: "Owner", auth_provider: "google", confirmed_at: Time.current)
     seen = []
     user = login_with(id_token, seen: seen)
     expect(user.id).to eq(existing.id)
@@ -36,13 +36,13 @@ RSpec.describe "Continuar con The Cyborg Way" do
 
   it "recognises the person by sub on the next sign-in" do
     login_with(id_token)
-    again = login_with(id_token(email: "renamed@example.com"))
+    again = login_with(id_token({ email: "renamed@example.com" }))
     expect(User.where(tcw_sub: "u_brain_owner").count).to eq(1)
     expect(again.email).to eq("owner@example.com")
   end
 
   it "refuses an unverified email" do
-    expect { login_with(id_token(email_verified: false)) }.to raise_error(Auth::Errors::InvalidEmail)
+    expect { login_with(id_token({ email_verified: false })) }.to raise_error(Auth::Errors::InvalidEmail)
   end
 
   {

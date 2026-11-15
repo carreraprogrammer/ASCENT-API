@@ -706,7 +706,6 @@ module Api
       def income_source_repo
         @income_source_repo ||= Finanzas::Repositories::IncomeSourceRepository.new
       end
-
     end
   end
 end
