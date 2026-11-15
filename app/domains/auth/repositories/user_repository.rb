@@ -45,6 +45,19 @@ module Auth
 
         map_to_entity(record)
       end
+      # TCW-1: la persona que entra con The Cyborg Way. Por su sub si ya entró antes; si no, la cuenta con el mismo
+      # correo verificado (vinculación); si no existe, una cuenta nueva.
+      def find_or_create_from_cyborg_way(sub:, email:)
+        record = ::User.find_by(tcw_sub: sub) || ::User.find_by(email: email.to_s.downcase)
+        if record
+          record.update!(tcw_sub: sub) if record.tcw_sub.blank?
+        else
+          record = ::User.create!(email: email.to_s.downcase, name: email.to_s.split("@").first, tcw_sub: sub,
+                                  auth_provider: "cyborg_way", confirmed_at: Time.current)
+        end
+        map_to_entity(record)
+      end
+
       def save_refresh_token(user_id:, token_hash:, expires_at:)
         ::User.find(user_id).update!(refresh_token_hash: token_hash, refresh_token_expires_at: expires_at)
       end

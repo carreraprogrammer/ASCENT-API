@@ -57,7 +57,7 @@ module Auth
           service_account_id: sa.id,
           agent_type_id:      agent_type.id
         ) do |d|
-          d.scopes     = ["agent:write"]
+          d.scopes     = [ "agent:write" ]
           d.active     = true
           d.granted_at = Time.current
         end

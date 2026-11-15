@@ -17,7 +17,7 @@ module Api
       skip_after_action :verify_policy_scoped
 
       # El callback viene de Google sin JWT — solo este action lo salta
-      skip_before_action :authenticate_request!, only: [:callback]
+      skip_before_action :authenticate_request!, only: [ :callback ]
 
       # GET /api/v1/me/email_connection
       def status
@@ -120,7 +120,7 @@ module Api
         render json: { data: { bank_senders: conn.bank_senders_list } }
 
       rescue ActiveRecord::RecordNotFound
-        render json: { errors: [{ status: "404", detail: "Gmail no conectado" }] }, status: :not_found
+        render json: { errors: [ { status: "404", detail: "Gmail no conectado" } ] }, status: :not_found
       rescue => e
         Rails.logger.error("[GmailOauth] update_senders error: #{e.message}")
         render_unprocessable("No se pudo actualizar los remitentes")

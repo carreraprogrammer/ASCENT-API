@@ -78,11 +78,12 @@ module Finanzas
             concept_match: concept_match, amount_match: amount_match,
             amount_exact: amount_exact, subcat_agrees: subcat_agrees, day_match: day_match
           )
-          type = case ob.source_type
-                 when "Debt"        then "debt"
-                 when "SavingsGoal" then "savings_goal"
-                 else                    "recurring"
-                 end
+          type =
+            case ob.source_type
+            when "Debt"        then "debt"
+            when "SavingsGoal" then "savings_goal"
+            else                    "recurring"
+            end
           matches << {
             match_type: type,
             match_id: ob.id,

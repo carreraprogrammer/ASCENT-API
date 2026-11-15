@@ -173,13 +173,14 @@ module Finanzas
         case behavior
         when "variable_linear"
           progress = month_progress_ratio(days_elapsed, days_in_month)
-          status = if budget.to_i.positive? && projected > budget
-                     "critical"
-                   elsif budget.to_i.positive? && ratio >= progress + 0.2
-                     "warning"
-                   else
-                     "comfortable"
-                   end
+          status =
+            if budget.to_i.positive? && projected > budget
+              "critical"
+            elsif budget.to_i.positive? && ratio >= progress + 0.2
+              "warning"
+            else
+              "comfortable"
+            end
           {
             kind:   "month_end_projection",
             status: status,
