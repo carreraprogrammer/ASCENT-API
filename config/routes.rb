@@ -13,6 +13,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       get "auth/google", to: redirect("/auth/google_oauth2")
       post "auth/google/mobile", to: "oauth#google_mobile_callback"
+      post "auth/tcw", to: "oauth#cyborg_way"   # TCW-1: Continuar con The Cyborg Way (OIDC + PKCE contra el cerebro)
       post "auth/register", to: "auth#register"
       post "auth/login", to: "auth#login"
       post "auth/refresh", to: "auth#refresh"

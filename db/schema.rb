@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_01_130000) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_15_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -625,9 +625,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_01_130000) do
     t.string "avatar_url"
     t.string "auth_provider"
     t.string "city"
+    t.string "tcw_sub"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["google_uid"], name: "index_users_on_google_uid", unique: true, where: "(google_uid IS NOT NULL)"
     t.index ["refresh_token_hash"], name: "index_users_on_refresh_token_hash"
+    t.index ["tcw_sub"], name: "index_users_on_tcw_sub", unique: true, where: "(tcw_sub IS NOT NULL)"
   end
 
   create_table "xp_events", force: :cascade do |t|

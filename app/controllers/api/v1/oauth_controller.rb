@@ -98,6 +98,31 @@ module Api
         render json: { errors: [ { status: "500", code: "server_error", detail: "Error interno" } ] }, status: :internal_server_error
       end
 
+      # POST /api/v1/auth/tcw { code, code_verifier, redirect_uri } — Continuar con The Cyborg Way (TCW-1).
+      def cyborg_way
+        user = Auth::Interactors::LoginWithCyborgWay.new.call(
+          code: params[:code], code_verifier: params[:code_verifier], redirect_uri: params[:redirect_uri]
+        )
+        Auth::Interactors::ProvisionAccount.new.call(user: user)
+        permissions = Authorization::Interactors::FetchUserPermissions.new.call(user_id: user.id)
+        jwt = JwtService.encode_access_token(user_id: user.id, email: user.email, super_admin: user.super_admin,
+                                             permissions: permissions)
+        refresh_result = Auth::Interactors::RefreshToken.new.call(
+          user_id: user.id, raw_refresh_token: issue_initial_refresh_token_for(user.id)
+        )
+        render json: {
+          data: { id: user.id, attributes: { email: user.email, name: user.name, avatar_url: user.avatar_url,
+                                             auth_provider: user.auth_provider, permissions: permissions,
+                                             super_admin: user.super_admin } },
+          meta: { access_token: jwt, refresh_token: refresh_result[:refresh_token] }
+        }, status: :ok
+      rescue Auth::Errors::Unauthorized => e
+        Rails.logger.warn("[CyborgWayAuth] unauthorized #{e.class}")
+        render json: { errors: [ { status: "401", code: "invalid_token", detail: "No se pudo verificar el inicio de sesión" } ] }, status: :unauthorized
+      rescue Auth::Errors::InvalidEmail
+        render json: { errors: [ { status: "422", code: "invalid_email", detail: "El correo no está verificado" } ] }, status: :unprocessable_entity
+      end
+
       def failure
         redirect_to_frontend_with_error(params[:message] || "oauth_failed")
       end
