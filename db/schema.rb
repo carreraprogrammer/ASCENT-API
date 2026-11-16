@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_15_000000) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_16_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -456,6 +456,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_15_000000) do
     t.index ["slug"], name: "index_roles_on_slug", unique: true
   end
 
+  create_table "savings_goal_adjustments", force: :cascade do |t|
+    t.bigint "savings_goal_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "user_id", null: false
+    t.date "date", null: false
+    t.integer "amount", null: false
+    t.integer "previous_amount", null: false
+    t.string "description", null: false
+    t.string "key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_savings_goal_adjustments_on_account_id"
+    t.index ["savings_goal_id", "key"], name: "index_savings_goal_adjustments_on_savings_goal_id_and_key", unique: true
+    t.index ["savings_goal_id"], name: "index_savings_goal_adjustments_on_savings_goal_id"
+    t.index ["user_id"], name: "index_savings_goal_adjustments_on_user_id"
+  end
+
   create_table "savings_goals", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "account_id"
@@ -685,6 +702,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_15_000000) do
   add_foreign_key "recurring_obligations", "users"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
+  add_foreign_key "savings_goal_adjustments", "accounts"
+  add_foreign_key "savings_goal_adjustments", "savings_goals"
+  add_foreign_key "savings_goal_adjustments", "users"
   add_foreign_key "sinking_funds", "accounts"
   add_foreign_key "sinking_funds", "planned_expenses"
   add_foreign_key "sinking_funds", "users"
