@@ -20,4 +20,6 @@ class Account < ApplicationRecord
   validates :slug, presence: true, uniqueness: true
 
   scope :active, -> { where(active: true) }
+  # ASC-4 fase 6: la cuenta demo (datos ficticios) queda fuera de agentes programados, consolidados y avisos.
+  scope :not_demo, -> { joins(:owner_user).where(users: { demo: false }) }
 end

@@ -4,7 +4,7 @@ module Auth
       attr_reader :id, :email, :name, :city, :encrypted_password,
                   :refresh_token_hash, :refresh_token_expires_at,
                   :confirmed_at, :created_at, :super_admin,
-                  :google_uid, :avatar_url, :auth_provider
+                  :google_uid, :avatar_url, :auth_provider, :demo
 
       def initialize(attrs = {})
         @id = attrs[:id]
@@ -20,10 +20,12 @@ module Auth
         @google_uid = attrs[:google_uid]
         @avatar_url = attrs[:avatar_url]
         @auth_provider = attrs[:auth_provider]
+        @demo = attrs[:demo] == true
       end
 
       def confirmed? = !confirmed_at.nil?
       def super_admin? = @super_admin == true
+      def demo? = @demo
 
       def oauth_user?
         auth_provider.present?

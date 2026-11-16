@@ -11,12 +11,18 @@ module Auth
       GOOGLE_AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"
       GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
       SCOPE            = "https://www.googleapis.com/auth/gmail.readonly"
+      # ASC-4 fase 2: a dónde vuelve el callback. "native" (iOS/Android) usa el deep link como siempre;
+      # "web" termina con un 302 a FRONTEND_URL + /auth/gmail/callback.
+      PLATFORMS        = %w[web native].freeze
+      NATIVE_ORIGINS   = %w[capacitor://localhost ionic://localhost https://localhost http://localhost].freeze
 
       class << self
         # Genera la URL de autorización de Google.
         # Codifica el account_id en el state (firmado con la clave de la app).
-        def authorization_url(account_id:)
-          state = Rails.application.message_verifier(:gmail_oauth).generate(account_id.to_s, expires_in: 10.minutes)
+        # platform: "web" agrega el destino al state firmado; "native" (o nil) deja el state igual que antes.
+        def authorization_url(account_id:, platform: nil)
+          payload = platform.to_s == "web" ? "#{account_id}:web" : account_id.to_s
+          state = Rails.application.message_verifier(:gmail_oauth).generate(payload, expires_in: 10.minutes)
           uri = URI(GOOGLE_AUTH_URL)
           uri.query = URI.encode_www_form(
             client_id:     client_id,
@@ -33,9 +39,11 @@ module Auth
         # Recibe el código de Google, lo intercambia por tokens y los guarda.
         # Devuelve el Account para poder construir el redirect de vuelta a la app.
         def exchange_code(code:, state:)
-          account_id = Rails.application.message_verifier(:gmail_oauth).verify(state)
+          account_id = decode_state(state)[:account_id]
 
           account = Account.find(account_id)
+          # ASC-4: la cuenta demo nunca conecta Gmail.
+          raise ArgumentError, "la cuenta demo no conecta Gmail" if account.owner_user&.demo
 
           tokens = fetch_tokens(grant_type: "authorization_code", code: code)
 
@@ -51,6 +59,37 @@ module Auth
           account
         rescue ActiveSupport::MessageVerifier::InvalidSignature
           raise ArgumentError, "state inválido o expirado"
+        end
+
+        # Plataforma que inició la conexión. Un parámetro explícito (web/ios/android) manda; si no, el Origin
+        # del navegador: la app de Capacitor llama desde capacitor://localhost (iOS) o https://localhost
+        # (Android); la web, desde su dominio. Sin Origin se asume la app, como hasta ahora.
+        def platform_for(param: nil, origin: nil)
+          case param.to_s.downcase
+          when "web" then return "web"
+          when "ios", "android", "native" then return "native"
+          end
+          return "native" if origin.blank? || NATIVE_ORIGINS.include?(origin.to_s.downcase.chomp("/"))
+
+          "web"
+        end
+
+        # Lee el state firmado: { account_id:, platform: }. Lanza ArgumentError si es inválido o expiró.
+        def decode_state(state)
+          payload = Rails.application.message_verifier(:gmail_oauth).verify(state).to_s
+          account_id, platform = payload.split(":", 2)
+          { account_id: account_id, platform: platform == "web" ? "web" : "native" }
+        rescue ActiveSupport::MessageVerifier::InvalidSignature
+          raise ArgumentError, "state inválido o expirado"
+        end
+
+        # A dónde volver aunque el state no sirva (error de Google, state vencido): sin state legible, la app.
+        def return_platform(state)
+          return "native" if state.blank?
+
+          decode_state(state)[:platform]
+        rescue ArgumentError
+          "native"
         end
 
         # Devuelve la conexión con access_token fresco.
