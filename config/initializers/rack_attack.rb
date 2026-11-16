@@ -7,6 +7,7 @@
 # Límites activos:
 #
 #   auth/login + auth/register   5 req/min por IP  — evita credential stuffing
+#   demo/session                10 req/min por IP  — "Ver demo" es pública (ASC-4)
 #   agents/chat                 10 req/min por account_id — el canal principal
 #   agents/* (preflight, etc.)  30 req/min por account_id
 #   nightly writes (NightAnalysis, AgentInsight, AgentUiEvents)
@@ -45,6 +46,11 @@ class Rack::Attack
   # 1. Auth: login y registro — 5 intentos/minuto por IP
   throttle("auth/ip", limit: 5, period: 1.minute) do |req|
     req.ip if req.path.match?(%r{\A/api/v1/auth/(login|register)\z}) && req.post?
+  end
+
+  # 1b. Modo demo (ASC-4): "Ver demo" es pública — 10 sesiones/minuto por IP.
+  throttle("demo/session/ip", limit: 10, period: 1.minute) do |req|
+    req.ip if req.path == "/api/v1/demo/session" && req.post?
   end
 
   # 2. Chat del agente — 10 mensajes/minuto por account_id
@@ -98,7 +104,7 @@ class Rack::Attack
         "Content-Type"  => "application/json",
         "Retry-After"   => retry_after.to_s,
         "X-RateLimit-Limit"     => limit.to_s,
-        "X-RateLimit-RetryAfter" => retry_after.to_s,
+        "X-RateLimit-RetryAfter" => retry_after.to_s
       },
       [ body ]
     ]

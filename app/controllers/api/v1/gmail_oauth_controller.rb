@@ -44,8 +44,10 @@ module Api
 
       # POST /api/v1/auth/gmail
       # La app llama esto, recibe la URL y abre el browser OAuth.
+      # ASC-4: la web y la app vuelven a lugares distintos; la plataforma viaja en el state firmado.
       def start
-        url = Auth::Interactors::GmailOauth.authorization_url(account_id: current_account.id)
+        platform = Auth::Interactors::GmailOauth.platform_for(param: params[:platform], origin: request.origin)
+        url = Auth::Interactors::GmailOauth.authorization_url(account_id: current_account.id, platform: platform)
         render json: { data: { authorization_url: url } }
       end
 
@@ -56,6 +58,7 @@ module Api
         error = params[:error]
         code  = params[:code]
         state = params[:state]
+        @return_platform = Auth::Interactors::GmailOauth.return_platform(state)
 
         if error.present?
           return redirect_to_app(status: "error", reason: error)
@@ -133,13 +136,25 @@ module Api
       # del usuario, así que el wizard quedaba "estancado" tras finalizar aunque la
       # conexión ya estuviera hecha. En su lugar servimos una página HTML que dispara
       # el deep link por JS al cargar y deja un botón de respaldo para volver a la app.
+      #
+      # ASC-4 fase 2: en web, el deep link daniel15k:// no existe (el navegador no tiene a quién abrir), así que
+      # el botón "Volver a la aplicación" no hacía nada. La web termina con un 302 a la página de la UI.
       def redirect_to_app(status:, reason: nil)
+        return redirect_to_web(status: status, reason: reason) if @return_platform == "web"
+
         deep_link = ENV.fetch("APP_DEEP_LINK_BASE", "daniel15k://auth/gmail")
         query     = { status: status }
         query[:reason] = reason if reason.present?
         target = "#{deep_link}?#{query.to_query}"
 
         render html: deep_link_page(target, status: status).html_safe, content_type: "text/html"
+      end
+
+      def redirect_to_web(status:, reason: nil)
+        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173").split(",").first.to_s.strip.chomp("/")
+        query = "status=#{CGI.escape(status)}"
+        query += "&reason=#{CGI.escape(reason.to_s)}" if reason.present?
+        redirect_to "#{frontend_url}/auth/gmail/callback?#{query}", allow_other_host: true
       end
 
       def deep_link_page(target, status:)

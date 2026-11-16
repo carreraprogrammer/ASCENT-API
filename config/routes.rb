@@ -13,6 +13,8 @@ Rails.application.routes.draw do
     namespace :v1 do
       get "auth/google", to: redirect("/auth/google_oauth2")
       post "auth/google/mobile", to: "oauth#google_mobile_callback"
+      post "demo/session", to: "demo#create_session"   # ASC-4: "Ver demo" (pública, con rate limit)
+      post "demo/switch", to: "demo#switch"     # ASC-4: interruptor "Modo demo" (solo superadmin)
       post "auth/tcw", to: "oauth#cyborg_way"   # TCW-1: Continuar con The Cyborg Way (OIDC + PKCE contra el cerebro)
       post "auth/register", to: "auth#register"
       post "auth/login", to: "auth#login"
@@ -144,6 +146,8 @@ Rails.application.routes.draw do
 
       # Agent internals — solo service account, sin X-Account-Id
       get  "agent/accounts/active",     to: "agent#active_accounts"
+      get  "agent/accounts/demo",       to: "agent#demo_account"   # ASC-4: cuenta demo para el cromo
+      post "agent/demo/reset",          to: "agent#reset_demo"     # ASC-4: reset nocturno de la demo
       post "agent/gmail/renew_watches", to: "agent#renew_watches"
 
       # Telegram (sin autenticación JWT — Telegram llama directamente)

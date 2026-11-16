@@ -6,8 +6,23 @@ module Api
       class AuthenticationError < StandardError; end
 
       before_action :authenticate_request!
+      # ASC-4 fase 6: la cuenta demo es de solo lectura. Va después de autenticar, para todos los controladores.
+      before_action :enforce_demo_read_only!
+
+      DEMO_WRITE_ALLOWED = [ %w[auth logout] ].freeze
 
       private
+
+      def enforce_demo_read_only!
+        return if request.get? || request.head?
+        return if DEMO_WRITE_ALLOWED.include?([ controller_name, action_name ])
+        return if current_user.nil? && current_service_account.nil?
+        return unless Demo::Interactors::DemoAccess.new.demo_request?(
+          jwt_payload: @jwt_payload, user: current_user, account_id: current_account&.id
+        )
+
+        render json: { error: "demo_read_only" }, status: :forbidden
+      end
 
       def authenticate_request!
         token = request.headers["Authorization"]&.split(" ")&.last

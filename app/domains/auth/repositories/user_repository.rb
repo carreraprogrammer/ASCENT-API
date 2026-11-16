@@ -70,7 +70,8 @@ module Auth
           city: record.city, encrypted_password: record.encrypted_password, refresh_token_hash: record.refresh_token_hash,
           refresh_token_expires_at: record.refresh_token_expires_at, confirmed_at: record.confirmed_at,
           created_at: record.created_at, super_admin: record.super_admin,
-          google_uid: record.google_uid, avatar_url: record.avatar_url, auth_provider: record.auth_provider)
+          google_uid: record.google_uid, avatar_url: record.avatar_url, auth_provider: record.auth_provider,
+          demo: record.demo)
       end
     end
   end

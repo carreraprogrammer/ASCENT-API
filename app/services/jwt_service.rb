@@ -5,17 +5,21 @@ class JwtService
   class InvalidToken < StandardError; end
   class ExpiredToken < StandardError; end
 
-  def self.encode_access_token(user_id:, email:, super_admin: false, permissions: nil, impersonated_by: nil)
+  # demo: true marca una sesión de la cuenta demo (ASC-4 fase 6): solo lectura y vida corta (expires_in).
+  def self.encode_access_token(user_id:, email:, super_admin: false, permissions: nil, impersonated_by: nil,
+                               demo: false, expires_in: nil)
+    expiry = expires_in || ENV.fetch("JWT_ACCESS_EXPIRY", DEFAULT_ACCESS_EXPIRY).to_i
     payload = {
       user_id: user_id,
       email: email,
       super_admin: super_admin,
       permissions: permissions || Authorization::Interactors::FetchUserPermissions.new.call(user_id: user_id),
       jti: SecureRandom.uuid,
-      exp: Time.current.to_i + ENV.fetch("JWT_ACCESS_EXPIRY", DEFAULT_ACCESS_EXPIRY).to_i,
+      exp: Time.current.to_i + expiry.to_i,
       type: "access"
     }
     payload[:impersonated_by] = impersonated_by if impersonated_by
+    payload[:demo] = true if demo
     JWT.encode(payload, secret, ALGORITHM)
   end
 

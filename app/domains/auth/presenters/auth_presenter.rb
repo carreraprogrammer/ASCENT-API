@@ -25,7 +25,8 @@ module Auth
             avatar_url: user.avatar_url,
             auth_provider: user.auth_provider,
             default_account_id: account&.id,
-            default_account_slug: account&.slug
+            default_account_slug: account&.slug,
+            demo: user.respond_to?(:demo?) ? user.demo? : false
           }
         }
       end
