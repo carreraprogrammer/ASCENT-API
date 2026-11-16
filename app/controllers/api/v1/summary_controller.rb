@@ -333,8 +333,13 @@ module Api
         # Snowball: menor saldo primero
         recommended = active.min_by { |d| d[:current_balance] }
 
+        # ASC-4: lo prestado de las deudas activas, para que "Tu ascenso" muestre el avance de "Pagar deudas"
+        # (pagado ÷ prestado). Solo cuando todas tienen monto original; si falta alguno, null.
+        original_total = active.all? { |d| d[:original_amount].to_i.positive? } ? active.sum { |d| d[:original_amount].to_i } : nil
+
         {
           total_balance:       total_balance,
+          original_total:      original_total,
           monthly_payments:    monthly_payments,
           recommended_payment: recommended ? {
             id:       recommended[:id],
