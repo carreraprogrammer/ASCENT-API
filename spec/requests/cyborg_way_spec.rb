@@ -62,6 +62,7 @@ RSpec.describe "Continuar con The Cyborg Way" do
   end
 
   it "answers the app with Ascent's own tokens" do
+    stub_const("ENV", ENV.to_h.merge("ALLOWED_IDENTITIES" => "tcw:u_brain_owner"))   # TCW-8: el refresh revisa la lista
     allow(Auth::Interactors::LoginWithCyborgWay).to receive(:new).and_return(
       instance_double(Auth::Interactors::LoginWithCyborgWay, call: Auth::Repositories::UserRepository.new
         .find_or_create_from_cyborg_way(sub: "u_brain_owner", email: "owner@example.com"))
