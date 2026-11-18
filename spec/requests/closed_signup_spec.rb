@@ -62,11 +62,23 @@ RSpec.describe "Registro cerrado (TCW-8)" do
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "con correo y contraseña (cuenta existente fuera de la lista) recibe 403" do
+    it "con correo y contraseña (cuenta existente fuera de la lista) recibe el mismo 401 con la contraseña buena o mala" do
       create(:user, email: "old@example.com")
-      expect { post "/api/v1/auth/login", params: { email: "old@example.com", password: "Password1" } }
-        .not_to change { counts }
-      expect(response).to have_http_status(:forbidden)
+      answers = %w[Password1 wrong-password].map do |password|
+        post "/api/v1/auth/login", params: { email: "old@example.com", password: password }
+        [ response.status, response.body ]
+      end
+      expect(answers.uniq.size).to eq(1)                 # no sirve para confirmar la contraseña de una cuenta ajena
+      expect(answers.first.first).to eq(401)
+    end
+
+    it "no renueva la sesión de una cuenta que ya tenía refresh token" do
+      user = create(:user, email: "old@example.com")
+      raw = JwtService.encode_refresh_token
+      Auth::Repositories::UserRepository.new.save_refresh_token(user_id: user.id, token_hash: BCrypt::Password.create(raw),
+                                                                expires_at: 1.day.from_now)
+      post "/api/v1/auth/refresh", params: { user_id: user.id, refresh_token: raw }
+      expect(response).to have_http_status(:unauthorized)
     end
 
     it "con Google y el correo del dueño sin verificar no entra" do
@@ -78,15 +90,21 @@ RSpec.describe "Registro cerrado (TCW-8)" do
   context "con la variable vacía" do
     let(:allowed) { "" }
 
-    it "no entra nadie, ni el dueño, y no se crea nada" do
-      create(:user, email: OWNER_EMAIL)
-      expect {
-        google_web(email: OWNER_EMAIL)
-        google_mobile(email: OWNER_EMAIL)
-        tcw(sub: OWNER_SUB, email: OWNER_EMAIL)
-        post "/api/v1/auth/login", params: { email: OWNER_EMAIL, password: "Password1" }
-      }.not_to change { counts }
+    it "no entra nadie nuevo y no se crea nada" do
+      expect { google_web(email: OWNER_EMAIL) }.not_to change { counts }
+      expect(response).to redirect_to(%r{error=not_allowed})
+      expect { google_mobile(email: OWNER_EMAIL) }.not_to change { counts }
       expect(response).to have_http_status(:forbidden)
+      expect { tcw(sub: OWNER_SUB, email: OWNER_EMAIL) }.not_to change { counts }
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "tampoco entra una cuenta que ya existía" do
+      create(:user, email: OWNER_EMAIL)
+      post "/api/v1/auth/login", params: { email: OWNER_EMAIL, password: "Password1" }
+      expect(response).to have_http_status(:unauthorized)
+      google_web(email: OWNER_EMAIL)
+      expect(response).to redirect_to(%r{error=not_allowed})
     end
   end
 
@@ -111,8 +129,11 @@ RSpec.describe "Registro cerrado (TCW-8)" do
       expect(JSON.parse(response.body).dig("data", "id")).to eq(owner.id)
     end
 
-    it "con correo y contraseña" do
+    it "con correo y contraseña, y renueva su sesión" do
       post "/api/v1/auth/login", params: { email: OWNER_EMAIL, password: "Password1" }
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      post "/api/v1/auth/refresh", params: { user_id: owner.id, refresh_token: body.dig("meta", "refresh_token") }
       expect(response).to have_http_status(:ok)
     end
   end
