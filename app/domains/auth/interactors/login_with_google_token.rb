@@ -5,8 +5,9 @@ module Auth
       GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
       GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-      def initialize(user_repo: Repositories::UserRepository.new)
+      def initialize(user_repo: Repositories::UserRepository.new, allowed: ValueObjects::AllowedIdentities.from_env)
         @user_repo = user_repo
+        @allowed = allowed
       end
 
       def call(access_token: nil, server_auth_code: nil, id_token: nil)
@@ -17,6 +18,8 @@ module Auth
         )
 
         raise Auth::Errors::InvalidEmail, "Google no proporcionó un email" if info["email"].blank?
+        raise Auth::Errors::InvalidEmail, "El correo no está verificado" if [ false, "false" ].include?(info["email_verified"])
+        @allowed.check!(email: info["email"])   # TCW-8: antes de buscar o crear
 
         @user_repo.find_or_create_from_google(
           google_uid: info["sub"],

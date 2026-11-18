@@ -7,5 +7,6 @@ module Auth
     class InvalidCredentials < StandardError; end
     class TokenReuse < StandardError; end
     class Unauthorized < StandardError; end
+    class NotAllowed < StandardError; end   # TCW-8: fuera de ALLOWED_IDENTITIES
   end
 end

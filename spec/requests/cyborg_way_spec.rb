@@ -20,7 +20,8 @@ RSpec.describe "Continuar con The Cyborg Way" do
       seen << [ verb, url, form ]
       url.end_with?("/token") ? { "id_token" => token, "access_token" => "x" } : jwks
     end
-    Auth::Interactors::LoginWithCyborgWay.new(http: http, issuer: issuer, client_id: "ascent-web")
+    Auth::Interactors::LoginWithCyborgWay.new(http: http, issuer: issuer, client_id: "ascent-web",
+                                             allowed: Auth::ValueObjects::AllowedIdentities.new("tcw:u_brain_owner"))
       .call(code: "c", code_verifier: "v" * 43, redirect_uri: "https://ascent.test/auth/tcw/callback")
   end
 
