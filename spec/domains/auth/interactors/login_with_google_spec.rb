@@ -2,7 +2,7 @@ require 'rails_helper'
 
 RSpec.describe Auth::Interactors::LoginWithGoogle do
   let(:user_repo) { instance_double(Auth::Repositories::UserRepository) }
-  let(:interactor) { described_class.new(user_repo: user_repo) }
+  let(:interactor) { described_class.new(user_repo: user_repo, allowed: Auth::ValueObjects::AllowedIdentities.new("email:user@gmail.com")) }
 
   let(:auth_hash) do
     OmniAuth::AuthHash.new({

@@ -1,20 +1,15 @@
 class Api::V1::AuthController < Api::V1::BaseController
-  skip_before_action :authenticate_request!, only: %i[register login refresh]
+  skip_before_action :authenticate_request!, only: %i[login refresh]
   skip_after_action :verify_authorized
   skip_after_action :verify_policy_scoped
-
-  def register
-    result = Auth::Interactors::RegisterUser.new.call(email: params.require(:email), password: params.require(:password), name: params.require(:name))
-    render json: Auth::Presenters::AuthPresenter.user_with_tokens(**result), status: :created
-  rescue Auth::Errors::InvalidEmail, Auth::Errors::WeakPassword => e
-    render_unprocessable(e.message)
-  end
 
   def login
     result = Auth::Interactors::LoginUser.new.call(email: params.require(:email), password: params.require(:password))
     render json: Auth::Presenters::AuthPresenter.user_with_tokens(**result)
   rescue Auth::Errors::InvalidCredentials, Auth::Errors::InvalidEmail
     render_unauthorized
+  rescue Auth::Errors::NotAllowed
+    render_not_allowed
   end
 
   def refresh
@@ -31,5 +26,12 @@ class Api::V1::AuthController < Api::V1::BaseController
 
   def me
     render json: Auth::Presenters::AuthPresenter.user(current_user)
+  end
+
+  private
+
+  # TCW-8: el registro está cerrado; una cuenta fuera de ALLOWED_IDENTITIES recibe este rechazo.
+  def render_not_allowed
+    render json: { errors: [ { status: "403", code: "not_allowed", detail: "Esta cuenta no tiene acceso a Ascent" } ] }, status: :forbidden
   end
 end

@@ -28,6 +28,8 @@ module Api
         )
       rescue Auth::Errors::InvalidEmail
         redirect_to_frontend_with_error("invalid_email")
+      rescue Auth::Errors::NotAllowed
+        redirect_to_frontend_with_error("not_allowed")
       rescue StandardError => e
         Rails.logger.error("OAuth error: #{e.message}")
         redirect_to_frontend_with_error("server_error")
@@ -90,6 +92,8 @@ module Api
       rescue Auth::Errors::Unauthorized => e
         Rails.logger.warn("[GoogleMobileAuth] unauthorized #{e.class}: #{e.message}")
         render json: { errors: [ { status: "401", code: "invalid_token", detail: "Google token inválido o expirado" } ] }, status: :unauthorized
+      rescue Auth::Errors::NotAllowed
+        render_not_allowed
       rescue Auth::Errors::InvalidEmail => e
         Rails.logger.warn("[GoogleMobileAuth] invalid email #{e.message}")
         render json: { errors: [ { status: "422", code: "invalid_email", detail: e.message } ] }, status: :unprocessable_entity
@@ -121,6 +125,8 @@ module Api
         render json: { errors: [ { status: "401", code: "invalid_token", detail: "No se pudo verificar el inicio de sesión" } ] }, status: :unauthorized
       rescue Auth::Errors::InvalidEmail
         render json: { errors: [ { status: "422", code: "invalid_email", detail: "El correo no está verificado" } ] }, status: :unprocessable_entity
+      rescue Auth::Errors::NotAllowed
+        render_not_allowed
       end
 
       def failure
@@ -128,6 +134,11 @@ module Api
       end
 
       private
+
+      # TCW-8: el registro está cerrado; una cuenta fuera de ALLOWED_IDENTITIES recibe este rechazo y no se crea nada.
+      def render_not_allowed
+        render json: { errors: [ { status: "403", code: "not_allowed", detail: "Esta cuenta no tiene acceso a Ascent" } ] }, status: :forbidden
+      end
 
       def issue_initial_refresh_token_for(user_id)
         raw_refresh_token = JwtService.encode_refresh_token

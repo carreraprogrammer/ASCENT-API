@@ -16,7 +16,7 @@ Rails.application.routes.draw do
       post "demo/session", to: "demo#create_session"   # ASC-4: "Ver demo" (pública, con rate limit)
       post "demo/switch", to: "demo#switch"     # ASC-4: interruptor "Modo demo" (solo superadmin)
       post "auth/tcw", to: "oauth#cyborg_way"   # TCW-1: Continuar con The Cyborg Way (OIDC + PKCE contra el cerebro)
-      post "auth/register", to: "auth#register"
+      # TCW-8: el registro está cerrado; POST auth/register ya no existe (404).
       post "auth/login", to: "auth#login"
       post "auth/refresh", to: "auth#refresh"
       delete "auth/logout", to: "auth#logout"

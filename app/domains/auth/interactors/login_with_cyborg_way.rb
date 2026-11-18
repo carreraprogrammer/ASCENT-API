@@ -6,11 +6,13 @@ module Auth
     # Este interactor:
     #   1. cambia el code por tokens en el endpoint /token del cerebro (cliente público ascent-web, PKCE);
     #   2. verifica el ID token con el JWKS del cerebro: ES256, iss = el cerebro, aud = ascent-web, exp;
-    #   3. exige el correo verificado y vincula la cuenta existente con ese correo (o crea una).
+    #   3. exige el correo verificado y la persona en ALLOWED_IDENTITIES (TCW-8), y vincula la cuenta existente con ese correo (o crea una).
     # No guarda los tokens del cerebro: solo el sub, para reconocer a la persona la próxima vez.
     class LoginWithCyborgWay
-      def initialize(user_repo: Repositories::UserRepository.new, http: nil, issuer: nil, client_id: nil)
+      def initialize(user_repo: Repositories::UserRepository.new, http: nil, issuer: nil, client_id: nil,
+                     allowed: ValueObjects::AllowedIdentities.from_env)
         @user_repo = user_repo
+        @allowed = allowed
         @http = http || method(:post_and_get)
         @issuer = issuer || ENV.fetch("BRAIN_ISSUER", "https://thecyborgway.dev")
         @client_id = client_id || ENV.fetch("TCW_OIDC_CLIENT_ID", "ascent-web")
@@ -28,6 +30,7 @@ module Auth
 
         claims = verify(id_token)
         raise Auth::Errors::InvalidEmail, "El correo no está verificado" unless claims["email_verified"] == true && claims["email"].present?
+        @allowed.check!(email: claims["email"], tcw_sub: claims["sub"])   # TCW-8: antes de buscar o crear
 
         @user_repo.find_or_create_from_cyborg_way(sub: claims["sub"], email: claims["email"])
       end
