@@ -457,5 +457,20 @@ RSpec.describe "Summary API" do
       expect(data["balance"]["net_balance"]).to eq(11_300_000)
       expect(data["cash_flow_runway"]["confirmed_balance"]).to eq(11_300_000)
     end
+
+    it "aplica los ajustes de conciliación al saldo sin tocar ingresos ni gastos" do
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+      before = JSON.parse(response.body)
+
+      BalanceAdjustment.create!(account: user.default_account, date: Date.new(2026, 4, 30),
+                                amount: -700_000, description: "Ajuste de conciliación")
+
+      get "/api/v1/summary", params: { month: 4, year: 2026 }, headers: headers
+      after = JSON.parse(response.body)
+
+      expect(after["balance"]["net_balance"]).to eq(before["balance"]["net_balance"] - 700_000)
+      expect(after["balance"]["expense_confirmed"]).to eq(before["balance"]["expense_confirmed"])
+      expect(after["balance"]["income_confirmed"]).to eq(before["balance"]["income_confirmed"])
+    end
   end
 end

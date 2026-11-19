@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_17_000000) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_19_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -95,6 +95,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_17_000000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "code"], name: "index_budget_categories_on_account_id_and_code", unique: true
     t.index ["account_id"], name: "index_budget_categories_on_account_id"
+  end
+
+  create_table "balance_adjustments", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.date "date", null: false
+    t.integer "amount", null: false
+    t.string "description", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_balance_adjustments_on_account_id"
   end
 
   create_table "budgets", force: :cascade do |t|
@@ -661,6 +672,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_17_000000) do
     t.index ["account_id"], name: "index_xp_events_on_account_id"
   end
 
+  add_foreign_key "balance_adjustments", "accounts"
   add_foreign_key "account_progress", "accounts"
   add_foreign_key "accounts", "users", column: "owner_user_id"
   add_foreign_key "agent_insights", "accounts"

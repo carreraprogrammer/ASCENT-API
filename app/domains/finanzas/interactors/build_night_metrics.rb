@@ -281,10 +281,11 @@ module Finanzas
           .transform_values { |total| (total.to_f / 2).round }  # promedio de ~2 meses
       end
 
-      def compute_balance(account_id, date)
-        month_balance = month_confirmed_balance(account_id, date.month, date.year)
-        carryover     = month_confirmed_balance(account_id, date.prev_month.month, date.prev_month.year)
-        month_balance + carryover
+      # Mismo saldo que ve el usuario en el dashboard (SummaryController): acumulado de
+      # transacciones + ajustes de conciliación. Antes sumaba solo este mes y el anterior,
+      # y el reporte nocturno mostraba un "saldo en cuenta" distinto al de la app.
+      def compute_balance(account_id, _date)
+        Finanzas::Repositories::TransactionRepository.new.confirmed_balance(account_id: account_id)
       end
 
       def emergency_fund_reserved(account_id)
