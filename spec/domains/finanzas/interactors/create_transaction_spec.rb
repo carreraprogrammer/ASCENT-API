@@ -118,4 +118,31 @@ RSpec.describe Finanzas::Interactors::CreateTransaction do
       }.not_to raise_error
     end
   end
+  describe "abono entrante que coincide con una fuente de ingreso" do
+    let(:source) do
+      IncomeSource.create!(account_id: account_id, user_id: user.id, name: "Salario", expected_day_from: 18,
+                           expected_day_to: 22, expected_amount: 3_240_000, classification: "base",
+                           cadence: "biweekly", active: true)
+    end
+    let(:matcher) { instance_double(Finanzas::Interactors::MatchIncomeSource) }
+    subject(:interactor) { described_class.new(income_matcher: matcher) }
+
+    it "confirma la quincena aunque el agente la mande pending" do
+      allow(matcher).to receive(:call).and_return(source.id)
+      result = interactor.call(user_id: user.id, account_id: account_id, date: "2026-11-19",
+                               concept: "Abono transferencia ACH", amount: 3_240_000,
+                               transaction_type: "income", status: "pending", source: "gmail")
+      expect(result.status).to eq("confirmed")
+      expect(result.income_source_id).to eq(source.id)
+      expect(result.metadata["auto_confirmed_reason"]).to eq("income_source_match")
+    end
+
+    it "deja pending un abono que no coincide con ninguna fuente" do
+      allow(matcher).to receive(:call).and_return(nil)
+      result = interactor.call(user_id: user.id, account_id: account_id, date: "2026-11-19",
+                               concept: "Transferencia recibida a la llave", amount: 50_000,
+                               transaction_type: "income", status: "pending", source: "gmail")
+      expect(result.status).to eq("pending")
+    end
+  end
 end

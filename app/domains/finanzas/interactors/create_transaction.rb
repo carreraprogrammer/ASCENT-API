@@ -77,6 +77,14 @@ module Finanzas
           concept: concept,
           amount: amount.to_i
         )
+        # Un abono entrante que coincide con una fuente de ingreso declarada (monto ±15% y
+        # ventana de fechas de MatchIncomeSource) es la quincena, no un movimiento dudoso.
+        # Los agentes fuerzan pending a toda transferencia entrante; sin esto el salario
+        # quedaba fuera de "lo que tienes hoy" hasta que el usuario lo revisara a mano.
+        if transaction_type == "income" && status == "pending" && resolved_income_source_id.present?
+          status = "confirmed"
+          metadata = metadata.merge("auto_confirmed_reason" => "income_source_match")
+        end
         resolved_sinking_fund_id = resolve_sinking_fund_id(
           account_id: account_id,
           transaction_type: transaction_type,
