@@ -84,6 +84,10 @@ disponible_real = balance_del_mes + saldo_arrastrado
 ```
 donde `balance_del_mes = ingresos confirmados − gastos confirmados del mes`.
 
+Los **ajustes de conciliación** (`balance_adjustments`) suman o restan al saldo acumulado
+para cuadrarlo con el banco, pero NO son ingresos ni gastos: no aparecen en ninguna
+estadística, presupuesto ni ritmo. Aparecen solo dentro del "saldo arrastrado".
+
 ### Meses de colchón del fondo de emergencia (`months_covered`)
 ```
 meses = saldo_del_fondo ÷ suma de TODAS las obligaciones mensuales activas

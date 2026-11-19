@@ -57,11 +57,14 @@ module Finanzas
           set << [ year, month ] if type == "expense"
         end
 
-        rows.sum do |(year, month, type), amount|
+        from_transactions = rows.sum do |(year, month, type), amount|
           next 0 unless months_with_expense.include?([ year, month ])
 
           type == "income" ? amount.to_i : -amount.to_i
         end
+
+        # Los ajustes de conciliación mueven el saldo sin contar como ingreso ni gasto.
+        from_transactions + ::BalanceAdjustment.where(account_id: account_id).sum(:amount).to_i
       end
 
       def balance(account_id:, month:, year:)
