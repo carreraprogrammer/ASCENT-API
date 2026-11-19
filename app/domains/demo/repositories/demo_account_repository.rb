@@ -6,7 +6,7 @@ module Demo
       # Tablas con account_id que el restablecimiento vacía, en orden de dependencias (FK). Se excluyen
       # accounts, account_progress (se reinicia) y delegations (se conserva para que el cromo lea la cuenta).
       PURGE_TABLES = %w[
-        transactions savings_goal_adjustments budgets recurring_obligations sinking_funds planned_expenses
+        transactions balance_adjustments savings_goal_adjustments budgets recurring_obligations sinking_funds planned_expenses
         debts savings_goals income_sources monthly_financial_plans financial_contexts pending_actions
         agent_insights agent_ui_events chat_messages night_analyses user_milestones xp_events feature_flags
         budget_categories email_connections categories
